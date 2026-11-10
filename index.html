@@ -4539,6 +4539,38 @@ $("#rptCopy").addEventListener("click", async () => { try { await navigator.clip
   new MutationObserver(() => { fit(); setTimeout(fit, 120); }).observe($("#view-3d"), { attributes:true, attributeFilter:["hidden"] });
   fit(); setTimeout(fit, 300);
 }
+/* ===== 드론 '조치 필요' → 드론 영상 판독 결과로 자동 상황 접수 · 보고 =====
+   판독 근거: 그 카메라에서 CCTV AI가 감지한 내용(종류 · 신뢰도). 감지가 없으면 위치만 넣어 일반 이상 징후로 접수한다.
+   이미 진행 중인 상황이 있으면 새로 접수하지 않고 드론 확인 결과를 추가 보고(다음 보)로 반영한다. */
+let DAUTO_T = null;
+function droneAutoReport(m, where){
+  clearTimeout(DAUTO_T);
+  const cam = CAMS.find(c => c.id === m.cam) || CAMS.find(c => m.name && c.loc && (c.loc.includes(m.name) || m.name.includes(c.loc)));
+  const inc = typeof CC !== "undefined" ? CC.inc : null;
+  const hit = inc && !inc.cleared && inc.kind !== "fp" && inc.stage >= 1 && inc.cam && inc.cam.fire && (!cam || inc.cam === cam) ? inc : null;
+  const live = !!S.result && !["idle","closed"].includes(S.phase);
+  toast(live ? "드론 확인 결과를 진행 중인 상황에 추가 보고로 반영합니다…" : "드론 영상을 판독해 상황을 자동 접수합니다…");
+  DAUTO_T = setTimeout(() => {
+    if (live){
+      if (!S.result) return;
+      showView("ops"); if (typeof goStep === "function") goStep(3);
+      applyFollowUp(`드론 현장확인 결과 ${where}에서 이상을 직접 확인했습니다. 조치가 필요합니다.${hit ? ` (${hit.label || "CCTV 감지 내용"} 계속)` : ""}`);
+      return;
+    }
+    if (hit){
+      hit.accepted = true; if (typeof hideBar === "function") hideBar();
+      ccLog("r", `${hit.cam.id} · 드론 영상 판독: 실제 상황 → 자동 상황 접수`);
+      log(`드론 영상 판독 · ${where} 조치 필요 → 자동 상황 접수 (CCTV AI ${hit.conf}%)`, "alert");
+      showView("ops"); startFromCCTV(hit.cam, hit.conf, hit.detectedAt, CAMS.indexOf(hit.cam));
+      return;
+    }
+    if (S.result || S.phase !== "idle") resetAll(true);
+    const loc = cam ? `${cam.id} ${cam.loc}` : where;
+    $("#transcript").value = `[드론 현장확인] ${loc} 상공에서 드론 영상으로 이상 징후를 확인했습니다. 조치가 필요합니다. 인원 피해와 원인은 확인 중입니다.`;
+    log(`드론 영상 판독 · ${loc} 조치 필요 → 자동 상황 접수`, "alert");
+    showView("ops"); startClock(); setPhase("intake"); analyze();
+  }, 1200);
+}
 if (!S.result) renderRoster();
 renderFeat(); goStep(1);
 
@@ -4913,6 +4945,7 @@ window.addEventListener("message", e => {
       log(`드론 영상 확인 결과: ${where} ${m.result}`, m.result === "조치 필요" ? "alert" : "ack");
       if (m.cam) ccLog(m.result === "조치 필요" ? "r" : "g", `${m.cam} · 드론 현장확인: ${m.result}`);
       toast(`${where} 드론 확인 결과 '${m.result}'을(를) 당직일지에 기록했습니다.`);
+      if (m.result === "조치 필요") droneAutoReport(m, where);
     }
     else if (m.event === "returning"){ if (fromCc) CCD.phase = "return"; if (fromMap && M3.drone) M3.drone.back = true; log(`드론 복귀 시작 · ${where} → 대대본부`, "info"); }
     else if (m.event === "return"){ if (fromMap) M3.drone = null; if (fromCc && m.cam === CCD.cam) ccDroneOff(); log(`드론 복귀 · ${where} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info"); }
