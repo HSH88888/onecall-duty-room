@@ -2172,6 +2172,13 @@ function normalize(r, text, at){
 function thinkingUI(steps, doneN){
   $("#aiBody").innerHTML = `<div class="thinking">${steps.map((s,i)=>`<div class="ln">${i<doneN?'<span class="done-dot">✓</span>':i===doneN?'<span class="spin"></span>':'<span style="width:16px"></span>'}<span style="${i<doneN?"color:var(--fg)":""}">${esc(s)}</span></div>`).join("")}</div>`;
 }
+/* '다시 판단' 때 육하원칙 칸에서 고친 값은 새 판단이 '확인 필요'로 비워 둔 칸에 그대로 남긴다 */
+function mergeKept(res){
+  const keep = S.keepRep, map = { where:"발생 장소", who:"관련 인원", action:"현재 조치" };
+  for (const k in keep){
+    if (!isMiss(keep[k]) && isMiss(res.report[k])){ res.report[k] = keep[k]; if (map[k]) res.missing = res.missing.filter(m => !m.startsWith(map[k])); }
+  }
+}
 async function analyze(){
   const text = $("#transcript").value.trim();
   if (!text) return;
@@ -2211,6 +2218,7 @@ async function analyze(){
     if (engine !== "preset") setEngine(engine === "local" ? "local" : engine, note || undefined);
   }
   $("#analyzeBtn").disabled = false;
+  if (S.keepRep){ try { mergeKept(result); } catch(e) {} S.keepRep = null; }
   S.result = result; S.engineUsed = engine; S.todoDone = {}; S.todoAuto = {}; S.missOk = {}; S.updates = []; S.reportNo = 1; S.sent = false; S.closeable = false; S.escDone = false; S.lastMsg = {}; S.msgEdit = {}; S.sel = 0; S.sevHist = [];
   cloudSave("report", { input: text, engine, result });
   const man = getMan(result);
@@ -2266,18 +2274,18 @@ function renderAI(){
         <summary><span>상황보고서 · 육하원칙</span><span class="hint">눌러서 고칠 수 있어요</span></summary>
         <div class="fields" id="fieldsBox"></div>
         <div class="warns" id="missBox" style="margin-top:10px"></div>
+        <div class="row" style="margin-top:10px"><button class="btn" id="reBtn" type="button" title="위 칸에서 고친 내용을 유지한 채 유형 · 등급 · 조치를 다시 판단합니다">고친 내용 반영해 다시 판단</button></div>
       </details>
       <div class="row">
         <button class="btn primary" id="sendBtn">확인 후 일괄 보고 (${r.recipients.length}명)</button>
         <button class="btn hwp" id="hwpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>최종 보고서 작성</button>
-        <button class="btn" id="reBtn">다시 판단</button>
       </div>
     </div>`;
   renderVerdict(); renderTodo(); renderFields(); renderMissing(); renderUpdHist();
   tick();
   $("#sendBtn").addEventListener("click", dispatch);
   $("#hwpBtn").addEventListener("click", rptOpen);
-  $("#reBtn").addEventListener("click", () => { if (S.phase!=="send"){ S.preset = null; renderChips(); analyze(); } });
+  $("#reBtn").addEventListener("click", () => { if (S.phase==="send"){ toast("이미 보고를 보낸 뒤에는 다시 판단할 수 없어요. 추가 보고를 이용해 주세요."); return; } S.keepRep = Object.assign({}, S.result.report); S.preset = null; renderChips(); analyze(); });
   $("#updApply").addEventListener("click", () => applyFollowUp($("#updTa").value));
   $("#updDemo")?.addEventListener("click", demoFollowUp);
   $("#updMic").addEventListener("click", () => {
