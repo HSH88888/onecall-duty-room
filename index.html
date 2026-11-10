@@ -863,6 +863,14 @@ button.recip{background:var(--panel)}
 @keyframes rpNew{from{background:#fff3c4}to{background:transparent}}
 @media (max-width:640px){.rpt-paper{padding:24px 16px;font-size:13px}.rpt-paper h1{font-size:21px;letter-spacing:.3em}}
 @media print{body *{visibility:hidden}.rpt-paper,.rpt-paper *{visibility:visible}.rpt-paper{position:absolute;left:0;top:0;width:100%;box-shadow:none;margin:0}}
+
+/* ===== 3D 부대: 지도가 화면 아래(당직일지 바)에서 잘리지 않게 화면 높이에 맞춘다 ===== */
+@media (min-width:901px){
+  .m3-wrap{height:var(--m3h,auto)}
+  .m3-wrap .m3-stage{min-height:0}
+  .m3-wrap #m3{min-height:0;height:100%}
+  .m3-wrap .m3-side{min-height:0;overflow:auto}
+}
 </style>
 
 <div class="wrap">
@@ -4523,6 +4531,14 @@ setInterval(() => { if (!$("#rptBox").hidden){ if (!S.result) $("#rptBox").hidde
 $("#rptHwp").addEventListener("click", saveHwp);
 $("#rptClose").addEventListener("click", () => { $("#rptBox").hidden = true; window.scrollTo({ top:0, behavior:"smooth" }); });
 $("#rptCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("#rptPaper").innerText); toast("보고서를 복사했어요."); } catch(e){ toast("복사하지 못했어요. 내용을 직접 선택해 주세요."); } });
+/* 3D 부대 화면 높이 맞춤: 남은 화면 높이 = 창 높이 - 지도 시작 위치 - 아래 당직일지 바 */
+{ const wrap = document.querySelector("#view-3d .m3-wrap");
+  const fit = () => { if (!wrap || $("#view-3d").hidden) return; const top = wrap.getBoundingClientRect().top + scrollY, bar = Math.max($("#dutyBar") ? $("#dutyBar").offsetHeight + 14 : 0, parseFloat(getComputedStyle(document.body).paddingBottom) || 0);
+    wrap.style.setProperty("--m3h", Math.max(420, Math.round(innerHeight - top - bar)) + "px"); };
+  addEventListener("resize", fit);
+  new MutationObserver(() => { fit(); setTimeout(fit, 120); }).observe($("#view-3d"), { attributes:true, attributeFilter:["hidden"] });
+  fit(); setTimeout(fit, 300);
+}
 if (!S.result) renderRoster();
 renderFeat(); goStep(1);
 
