@@ -740,6 +740,56 @@ button.recip{background:var(--panel)}
 .link{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:4px;font-weight:600;white-space:nowrap}
 @media (max-width:640px){#dbCount,#dbTime{display:none}.dutybar{gap:12px}}
 #logOv .tl{max-height:none}
+
+/* ===== 상황 발생 화면 한 페이지 배치: 즉시 조치 | 육하원칙 | 초도보고 ===== */
+#w6Chips span::after{content:attr(title);color:var(--fg);font-weight:500}
+@media (min-width:1000px){
+  #view-ops:has(#stage2:not([hidden])) .stepper{margin-top:10px}
+  #view-ops:has(#stage2:not([hidden])) .st-i{padding:5px 16px 5px 6px;font-size:14.5px}
+  #view-ops:has(#stage2:not([hidden])) .st-i b{width:26px;height:26px;font-size:13px}
+  #view-ops:has(#stage2:not([hidden])) #kpibar{max-width:1560px;margin-top:10px;padding:6px 12px}
+  #stage2:not([hidden]){max-width:1560px;margin-top:10px;display:grid;gap:12px;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:stretch}
+  #stage2 > #pane-ai{grid-column:1/-1}
+  #stage2 > #firstGrid:not([hidden]){display:contents}
+  #stage2 #nowCard{grid-column:1;grid-row:2}
+  #stage2 #w6Card{grid-column:1;grid-row:3}
+  #stage2 > #pane-send:not([hidden]){grid-column:2;grid-row:2 / span 2;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;min-width:0}
+  #stage2 #vBox{display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap}
+  #stage2 #vBox .verdict{flex:0 1 auto;padding-block:10px}
+  #stage2 #vBox .basis{margin:0!important;flex:1 1 280px}
+  #stage2 #w6Chips{grid-template-columns:minmax(0,1fr);gap:5px}
+  #stage2 #w6Chips span{flex-direction:row;align-items:baseline;justify-content:flex-start;gap:10px;padding:7px 10px;white-space:normal;text-align:left;font-size:13px}
+  #stage2 #w6Chips span::after{flex:1;min-width:0;font-size:13.5px;order:2;overflow-wrap:anywhere}
+  #stage2 #w6Chips span small{order:3;flex:none}
+  #stage2 #w6Chips span:not(.miss) small{display:none}
+  #stage2 #pane-send .rep-h{margin-bottom:8px}
+  #stage2 #pane-send .rep-h .hint{display:none}
+  #stage2 #pane-send .rep-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+  #stage2 #pane-send .rep-grid .phone{position:static}
+  #stage2 #pane-send .rep-sum{padding:7px 10px}
+  #stage2 #pane-send .recip{padding-block:7px}
+  #stage2 #smsTa{min-height:0!important;height:132px!important}
+  #stage2 #phone > .hint{display:none}
+  #stage2 #pane-send .rc-add select{padding-block:6px}
+}
+@media (min-width:1000px) and (min-height:700px){
+  #stage2:not([hidden]){height:calc(100vh - 298px);min-height:440px;grid-template-rows:auto minmax(0,1.1fr) minmax(0,1fr)}
+  #stage2 #nowCard,#stage2 #w6Card,#stage2 > #pane-send{overflow:auto;min-height:0}
+  #stage2 > #pane-send:not([hidden]){display:flex;flex-direction:column}
+  #stage2 #pane-send .rep-grid{flex:1;min-height:0;display:flex;flex-direction:column}
+  #stage2 #pane-send .rep-left{flex:1;min-height:90px}
+  #stage2 #pane-send #recips{flex:1;min-height:0;overflow:auto}
+  #stage2 #pane-send .phone{flex:none}
+}
+@media (min-width:1300px){
+  #stage2:not([hidden]){grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1.3fr)}
+  #stage2 #w6Card{grid-column:2;grid-row:2}
+  #stage2 > #pane-send:not([hidden]){grid-column:3;grid-row:2}
+}
+@media (min-width:1300px) and (min-height:700px){
+  #stage2:not([hidden]){grid-template-rows:auto minmax(0,1fr)}
+}
+@media (max-width:999px){ #w6Chips span::after{display:none} }
 </style>
 
 <div class="wrap">
