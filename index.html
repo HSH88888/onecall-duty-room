@@ -445,6 +445,30 @@ textarea.bubble[readonly]{color:var(--muted)}
 .bot-in input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .bot-note{padding:7px 12px 10px;color:var(--faint);font-size:11.5px}
 @media (prefers-reduced-motion:reduce){.dj-eyes,.bm .dots i{animation:none}}
+/* ===== 돌아다니는 당직이 (끌어서 옮기기 · 말풍선) ===== */
+.bot-fab.dj-body{width:80px;height:104px;border:0;background:none;border-radius:0;box-shadow:none;right:auto;bottom:auto;left:0;top:0;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
+.bot-fab.dj-body:hover{transform:none}
+.bot-fab.dj-body.dragging{cursor:grabbing}
+.bot-fab.dj-body .djb{width:100%;height:100%;display:block;overflow:visible;transition:transform .15s}
+.bot-fab.dj-body.dragging .djb{transform:rotate(-8deg) scale(1.08)}
+.djb .dj-eyes{transform-box:fill-box;transform-origin:center;animation:djBlink 4.2s infinite}
+.djb .dj-leg{transform-box:fill-box;transform-origin:50% 0}
+.bot-fab.walk .djb .dj-leg.a{animation:djLeg .36s ease-in-out infinite alternate}
+.bot-fab.walk .djb .dj-leg.b{animation:djLeg .36s ease-in-out infinite alternate-reverse}
+.bot-fab.walk .djb .dj-top{animation:djBob .36s ease-in-out infinite alternate}
+.bot-fab.dragging .djb .dj-leg.a{animation:djLeg .2s ease-in-out infinite alternate}
+.bot-fab.dragging .djb .dj-leg.b{animation:djLeg .2s ease-in-out infinite alternate-reverse}
+@keyframes djLeg{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+@keyframes djBob{from{transform:translateY(0)}to{transform:translateY(-2.5px)}}
+.bot-fab.dj-body .bot-badge{right:-4px;top:-2px}
+.dj-say{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#fff;color:#1b1f23;font-size:13.5px;font-weight:700;line-height:1.35;padding:7px 11px;border-radius:13px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.4);animation:djPop .18s ease-out}
+.dj-say::after{content:"";position:absolute;top:100%;left:50%;margin-left:-6px;border:6px solid transparent;border-top-color:#fff}
+.dj-say.l{left:0;transform:none}.dj-say.l::after{left:26px}
+.dj-say.r{left:auto;right:0;transform:none}.dj-say.r::after{left:auto;right:20px}
+.dj-say.below{bottom:auto;top:calc(100% + 8px)}.dj-say.below::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#fff}
+.dj-say[hidden]{display:none}
+@keyframes djPop{from{opacity:0;scale:.8}to{opacity:1;scale:1}}
+@media (prefers-reduced-motion:reduce){.bot-fab.walk .djb .dj-leg,.bot-fab.walk .djb .dj-top,.bot-fab.dragging .djb .dj-leg,.djb .dj-eyes,.dj-say{animation:none!important}}
 /* ===== UX v2: 단계형 상황실 ===== */
 body{padding-block:0 84px}
 .wrap{gap:0}
@@ -3747,7 +3771,7 @@ const _alRenderAI = renderAI; renderAI = function(){ _alRenderAI(); uxAlert(); }
 
 /* ===== 당직이 챗봇: API 없이 낱말에 반응하는 시연용 ===== */
 const BOT = { open:false, greeted:false, busy:false };
-const BOT_FACE = $("#botFab .dj").outerHTML;
+let BOT_FACE = $("#botFab .dj").outerHTML;
 const botGo = v => { const b = document.querySelector(`.vbtn[data-v="${v}"]`); if (b) b.click(); };
 function botScenario(i){
   if (S.result || ["analyzing","send","intake"].includes(S.phase)) return botSay("앗, 지금 진행 중인 상황이 있어요! 위쪽 '새 상황'을 누른 다음 다시 불러 주세요 🙇");
@@ -3806,6 +3830,104 @@ $("#botFab").addEventListener("click", () => botToggle(true));
 $("#botClose").addEventListener("click", () => botToggle(false));
 $("#botForm").addEventListener("submit", e => { e.preventDefault(); const i = $("#botInput"); botAsk(i.value); i.value = ""; });
 $("#botInput").addEventListener("keydown", e => { if (e.key === "Escape") botToggle(false); });
+
+/* ===== 돌아다니는 당직이: 화면을 걸어 다니고, 가끔 말하고, 끌어서 옮길 수 있다 ===== */
+const DJ = { el:$("#botFab"), x:0, y:0, roam:true, drag:null, moved:false, pauseUntil:0, sayT:null, walkT:null, last:"", inc:null };
+DJ.el.classList.add("dj-body");
+const djSvg = (cls, vb) => `<svg class="${cls}" viewBox="${vb}" aria-hidden="true">
+  <g class="dj-leg a"><rect x="42" y="122" width="16" height="20" rx="5" fill="#55663a"/><rect x="43.500" y="127" width="8" height="8" rx="1.500" fill="none" stroke="#3f4d2b" stroke-width="1.200"/><rect x="39" y="138" width="21" height="12" rx="5.500" fill="#26292b"/></g>
+  <g class="dj-leg b"><rect x="62" y="122" width="16" height="20" rx="5" fill="#55663a"/><rect x="68.500" y="127" width="8" height="8" rx="1.500" fill="none" stroke="#3f4d2b" stroke-width="1.200"/><rect x="60" y="138" width="21" height="12" rx="5.500" fill="#26292b"/></g>
+  <g class="dj-top">
+    <path d="M80 99Q97 104 92 118" fill="none" stroke="#5a6b3a" stroke-width="12" stroke-linecap="round"/>
+    <rect x="36" y="90" width="48" height="37" rx="13" fill="#5a6b3a"/>
+    <path d="M52 90l8 8 8-8" fill="none" stroke="#3f4d2b" stroke-width="1.600" stroke-linejoin="round"/>
+    <rect x="69" y="101" width="11" height="10" rx="2" fill="none" stroke="#3f4d2b" stroke-width="1.300"/><path d="M69 104.500h11" stroke="#3f4d2b" stroke-width="1.300"/>
+    <rect x="45.500" y="102" width="21" height="9.500" rx="2" fill="#F0A43A"/><text x="56" y="109.200" text-anchor="middle" font-size="6.400" font-weight="800" fill="#1C1305">당직이</text>
+    <rect x="36" y="116" width="48" height="7" fill="#26292b"/><rect x="55" y="115" width="10" height="9" rx="1.800" fill="#8d917c"/><rect x="57.500" y="117.500" width="5" height="4" rx="1" fill="#26292b"/>
+    <g transform="rotate(14 93 114)"><rect x="80" y="97" width="27" height="34" rx="4.500" fill="#1f2226" stroke="#F0A43A" stroke-width="2"/><path d="M84 115h5l2.500-6 4 12 2.500-6h5" fill="none" stroke="#F0A43A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <circle cx="87" cy="128" r="6.500" fill="#FFE1C4"/>
+    <circle cx="60" cy="58" r="34" fill="#FFE1C4"/>
+    <circle cx="38" cy="73" r="7" fill="#FFAFA3" opacity=".8"/><circle cx="82" cy="73" r="7" fill="#FFAFA3" opacity=".8"/>
+    <g class="dj-eyes"><ellipse cx="48" cy="63" rx="4.800" ry="6.400" fill="#2a2320"/><ellipse cx="72" cy="63" rx="4.800" ry="6.400" fill="#2a2320"/><circle cx="49.800" cy="60.400" r="1.800" fill="#fff"/><circle cx="73.800" cy="60.400" r="1.800" fill="#fff"/></g>
+    <path d="M51 75Q60 78 69 75Q67 88 60 88Q53 88 51 75Z" fill="#7a2b2b"/><ellipse cx="60" cy="84" rx="4.500" ry="2.800" fill="#ff8f85"/>
+    <circle cx="95" cy="66" r="9.500" fill="#23262a"/><circle cx="95" cy="66" r="6" fill="none" stroke="#F0A43A" stroke-width="2"/><path d="M95 75Q93 88 78 87" fill="none" stroke="#23262a" stroke-width="2.600" stroke-linecap="round"/><ellipse cx="76.500" cy="87" rx="3.600" ry="2.600" fill="#23262a"/>
+    <path d="M23 54C21 26 39 9 60 9C81 9 99 26 97 54C85 46 73 43 60 43C47 43 35 46 23 54Z" fill="#5a6b3a"/>
+    <path d="M17 55Q60 33 103 55Q105 63 97 61Q60 45 23 61Q15 63 17 55Z" fill="#44522f"/>
+    <circle cx="60" cy="25" r="8.500" fill="#F0A43A"/><path d="M60 19.400l1.800 3.700 4.100.500-3 2.800.800 4-3.700-2-3.700 2 .800-4-3-2.800 4.100-.500z" fill="#1C1305"/>
+    <path d="M38 96Q17 99 21 79L27 65" fill="none" stroke="#5a6b3a" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="28.500" cy="60" r="7.500" fill="#FFE1C4"/>
+  </g></svg>`;
+DJ.el.querySelector(".dj").outerHTML = djSvg("djb", "0 0 120 156");
+BOT_FACE = djSvg("dj", "20 6 82 82"); document.querySelector(".bot-h .bot-av").innerHTML = BOT_FACE;
+DJ.el.insertAdjacentHTML("beforeend", '<span class="dj-say" id="djSay" hidden></span>');
+try { const v = localStorage.getItem("onecall_dj_roam"); DJ.roam = v === null ? !matchMedia("(prefers-reduced-motion: reduce)").matches : v === "1"; } catch(e) {}
+const DJ_IDLE = ["안녕! 👋", "아 심심하다…", "순찰 중~ 이상 무!", "하암… 졸리다", "사관님 파이팅! 💪", "충성! 🫡", "오늘 밤도 무사히~", "저 눌러 보세요!", "라면 먹고 싶다… 🍜", "지침서 112쪽 다 외웠지롱", "뚜벅뚜벅…", "무슨 일 생기면 말만 하세요!"];
+const DJ_DRAG = ["으앗, 어디 가요~?", "꺄, 날아간다!", "살살요…!"], DJ_DROP = ["여기 있을게요!", "여기서 근무할게요 🫡", "휴, 어지러워…"];
+const djPick = a => { let s; do { s = a[Math.floor(Math.random() * a.length)]; } while (a.length > 1 && s === DJ.last); DJ.last = s; return s; };
+const djBounds = () => ({ minX:8, maxX:Math.max(8, innerWidth - 84), minY:78, maxY:Math.max(78, innerHeight - 102 - 62) });
+const djHome = () => { const b = djBounds(); return { x:b.maxX - 10, y:b.maxY }; };
+function djPlace(x, y, dur){
+  const b = djBounds(); x = Math.min(b.maxX, Math.max(b.minX, x)); y = Math.min(b.maxY, Math.max(b.minY, y));
+  DJ.el.style.transition = dur ? `left ${dur}s linear, top ${dur}s linear` : "none";
+  DJ.el.style.left = x + "px"; DJ.el.style.top = y + "px"; DJ.x = x; DJ.y = y;
+}
+function djStopWalk(){ clearTimeout(DJ.walkT); DJ.el.classList.remove("walk"); const r = DJ.el.getBoundingClientRect(); djPlace(r.left, r.top, 0); }
+function djWalk(x, y, then, speed){
+  const b = djBounds(); x = Math.min(b.maxX, Math.max(b.minX, x)); y = Math.min(b.maxY, Math.max(b.minY, y));
+  const dist = Math.hypot(x - DJ.x, y - DJ.y); if (dist < 6){ then && then(); return; }
+  const dur = dist / (speed || 75);
+  DJ.el.classList.toggle("flip", x < DJ.x); DJ.el.classList.add("walk");
+  djPlace(x, y, dur);
+  clearTimeout(DJ.walkT); DJ.walkT = setTimeout(() => { DJ.el.classList.remove("walk"); then && then(); }, dur * 1000 + 40);
+}
+function djSay(text, ms){
+  const s = $("#djSay"); s.textContent = text; s.className = "dj-say" + (DJ.x < 90 ? " l" : DJ.x > innerWidth - 190 ? " r" : "") + (DJ.y < 130 ? " below" : ""); s.hidden = false;
+  clearTimeout(DJ.sayT); DJ.sayT = setTimeout(() => { s.hidden = true; }, ms || 3200);
+}
+function djBusy(){ return !!S.result || ["intake","analyzing","send"].includes(S.phase); }
+function djTick(){
+  setTimeout(djTick, 4500 + Math.random() * 5500);
+  if (BOT.open || DJ.drag || document.hidden || Date.now() < DJ.pauseUntil) return;
+  if (!DJ.roam || djBusy()) return;
+  const r = Math.random(), b = djBounds();
+  if (r < .28) return djSay(djPick(DJ_IDLE));
+  const far = Math.random() < .3;
+  const tx = b.minX + Math.random() * (b.maxX - b.minX), ty = far ? b.minY + Math.random() * (b.maxY - b.minY) : b.maxY - Math.random() * 70;
+  djWalk(tx, ty, () => { if (Math.random() < .45 && !BOT.open) djSay(djPick(DJ_IDLE)); });
+}
+/* 상황이 생기면 자리로 돌아가 방해하지 않는다 */
+setInterval(() => {
+  const st = S.phase === "closed" ? "closed" : djBusy() ? "busy" : "idle";
+  if (st === DJ.inc) return; const prev = DJ.inc; DJ.inc = st;
+  if (BOT.open || DJ.drag) return;
+  if (st === "busy"){ djStopWalk(); const h = djHome(); djWalk(h.x, h.y, () => djSay(S.result && S.result.severity <= 2 ? "상황 발생! 침착하게, 지금 할 일부터!" : "제가 옆에서 도울게요!", 4000), 520); }
+  else if (st === "closed" && prev === "busy") djSay("수고하셨습니다! 🫡", 4000);
+}, 700);
+/* 끌어서 옮기기 (살짝 누르면 대화창) */
+DJ.el.addEventListener("pointerdown", e => {
+  if (e.button) return;
+  djStopWalk(); DJ.drag = { dx:e.clientX - DJ.x, dy:e.clientY - DJ.y, sx:e.clientX, sy:e.clientY }; DJ.moved = false;
+  try { DJ.el.setPointerCapture(e.pointerId); } catch(e2) {}
+});
+DJ.el.addEventListener("pointermove", e => {
+  if (!DJ.drag) return;
+  if (!DJ.moved && Math.hypot(e.clientX - DJ.drag.sx, e.clientY - DJ.drag.sy) < 6) return;
+  if (!DJ.moved){ DJ.moved = true; DJ.el.classList.add("dragging"); $("#botBadge").hidden = true; djSay(djPick(DJ_DRAG), 1600); }
+  djPlace(e.clientX - DJ.drag.dx, e.clientY - DJ.drag.dy, 0);
+});
+const djDrop = () => { if (!DJ.drag) return; DJ.drag = null; DJ.el.classList.remove("dragging"); if (DJ.moved){ DJ.pauseUntil = Date.now() + 15000; djSay(djPick(DJ_DROP), 2200); } };
+DJ.el.addEventListener("pointerup", djDrop); DJ.el.addEventListener("pointercancel", djDrop);
+DJ.el.addEventListener("click", e => { if (DJ.moved){ e.stopImmediatePropagation(); e.preventDefault(); DJ.moved = false; } }, true);
+DJ.el.addEventListener("dragstart", e => e.preventDefault());
+addEventListener("resize", () => { if (!DJ.drag) { djStopWalk(); djPlace(DJ.x, DJ.y, 0); } });
+/* 대화창에 돌아다니기 켜기 · 끄기 */
+$("#botClose").insertAdjacentHTML("beforebegin", '<button class="btn sm" id="djRoam" type="button"></button>');
+const djRoamUI = () => { $("#djRoam").textContent = DJ.roam ? "돌아다니기 끄기" : "돌아다니기 켜기"; $("#djRoam").setAttribute("aria-pressed", String(DJ.roam)); };
+$("#djRoam").addEventListener("click", () => { DJ.roam = !DJ.roam; try { localStorage.setItem("onecall_dj_roam", DJ.roam ? "1" : "0"); } catch(e) {} djRoamUI(); botSay(DJ.roam ? "야호, 순찰 다녀올게요! 🚶" : "넵, 제자리에서 근무할게요 🫡"); if (!DJ.roam){ djStopWalk(); const h = djHome(); djPlace(h.x, h.y, 0); } });
+djRoamUI();
+{ const h = djHome(); djPlace(h.x, h.y, 0); }
+setTimeout(() => { if (!BOT.open) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
+setTimeout(djTick, 6000);
 </script>
 
 </body></html>
