@@ -336,6 +336,17 @@ textarea.bubble[readonly]{color:var(--muted)}
 .bm-b{font-size:11px;fill:#c3ccc7;font-family:var(--font);font-weight:500;paint-order:stroke;stroke:#0b120e;stroke-width:3px;stroke-opacity:.6}
 .bm-s{font-size:12.5px;font-weight:700;fill:#fff;font-family:var(--font);paint-order:stroke;stroke:#0b120e;stroke-width:4.5px}
 .bm-stop{cursor:pointer}
+.bm-stop.on > circle:first-child{stroke:#fff;stroke-width:3.5}
+.bb-haz{fill:#ffb020;opacity:0}
+#busLayer g.stop .bb-haz{animation:busHaz .9s steps(1) infinite}
+@keyframes busHaz{0%{opacity:1}50%{opacity:0}}
+#busLayer .bus-flag{opacity:0;transition:opacity .2s}
+#busLayer g.stop .bus-flag{opacity:1}
+#busLayer .bus-flag rect{fill:#0e1113;stroke:var(--accent);stroke-width:1.5}
+#busLayer .bus-flag text{font-size:9.5px;font-weight:800;font-family:var(--font);fill:var(--accent)}
+#busLayer g.em .bus-flag rect{fill:#ff5a52;stroke:#fff}
+#busLayer g.em .bus-flag text{fill:#fff}
+@media (prefers-reduced-motion:reduce){#busLayer g.stop .bb-haz{animation:none;opacity:1}}
 .bm-stop:focus-visible circle{stroke:#fff;stroke-width:4}
 .bm-n{font-size:10.5px;font-weight:800;font-family:var(--font);fill:#111}
 .bm-load{font-family:var(--mono);font-weight:700;font-size:10px}
@@ -394,6 +405,12 @@ textarea.bubble[readonly]{color:var(--muted)}
 .tt tr.nx td{background:var(--accent-soft);color:var(--fg);font-weight:600}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+/* ===== 상황 발생 경고: 가장자리 3회 점멸 뒤 상단 띠 유지 ===== */
+.alert-band{position:fixed;left:0;right:0;top:0;height:5px;background:var(--sev1);z-index:45;pointer-events:none}
+.alert-edge{position:fixed;inset:0;z-index:46;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 6px rgba(255,90,82,.92),inset 0 0 150px 24px rgba(255,60,50,.5)}
+.alert-edge.go{animation:alertEdge 1s ease-in-out 3}
+@keyframes alertEdge{0%,100%{opacity:0}45%,55%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.alert-edge.go{animation:none}}
 /* ===== UX v2: 단계형 상황실 ===== */
 body{padding-block:0 84px}
 .wrap{gap:0}
@@ -600,7 +617,7 @@ button.recip{background:var(--panel)}
     <div id="busBanner" style="margin-top:14px"></div>
     <div class="bus-layout">
       <div class="pane bus-mapbox">
-        <div class="pane-h"><h2 style="font-size:15px">순환 노선도</h2><span class="hint">한 바퀴 약 2분 30초 · 시연용 시뮬레이션</span></div>
+        <div class="pane-h"><h2 style="font-size:15px">순환 노선도</h2><span class="hint">정류장마다 4초 정차 · 한 바퀴 약 3분 · 시연용 시뮬레이션</span></div>
         <div class="bus-map-wrap"><svg id="busMap" viewBox="0 0 820 470" role="img" aria-label="영내 순환버스 노선도"></svg></div>
         <div class="bus-cards" id="busCards"></div>
       </div>
@@ -622,6 +639,8 @@ button.recip{background:var(--panel)}
   </div>
 </div>
 
+<div class="alert-band" id="alertBand" hidden></div>
+<div class="alert-edge" id="alertEdge" aria-hidden="true"></div>
 <footer class="dutybar" id="dutyBar">
   <b>오늘 당직일지</b><span class="hint" id="dbCount">자동 기록 0건</span><span class="mono" id="dbTime"></span><span id="dbText"></span>
   <button class="link" id="dbOpen">일지 전체 보기 →</button>
@@ -2986,6 +3005,7 @@ const BUS_STOPS = [
 ];
 const BUS_SPEED = 13;            // 화면 px / 초 (한 바퀴 약 3분)
 const BUS_DWELL = 4;             // 정류장 정차 초
+const BUS_EASE = 3;              // 정류장 앞 감속 · 출발 가속으로 더 걸리는 초
 const BUSES = [
   { no:1, cap:25, driver:"상병 김○○", s:0,   dwell:0, load:8,  state:"운행" },
   { no:2, cap:25, driver:"상병 이○○", s:0,   dwell:0, load:14, state:"운행" },
@@ -3010,34 +3030,50 @@ const ahead = (from, to) => { const d = to - from; return d >= 0 ? d : d + BUS.t
 
 /* ---------- 정류장 도착 예정 ---------- */
 function etaFor(bus, stopIdx){
+  if (BUS.emergency && BUS.emergency.bus === bus) return null;            // 비상 수송 중인 버스는 제외
+  if (bus.hold != null && bus.at === stopIdx) return 0;                   // 지금 그 정류장에 서 있음
   const target = BUS.L[stopIdx];
   const dist = ahead(((bus.s % BUS.total)+BUS.total)%BUS.total, target);
   let t = dist / BUS_SPEED + Math.max(0, bus.dwell);
-  if (BUS.emergency && BUS.emergency.bus === bus) return null;            // 비상 수송 중인 버스는 제외
-  let i = nextStopIdx(bus.s), guard = 0;
-  while (i !== stopIdx && guard++ < BUS_STOPS.length){ if (!BUS.closed[BUS_STOPS[i].id]) t += BUS_DWELL; i = (i+1) % BUS_STOPS.length; }
+  let i = bus.hold != null ? (bus.at + 1) % BUS_STOPS.length : nextStopIdx(bus.s), guard = 0;
+  while (i !== stopIdx && guard++ < BUS_STOPS.length){ if (!BUS.closed[BUS_STOPS[i].id]) t += BUS_DWELL + BUS_EASE; i = (i+1) % BUS_STOPS.length; }
+  if (!BUS.closed[BUS_STOPS[stopIdx].id]) t += BUS_EASE / 2;
   return t;
 }
-const fmtEta = t => t < 20 ? "곧 도착" : `${Math.floor(t/60)}분 ${String(Math.round(t%60)).padStart(2,"0")}초`;
-const etaPhrase = t => t < 20 ? "곧 도착" : `약 ${fmtEta(t)} 뒤 도착`;
+const fmtEta = t => t <= 0 ? "정차 중" : t < 20 ? "곧 도착" : `${Math.floor(t/60)}분 ${String(Math.round(t%60)).padStart(2,"0")}초`;
+const etaPhrase = t => t <= 0 ? "정차 중" : t < 20 ? "곧 도착" : `약 ${fmtEta(t)} 뒤 도착`;
 
 /* ---------- 시뮬레이션 ---------- */
+function busRelease(b){ if (b.hold != null){ b.from = b.hold; b.s = b.hold + .6; b.hold = null; b.at = null; } }
 function busTick(){
   const now = performance.now(), dt = BUS.last ? Math.min(.5, (now - BUS.last)/1000) : .1; BUS.last = now;
+  const n = BUS_STOPS.length;
   BUSES.forEach(b => {
     const em = BUS.emergency && BUS.emergency.bus === b ? BUS.emergency : null;
-    if (b.dwell > 0){ b.dwell -= dt; if (b.dwell <= 0 && em && em.phase === "loading"){ em.phase = "done"; busLog(`${b.no}호차 비상 수송 탑승 완료 → 지정 대피 장소로 출발`, "g"); log(`부대 버스 ${b.no}호차 대피 인원 탑승 완료 · 출발`, "ack"); b.load = Math.min(b.cap, b.load + 12); setTimeout(() => { if (BUS.emergency === em){ BUS.emergency = null; b.state = "운행"; renderBusSide(); } }, 6000); } return; }
-    const prev = b.s, ns = prev + BUS_SPEED * (em && em.phase === "going" ? 1.8 : 1) * dt;
+    if (b.dwell > 0){
+      b.dwell -= dt;
+      if (b.dwell <= 0){
+        busRelease(b);
+        if (em && em.phase === "loading"){ em.phase = "done"; busLog(`${b.no}호차 비상 수송 탑승 완료 → 지정 대피 장소로 출발`, "g"); log(`부대 버스 ${b.no}호차 대피 인원 탑승 완료 · 출발`, "ack"); b.load = Math.min(b.cap, b.load + 12); setTimeout(() => { if (BUS.emergency === em){ BUS.emergency = null; b.state = "운행"; renderBusSide(); } }, 6000); }
+        else if (!em) b.state = "출발";
+      }
+      return;
+    }
+    const prev = b.s, going = !!(em && em.phase === "going");
     const idx = nextStopIdx(prev), stopS = BUS.L[idx] + (BUS.L[idx] < ((prev % BUS.total)+BUS.total)%BUS.total ? BUS.total : 0) + Math.floor(prev / BUS.total) * BUS.total;
-    if (ns >= stopS){
-      const st = BUS_STOPS[idx];
-      b.s = stopS + .6;
-      if (em && em.phase === "going"){
-        if (st.id === em.stop.id){ em.phase = "loading"; b.dwell = 8; b.state = "비상 수송 · 탑승 중"; busLog(`${b.no}호차 ${st.name} 도착 · 대피 인원 탑승`, "r"); log(`부대 버스 ${b.no}호차 ${st.name} 도착 · 대피 인원 탑승 중`, "send"); }
-      } else if (BUS.closed[st.id]) { b.state = `${st.name} 우회`; }
+    const st = BUS_STOPS[idx];
+    const willStop = going ? st.id === em.stop.id : !BUS.closed[st.id];
+    let k = 1;
+    if (willStop) k = Math.min(k, Math.max(.4, (stopS - prev) / 26));                 // 정류장 앞 감속
+    if (b.from != null){ const d = prev - b.from; if (d > 22) b.from = null; else k = Math.min(k, Math.max(.4, d / 22)); }   // 출발 직후 가속
+    const ns = prev + BUS_SPEED * (going ? 1.8 : 1) * k * dt;
+    if (willStop && ns >= stopS - .6){
+      b.s = stopS - .6; b.hold = stopS; b.at = idx; b.from = null;                    // 정류장에 정확히 선다
+      if (going){ em.phase = "loading"; b.dwell = 8; b.state = "비상 수송 · 탑승 중"; busLog(`${b.no}호차 ${st.name} 도착 · 대피 인원 탑승`, "r"); log(`부대 버스 ${b.no}호차 ${st.name} 도착 · 대피 인원 탑승 중`, "send"); }
       else { b.dwell = BUS_DWELL; b.state = `${st.name} 정차`; const off = Math.min(b.load, Math.round(Math.random()*4)); b.load = Math.min(b.cap, b.load - off + Math.round(Math.random()*5)); }
-    } else { b.s = ns; if (!em) b.state = "운행"; }
-    b.next = nextStopIdx(b.s);
+    } else if (ns >= stopS){ b.s = Math.max(ns, stopS + .6); if (!em) b.state = `${st.name} 우회`; }
+    else { b.s = ns; if (!em) b.state = b.from != null ? "출발" : "운행"; }
+    b.next = b.hold != null ? (b.at + 1) % n : nextStopIdx(b.s);
   });
 }
 setInterval(() => { busTick(); if (!$("#view-bus").hidden) renderBusLive(); }, 100);
@@ -3067,8 +3103,9 @@ function dispatchEmergency(){
   const idx = BUS_STOPS.indexOf(inc.stop);
   let best = null, bt = 1e9;
   BUSES.forEach(b => { const t = ahead(((b.s % BUS.total)+BUS.total)%BUS.total, BUS.L[idx]) / (BUS_SPEED*1.8) + Math.max(0,b.dwell); if (t < bt){ bt = t; best = b; } });
-  best.dwell = 0; best.state = `비상 수송 · ${inc.stop.name}행`;
-  BUS.emergency = { bus:best, stop:inc.stop, phase:"going" };
+  const here = best.hold != null && best.at === idx;
+  if (here){ best.dwell = 8; best.state = "비상 수송 · 탑승 중"; } else { best.dwell = 0; busRelease(best); best.state = `비상 수송 · ${inc.stop.name}행`; }
+  BUS.emergency = { bus:best, stop:inc.stop, phase: here ? "loading" : "going" };
   busLog(`비상 수송 배차: ${best.no}호차 → ${inc.stop.name} (${etaPhrase(bt)})`, "r");
   log(`부대 버스 ${best.no}호차 비상 수송 배차 → ${inc.stop.name} (${etaPhrase(bt)})`, "send");
   toast(`${best.no}호차를 ${inc.stop.name}(으)로 보냈습니다. 다른 정류장은 건너뜁니다.`);
@@ -3189,12 +3226,13 @@ function busSVG(no){
     <rect x="-9" y="-2.2" width="10" height="4.4" rx="1" class="bb-hatch"/>
     <circle cx="20.5" cy="-7" r="1.4" fill="#fff6c8"/><circle cx="20.5" cy="7" r="1.4" fill="#fff6c8"/>
     <rect x="-21.5" y="-7.5" width="1.6" height="3" fill="#ff5a52"/><rect x="-21.5" y="4.5" width="1.6" height="3" fill="#ff5a52"/>
+    <circle class="bb-haz" cx="18" cy="-9" r="2"/><circle class="bb-haz" cx="18" cy="9" r="2"/><circle class="bb-haz" cx="-18" cy="-9" r="2"/><circle class="bb-haz" cx="-18" cy="9" r="2"/>
   </g>`;
 }
 function renderBusLive(){
   const layer = $("#busLayer"); if (!layer) return;
   if (!layer.childElementCount){
-    layer.innerHTML = BUSES.map(b => `<g id="bus${b.no}"><circle class="bm-pulse" r="26" fill="rgba(255,90,82,.3)"/><g class="bus-rot">${busSVG(b.no)}</g>
+    layer.innerHTML = BUSES.map(b => `<g id="bus${b.no}"><circle class="bm-pulse" r="26" fill="rgba(255,90,82,.3)"/><g class="bus-rot">${busSVG(b.no)}</g><g class="bus-flag"><rect x="-16" y="14" width="32" height="15" rx="7.5"/><text x="0" y="25" text-anchor="middle">정차</text></g>
       <g class="bus-tag"><rect x="-31" y="-36" width="62" height="22" rx="8"/>
         <path d="M-23 -30.5a2.2 2.2 0 1 0 0.01 0M-26.2 -21.5c0-3 1.6-4.6 3.2-4.6s3.2 1.6 3.2 4.6z" class="bm-p"/>
         <text x="-16" y="-22.5" class="bm-n"><tspan class="bm-no">${b.no}호</tspan><tspan class="bm-load" dx="3">${b.load}/${b.cap}</tspan></text>
@@ -3206,11 +3244,13 @@ function renderBusLive(){
     g.setAttribute("transform", `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
     g.querySelector(".bus-rot").setAttribute("transform", `rotate(${(p.ang*180/Math.PI).toFixed(1)})`);
     g.classList.toggle("em", em);
+    g.classList.toggle("stop", b.hold != null && b.dwell > 0);
     const pct = b.load / b.cap;
     g.querySelector(".bm-load").textContent = `${b.load}/${b.cap}`;
     const bar = g.querySelector(".bm-bar"); bar.setAttribute("width", (52*pct).toFixed(1));
     g.classList.toggle("full", pct >= .85);
   });
+  document.querySelectorAll("#busMap .bm-stop").forEach((g, i) => g.classList.toggle("on", BUSES.some(b => b.hold != null && b.at === i)));
 }
 function toggleStop(id){
   const st = BUS_STOPS.find(s => s.id === id);
@@ -3240,7 +3280,7 @@ function renderBusSide(){
     const pct = Math.round(b.load / b.cap * 100);
     return `<div class="bus-card ${em?"em":""}">
       <div class="bc-top"><b>${b.no}호차</b><span class="hint">${b.cap}인승 · 운전 ${esc(b.driver)}</span></div>
-      <div class="bc-st">${esc(b.state)}</div>
+      <div class="bc-st">${esc(b.state)}${b.hold != null && b.dwell > 0 && !em ? ` · ${Math.ceil(b.dwell)}초 뒤 출발` : ""}</div>
       <div class="bc-row"><span class="hint">다음 정류장</span><b>${em ? esc(BUS.emergency.stop.name) + " (직행)" : esc(nx.name)}</b></div>
       <div class="bc-row"><span class="hint">탑승</span><b class="mono">${b.load} / ${b.cap}명</b></div>
       <div class="meter"><i style="width:${pct}%;background:${pct>85?"var(--sev2)":"var(--ok)"}"></i></div>
@@ -3347,6 +3387,20 @@ $("#setOv").addEventListener("click", e => { if (e.target.id === "setOv") $("#se
 $("#keyBtn").addEventListener("click", () => { $("#setOv").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#logOv").hidden = true; $("#setOv").hidden = true; } });
 renderFeat(); goStep(1);
+
+/* ===== 상황 발생 경고 (1급 · 2급): 가장자리가 천천히 3번 번쩍인 뒤 상단 빨간 띠만 남는다 ===== */
+const ALERT = { lvl:0 };
+function uxAlert(){
+  const on = !!S.result && S.result.severity <= 2 && !["idle","closed"].includes(S.phase);
+  const lvl = on ? S.result.severity : 0, edge = $("#alertEdge");
+  $("#alertBand").hidden = !lvl;
+  if (lvl && (!ALERT.lvl || lvl < ALERT.lvl)){ edge.classList.remove("go"); void edge.offsetWidth; edge.classList.add("go"); }
+  if (!lvl) edge.classList.remove("go");
+  ALERT.lvl = lvl;
+}
+$("#alertEdge").addEventListener("animationend", () => $("#alertEdge").classList.remove("go"));
+const _alSetPhase = setPhase; setPhase = function(p){ _alSetPhase(p); uxAlert(); };
+const _alRenderAI = renderAI; renderAI = function(){ _alRenderAI(); uxAlert(); };
 </script>
 
 </body></html>
