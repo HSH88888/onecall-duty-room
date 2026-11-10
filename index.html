@@ -618,6 +618,31 @@ body{padding-block:0 84px}
 .rep-h h2{font-size:20px;font-weight:800}
 .rep-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:860px){.rep-grid{grid-template-columns:minmax(0,1fr)}}
+/* ----- 보고 화면 정리: 왼쪽 = 누가 확인했나(한눈에), 오른쪽 = 보낼 문자(전체가 보이게) ----- */
+@media (min-width:861px){.rep-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}.rep-grid .phone{position:sticky;top:12px}}
+.rep-left{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rep-sum{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:center;padding:10px 12px;border-radius:9px;background:var(--panel);border:1px solid var(--line)}
+.rep-sum b{font-size:15px;white-space:nowrap}
+.rep-sum b span{font-family:var(--mono);font-size:17px}
+.rep-sum .bar{height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.rep-sum .bar i{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .4s}
+.rep-sum small{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.rep-sum small.wait{color:var(--accent)}
+.rep-sum small.done{color:var(--ok)}
+#recips .recip{padding:8px 12px;gap:2px 10px}
+#recips .recip .who{min-width:0}
+#recips .recip .who small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+#recips .recip .who small i{font-style:normal;color:var(--faint)}
+#recips button.recip[data-st]:not([data-st="ack"]){box-shadow:inset 3px 0 0 var(--accent)}
+#recips button.recip[data-st="late"]{box-shadow:inset 3px 0 0 var(--sev2)}
+#recips button.recip[data-st="ack"]{opacity:.82}
+#recips button.recip[data-st="ack"].sel,#recips button.recip[data-st="ack"]:hover{opacity:1}
+.phone .ph-top{font-size:12.5px;align-items:baseline}
+.phone .ph-top b{font-size:15px}
+.phone textarea.bubble{min-height:120px;max-height:62vh;resize:none;overflow:auto}
+.phone .row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.phone .row .btn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px;padding-right:8px}
+@media (max-width:480px){.phone .row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.phone .row #sendAll{grid-column:1/-1}}
 button.recip{background:var(--panel)}
 .rg-h{display:flex;align-items:baseline;gap:8px;padding:10px 2px 2px;font-size:13px;color:var(--muted)}
 .rg-h:first-child{padding-top:0}
@@ -721,7 +746,7 @@ button.recip{background:var(--panel)}
   <section class="stage" id="stage3" hidden>
     <section id="pane-send">
       <div class="rep-h"><h2>보고 · 확인</h2><span class="hint" id="sendHint">보고 체계</span></div>
-      <div class="rep-grid"><ul class="recips" id="recips"></ul><div class="phone" id="phone" aria-label="보낼 문자"></div></div>
+      <div class="rep-grid"><div class="rep-left"><div class="rep-sum" id="repSum" aria-live="polite"></div><ul class="recips" id="recips"></ul></div><div class="phone" id="phone" aria-label="보낼 문자"></div></div>
       <div class="end-card" id="endCard" hidden></div>
     </section>
   </section>
@@ -2017,14 +2042,21 @@ function renderRecipsDraft(){
 function pendingIdx(){ return S.recips.map((r,i)=>i).filter(i => S.recips[i].sentNo < S.reportNo); }
 function renderRecips(){
   $("#recips").innerHTML = S.recips.map((r,i)=>`
-    <li><button class="recip ${r.esc?"esc":""} ${i===S.sel?"sel":""}" data-i="${i}" aria-pressed="${i===S.sel}">
-      <div class="who"><b>${esc(r.role)}</b><span class="kind ${kindOf(r.role)}">${KIND_TXT[kindOf(r.role)]}</span>${r.esc?'<span class="tag">자동 재보고</span>':""}${r.resent?`<span class="tag">다시 보냄 ${r.resent}</span>`:""}<small>${esc(ROSTER[r.role]?.name||"")} · ${esc(ROSTER[r.role]?.tel||"")}</small></div>
+    <li><button class="recip ${r.esc?"esc":""} ${i===S.sel?"sel":""}" data-i="${i}" data-st="${stOf(r)}" aria-pressed="${i===S.sel}">
+      <div class="who"><b>${esc(r.role)}</b><span class="kind ${kindOf(r.role)}">${KIND_TXT[kindOf(r.role)]}</span>${r.esc?'<span class="tag">자동 재보고</span>':""}${r.resent?`<span class="tag">다시 보냄 ${r.resent}</span>`:""}<small title="${esc((ROSTER[r.role]?.name||"") + " · " + (ROSTER[r.role]?.tel||"") + (r.reason ? " · " + r.reason : ""))}">${esc(ROSTER[r.role]?.name||"")} · ${esc(ROSTER[r.role]?.tel||"")}${r.reason?`<i> · ${esc(r.reason)}</i>`:""}</small></div>
       <span class="st" data-s="${stOf(r)}">${stLabel(r)}</span>
-      ${r.reason?`<span class="why">${esc(r.reason)}</span>`:""}
     </button></li>`).join("");
   const cur = S.recips.filter(r => r.sentNo >= S.reportNo);
   const ack = cur.filter(r => r.s === "ack").length;
   $("#ackCount").textContent = `${ack} / ${S.recips.length}`;
+  /* 확인 현황 요약: 몇 명이 확인했고 누가 아직인지 */
+  const sum = $("#repSum");
+  if (sum){
+    const n = S.recips.length, left = S.recips.filter(r => !(r.sentNo >= S.reportNo && r.s === "ack")).map(r => r.role);
+    sum.hidden = !n;
+    sum.innerHTML = `<b>확인 <span>${ack}</span> / ${n}명</b><div class="bar"><i style="width:${n ? Math.round(ack/n*100) : 0}%"></i></div>
+      <small class="${!S.sent ? "" : left.length ? "wait" : "done"}">${!S.sent ? `제${S.reportNo}보 보내기 전 · 대상을 눌러 문구를 확인하세요` : left.length ? `제${S.reportNo}보 아직 확인 안 함: ${esc(left.join(", "))}` : `제${S.reportNo}보 전원 확인 완료`}</small>`;
+  }
   $("#ackNote").textContent = S.sent ? `제${S.reportNo}보 · 발송 ${cur.length}명 · 확인 ${ack}명` : "보고 대상 확인 현황";
   const sb = $("#sendBtn"), pend = pendingIdx().length;
   if (sb){ sb.disabled = !pend; sb.textContent = pend ? (S.sent ? `제${S.reportNo}보 일괄 보고 (${pend}명)` : `확인 후 일괄 보고 (${pend}명)`) : `제${S.reportNo}보 보고 완료`; }
@@ -2052,7 +2084,9 @@ function renderComposer(){
       <button class="btn sm" id="sendAll" ${pend?"":"disabled"}>미보고 ${pend}명 문자 일괄</button>
     </div>
     <span class="hint">${already ? `<b style="color:var(--fg)">${esc(how)}</b> · 문구를 고쳐 다시 보내거나 AI 음성 전화로 다시 알릴 수 있어요.` : "보내기 전에 문구를 고칠 수 있어요. 상세 내용은 상황판으로 안내합니다."}</span>`;
-  $("#smsTa").addEventListener("input", e => { S.msgEdit[key] = e.target.value; });
+  const ta = $("#smsTa"), fit = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 2) + "px"; };
+  fit();
+  ta.addEventListener("input", e => { S.msgEdit[key] = e.target.value; fit(); });
   $("#sendOne").addEventListener("click", () => {
     if (already) { resendTo(S.sel); renderComposer(); return; }
     sendTo(S.sel); const nx = pendingIdx()[0]; if (nx !== undefined) S.sel = nx; renderRecips(); renderComposer();
