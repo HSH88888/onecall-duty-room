@@ -834,6 +834,35 @@ button.recip{background:var(--panel)}
   #stage2 #pane-send #smsTa{flex:1 1 auto;height:auto!important;min-height:52px!important}
   #stage2 #pane-send #recips{flex:1 1 0;min-height:0}
 }
+
+/* ===== 최종 상황보고서 (화면에 바로 작성) ===== */
+.rpt{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.rpt[hidden]{display:none}
+.rpt-bar{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.rpt-bar b{font-size:16px}
+.rpt-bar .hint{flex:1;min-width:200px}
+.rpt-act{display:flex;gap:6px;flex-wrap:wrap}
+.rpt-paper{margin:18px auto 22px;width:min(820px,calc(100% - 32px));background:#fbfbf8;color:#1a1a1a;padding:42px 48px;border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.45);font-family:"Malgun Gothic","Apple SD Gothic Neo",var(--font);font-size:14px;line-height:1.7}
+.rpt-paper h1{text-align:center;font-size:26px;letter-spacing:.5em;margin:0 0 4px;padding-left:.5em}
+.rpt-paper .rp-sub{text-align:center;color:#b3261e;font-weight:700;margin:0 0 18px}
+.rpt-paper .rp-meta{text-align:right;font-size:12.5px;color:#444;margin:0}
+.rpt-paper h2{font-size:15px;margin:20px 0 6px;color:#111}
+.rpt-paper table{width:100%;border-collapse:collapse;font-size:13.5px}
+.rpt-paper th,.rpt-paper td{border:1px solid #9a9a9a;padding:6px 9px;text-align:left;vertical-align:top}
+.rpt-paper th{background:#e9ecef;font-weight:700;white-space:nowrap;width:1%}
+.rpt-paper thead th{text-align:center;width:auto}
+.rpt-paper .red{color:#b3261e;font-weight:700}
+.rpt-paper .miss{color:#a15c00;font-weight:600}
+.rpt-paper .done{color:#1d7a46;font-weight:600}
+.rpt-paper ul{margin:4px 0;padding-left:20px}
+.rpt-paper .rp-quote{margin:6px 0 0;padding:6px 10px;border-left:3px solid #9a9a9a;background:#f1f1ec;font-size:13px}
+.rpt-paper .rp-sign{text-align:right;font-weight:700;margin:26px 0 0}
+.rpt-paper .rp-date{text-align:center;margin:26px 0 0}
+.rpt-paper .rp-foot{margin:22px 0 0;font-size:11.5px;color:#666;border-top:1px dashed #bbb;padding-top:8px}
+.rpt-paper .rp-new{animation:rpNew 1.6s ease-out}
+@keyframes rpNew{from{background:#fff3c4}to{background:transparent}}
+@media (max-width:640px){.rpt-paper{padding:24px 16px;font-size:13px}.rpt-paper h1{font-size:21px;letter-spacing:.3em}}
+@media print{body *{visibility:hidden}.rpt-paper,.rpt-paper *{visibility:visible}.rpt-paper{position:absolute;left:0;top:0;width:100%;box-shadow:none;margin:0}}
 </style>
 
 <div class="wrap">
@@ -920,6 +949,7 @@ button.recip{background:var(--panel)}
   <section class="stage" id="stage3" hidden>
     <div class="rep-h"><h2>후속 조치 · 추가 보고</h2><span class="hint" id="followHint">초도보고 이후 남은 조치와 제2보 이후 보고를 이어서 처리합니다.</span></div>
     <div class="ai-cols" id="followBox"><div class="col-l" id="followL"></div><div class="col-r" id="followR"></div></div>
+    <section class="rpt" id="rptBox" hidden aria-label="상황보고서"><div class="rpt-bar"><b>최종 상황보고서</b><span class="hint" id="rptNote">할 일 체크 · 보고 · 추가 보고가 바뀌면 보고서도 바로 고쳐집니다</span><span class="rpt-act"><button class="btn sm hwp" id="rptHwp">한글 파일로 저장</button><button class="btn sm" id="rptCopy">복사</button><button class="btn sm" id="rptClose">접기</button></span></div><article class="rpt-paper" id="rptPaper"></article></section>
   </section>
 
   <div hidden><span id="swNote"></span><span id="manS"></span><span id="ackNote"></span></div>
@@ -2068,14 +2098,14 @@ function renderAI(){
       </details>
       <div class="row">
         <button class="btn primary" id="sendBtn">확인 후 일괄 보고 (${r.recipients.length}명)</button>
-        <button class="btn hwp" id="hwpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>한글(HWP) 보고서</button>
+        <button class="btn hwp" id="hwpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>최종 보고서 작성</button>
         <button class="btn" id="reBtn">다시 판단</button>
       </div>
     </div>`;
   renderVerdict(); renderTodo(); renderFields(); renderMissing(); renderUpdHist();
   tick();
   $("#sendBtn").addEventListener("click", dispatch);
-  $("#hwpBtn").addEventListener("click", saveHwp);
+  $("#hwpBtn").addEventListener("click", rptOpen);
   $("#reBtn").addEventListener("click", () => { if (S.phase!=="send"){ S.preset = null; renderChips(); analyze(); } });
   $("#updApply").addEventListener("click", () => applyFollowUp($("#updTa").value));
   $("#updDemo")?.addEventListener("click", demoFollowUp);
@@ -4456,6 +4486,43 @@ if (!S.result){ emptySMS(); }
   new MutationObserver(place).observe($("#stage2"), { attributes:true, attributeFilter:["hidden"] });
   (wide.addEventListener ? wide.addEventListener("change", place) : wide.addListener(place)); place();
 }
+/* ===== 최종 상황보고서: 파일을 만들지 않고 아래에 바로 작성 (한글 파일은 필요할 때만 저장) ===== */
+function rptHTML(){
+  const r = S.result, now = vdate(), man = getMan(r), e = s => esc(s == null ? "" : String(s));
+  const pg = `p.${man.p[0]}${man.p[1] !== man.p[0] ? "–" + man.p[1] : ""}`;
+  const row = (k, v, cls) => `<tr><th>${k}</th><td${cls ? ` class="${cls}"` : ""}>${v}</td></tr>`;
+  const val = v => (!v || isMiss(v)) ? `<span class="miss">${e(v || "확인 중")}</span>` : e(v);
+  const recRows = S.recips.length ? S.recips : r.recipients.map(x => ({ ...x, s:"wait", sentNo:0 }));
+  const ev = eventItems();
+  let n = 0, H = "";
+  H += `<h1>상황보고서</h1><p class="rp-sub">(제${S.reportNo}보 · ${e(SEV[r.severity].name)})</p>`;
+  H += `<p class="rp-meta">보고 일시 : ${ymd(now)} ${hm(now)} &nbsp;&nbsp; 보고자 : ${e(ME)}</p><p class="rp-meta">수신 : ○○대대장 / 참조 : 연대 지휘통제실</p>`;
+  H += `<h2>${++n}. 상황 개요</h2><table>${row("상황 유형", e(r.type))}${row("긴급 등급", `${e(SEV[r.severity].name)} (${e(SEV[r.severity].sub)})`, r.severity <= 2 ? "red" : "")}${row("요약", e(r.headline))}${row("발생 시각", e(hm(vdate(S.t0))) + (S.phase !== "closed" ? ` · 경과 ${mmss(vAt(Date.now()) - vAt(S.t0))}` : ""))}${row("근거 규정", `${e(man.sec)} (${pg})`)}</table>`;
+  H += `<h2>${++n}. 상황 내용 (육하원칙)</h2><table>${FIELD_LABELS.map(([k, l]) => row(l, val(r.report[k]))).join("")}</table>`;
+  if (S.updates.length) H += `<h2>※ 진행 보고 (속보)</h2><table><thead><tr><th>시각</th><th>구분</th><th>내용</th></tr></thead><tbody>${S.updates.map(u => `<tr><td>${hm(vdate(u.t))}</td><td>${e(u.label)}</td><td>${e(u.text)}</td></tr>`).join("")}</tbody></table>`;
+  H += `<h2>${++n}. 판단 근거</h2><ul>${(r.basis || []).map(b => `<li>${e(b)}</li>`).join("")}</ul>${man.q ? `<div class="rp-quote"><b>지침서 발췌</b> (${e(man.sec)}, ${pg})<ul>${man.q.map(x => `<li>${e(x)}</li>`).join("")}</ul></div>` : ""}`;
+  H += `<h2>${++n}. 조치 계획 및 이행</h2><table><thead><tr><th>시점</th><th>조치 내용</th><th>이행</th></tr></thead><tbody>${r.todo.map((x, i) => `<tr><td>${e(x.when)}</td><td>${e(x.task)}</td><td class="${S.todoDone[i] ? "done" : "miss"}">${S.todoDone[i] ? "완료 " + hm(vdate(S.todoDone[i])) : "진행 중"}</td></tr>`).join("")}</tbody></table>`;
+  H += `<h2>${++n}. 보고 · 협조 요청 현황</h2><table><thead><tr><th>보고 대상</th><th>성명 / 연락처</th><th>상태</th></tr></thead><tbody>${recRows.map(x => `<tr><td>${e(x.role)}${x.esc ? " (재보고)" : ""}</td><td>${e(ROSTER[x.role]?.name || "")} / ${e(ROSTER[x.role]?.tel || "")}</td><td>${e(stLabel(x))}</td></tr>`).join("")}</tbody></table>`;
+  if (r.missing && r.missing.length) H += `<h2>${++n}. 추가 확인 필요 사항</h2><ul>${r.missing.map((m, i) => `<li>${e(m)} → ${S.missOk[i] ? `<span class="done">확인됨 (제${S.missOk[i]}보)</span>` : '<span class="miss">확인 중</span>'}</li>`).join("")}</ul>`;
+  if (ev.length) H += `<h2>${++n}. 경과 (시간순)</h2><table><tbody>${ev.map(x => `<tr><td style="width:1%;white-space:nowrap">${hms(x.t)}</td><td>${e(x.text)}</td></tr>`).join("")}</tbody></table>`;
+  H += `<p class="rp-date">${ymd(now)}</p><p class="rp-sign">당직사령 &nbsp;대위 &nbsp;박 ○ ○ &nbsp;(서명)</p>`;
+  H += `<p class="rp-foot">※ 이 보고서는 원콜 당직상황실 AI가 작성한 초안입니다. 당직사령 확인 후 보고하십시오. 연락처 · 인명은 시연용 가상 정보입니다.</p>`;
+  return H;
+}
+const RPT = { last:"" };
+function rptRender(){ if (!S.result) return; const h = rptHTML(); if (h === RPT.last) return; RPT.last = h; $("#rptPaper").innerHTML = h; }
+function rptOpen(){
+  if (!S.result){ toast("먼저 상황을 보고해 주세요."); return; }
+  const box = $("#rptBox"), first = box.hidden;
+  if (typeof goStep === "function" && $("#stage3").hidden) goStep(3);
+  box.hidden = false; RPT.last = ""; rptRender();
+  if (first) log("최종 상황보고서 작성 (화면)", "info");
+  requestAnimationFrame(() => box.scrollIntoView({ behavior:"smooth", block:"start" }));
+}
+setInterval(() => { if (!$("#rptBox").hidden){ if (!S.result) $("#rptBox").hidden = true; else rptRender(); } }, 1000);
+$("#rptHwp").addEventListener("click", saveHwp);
+$("#rptClose").addEventListener("click", () => { $("#rptBox").hidden = true; window.scrollTo({ top:0, behavior:"smooth" }); });
+$("#rptCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("#rptPaper").innerText); toast("보고서를 복사했어요."); } catch(e){ toast("복사하지 못했어요. 내용을 직접 선택해 주세요."); } });
 if (!S.result) renderRoster();
 renderFeat(); goStep(1);
 
