@@ -242,6 +242,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     <button class="ok" id="drOk" hidden>이상 없음</button>
     <button class="bad" id="drBad" hidden>조치 필요</button>
     <button id="drCtl" aria-pressed="false" hidden>드론 조종</button>
+    <button id="drHand" aria-pressed="false" hidden>✋ 손으로 조종</button>
     <button class="back" id="drHome">드론 복귀</button>
     <button id="drBack">드론 화면 종료</button>
   </div>
@@ -1320,6 +1321,13 @@ function lifeStep(dt) {
   droneStep = function (dt) { _step(dt); lifeStep(dt); };
 }
 window.BaseLife = { count: () => ({ people: LIFE.items.filter(o => o.kind !== 'c').length, cars: LIFE.items.filter(o => o.kind === 'c').length, night: LIFE.night, evac: LIFE.items.filter(o => o.evac).length }) };
+
+/* ---------- 손으로 조종 버튼: 상황실 화면(바깥)이 웹캠 손 인식을 맡고, 여기서는 켜고 끄기만 알린다 ---------- */
+{ const hb = $('drHand'), embedded = window.parent !== window;
+  const _ph = drPhase; drPhase = function (p) { _ph(p); hb.hidden = p !== 'orbit' || !embedded || document.body.classList.contains('feed'); };
+  hb.addEventListener('click', () => { try { window.parent.postMessage({ type: 'hand-toggle' }, '*'); } catch (e) {} });
+  window.addEventListener('message', e => { const m = e.data; if (m && m.type === 'hand-state') { hb.setAttribute('aria-pressed', String(!!m.on)); hb.textContent = m.on ? '✋ 손 조종 끄기' : '✋ 손으로 조종'; } });
+}
 
 /* ---------- 렌더 ---------- */
 function resize() { const w = innerWidth, h = innerHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
