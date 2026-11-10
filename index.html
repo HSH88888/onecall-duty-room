@@ -923,6 +923,33 @@ button.recip{background:var(--panel)}
 .m3-stage .cc-hand{right:auto;left:14px;top:108px;transform:none;width:250px}
 #m3HandBtn{display:none!important}
 #ccHandBtn[aria-pressed="true"],#m3HandBtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(240,164,58,.1)}
+
+/* ===== 이스터에그: 당직이 사진첩 (대화창의 당직이 얼굴을 누르면 열림) ===== */
+.bot-h .bot-av{cursor:pointer;transition:transform .15s}
+.bot-h .bot-av:hover{transform:scale(1.08) rotate(-4deg)}
+.alb-ov{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:12px}
+.alb-ov[hidden]{display:none}
+.alb{width:min(420px,100%);max-height:min(720px,calc(100vh - 24px));overflow:auto;background:var(--panel);border:1px solid var(--line-2);border-radius:18px;padding:16px;position:relative}
+.alb-x{position:absolute;right:12px;top:12px}
+.alb-top{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.alb-pic{width:78px;height:78px;border-radius:50%;padding:3px;background:conic-gradient(#f0a43a,#ff5a52,#c8f05a,#4bc48f,#f0a43a);flex:none}
+.alb-pic span{display:block;width:100%;height:100%;border-radius:50%;background:var(--panel-2);overflow:hidden}
+.alb-pic svg{width:100%;height:100%;display:block}
+.alb-top h3{font-size:17px;margin:0 0 6px}
+.alb-st{display:flex;gap:16px;font-size:12.5px;color:var(--muted)}.alb-st b{display:block;color:var(--fg);font-size:15px;font-family:var(--mono)}
+.alb-bio{font-size:13px;line-height:1.5;margin:0 0 12px;color:var(--fg)}.alb-bio small{color:var(--muted)}
+.alb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.alb-grid button{border:0;padding:0;border-radius:6px;overflow:hidden;aspect-ratio:1;cursor:pointer;background:none;position:relative}
+.alb-grid button:hover::after{content:"♥ " attr(data-h);position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;font-weight:800;font-size:14px}
+.alb-ph{position:relative;width:100%;aspect-ratio:1;display:block;overflow:hidden}
+.alb-ph .em{position:absolute;font-size:34cqw;line-height:1}.alb-ph{container-type:inline-size}
+.alb-ph svg.who{position:absolute;bottom:-4%;height:66%;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.alb-ph svg.dg{position:absolute;bottom:3%;height:30%;width:auto}
+.alb-one .alb-ph{border-radius:10px}
+.alb-cap{font-size:13.5px;line-height:1.55;margin:10px 2px 0}.alb-cap b{margin-right:6px}.alb-cap small{display:block;color:var(--muted);margin-top:4px}
+.alb-like{display:flex;gap:10px;align-items:center;margin:10px 2px 0;font-weight:700;font-size:14px}
+.alb-like button{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;padding:0;color:var(--muted);transition:transform .15s}
+.alb-like button.on{color:#ff5a52;transform:scale(1.2)}
 </style>
 
 <div class="wrap">
@@ -4911,6 +4938,46 @@ djRoamUI();
 { const h = djHome(); djPlace(h.x, h.y, 0); }
 setTimeout(() => { if (!BOT.open) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
 setTimeout(djTick, 6000);
+/* ===== 이스터에그: 당직이 사진첩 ===== */
+{ const POSTS = [
+    ["linear-gradient(160deg,#1b2a4a,#0e1524)", "🌙", "r", 128, "오늘도 야간 당직 시작! 이상 무 🫡", "#당직스타그램 #야간근무"],
+    ["linear-gradient(160deg,#ffcf7a,#ff8a5c)", "🍜", "l", 342, "새벽 2시의 라면은 반칙이에요…", "#당직의맛 #한입만"],
+    ["linear-gradient(160deg,#9fd8ff,#e8f6ff)", "🐾", "r", 512, "충성이랑 순찰 한 바퀴! 꼬리가 프로펠러 🐕", "#충성이 #보조견 #멍멍..", 1],
+    ["linear-gradient(160deg,#2c3e2c,#141c14)", "🚁", "l", 201, "드론 띄워서 현장 확인 중. 손으로도 조종돼요 ✋", "#드론 #현장확인"],
+    ["linear-gradient(160deg,#ff9a8b,#ffd1a8)", "🌅", "r", 289, "당직 끝나고 보는 일출이 제일 예뻐요", "#퇴근각 #일출"],
+    ["linear-gradient(160deg,#3a2a1a,#1c140c)", "🧯", "l", 176, "소화기 위치 점검 완료! 안전핀 → 노즐 → 손잡이", "#안전제일 #화재예방"],
+    ["linear-gradient(160deg,#d9f2d0,#9ad18b)", "💪", "r", 233, "체력단련도 근무의 일부! (3개 하고 쉼)", "#체력단련 #작심삼일"],
+    ["linear-gradient(160deg,#cfd9ff,#f3e7ff)", "📋", "l", 154, "보고서 7분 걸리던 거, 이제 한 번에 끝!", "#원콜 #칼보고"],
+    ["linear-gradient(160deg,#ffe38a,#ffb347)", "🏆", "r", 999, "해커톤 파이팅! 다들 응원해 주세요 🙏", "#성균관대 #국방AI #바이브코딩"]
+  ];
+  document.body.insertAdjacentHTML("beforeend", '<div class="alb-ov" id="albOv" hidden><div class="alb" role="dialog" aria-label="당직이 사진첩"><button class="btn sm alb-x" id="albX" type="button">닫기</button><div id="albBody"></div></div></div>');
+  const ov = $("#albOv"), body = $("#albBody"), liked = {};
+  const who = djSvg("who", "0 0 120 156");
+  const dog = () => { const s = document.querySelector("#djDog svg"); return s ? `<svg class="dg" viewBox="0 0 64 52" style="left:8%">${s.innerHTML}</svg>` : ""; };
+  const photo = p => `<span class="alb-ph" style="background:${p[0]}"><span class="em" style="top:8%;${p[2] === "r" ? "left:8%" : "right:8%"}">${p[1]}</span>${p[6] ? dog() : ""}${who.replace('class="who"', `class="who" style="${p[2] === "r" ? "right:6%" : "left:6%"}"`)}</span>`;
+  const grid = () => {
+    body.innerHTML = `<div class="alb-top"><div class="alb-pic"><span>${document.querySelector(".bot-h .bot-av").innerHTML}</span></div><div><h3>dangjik_2 <small style="color:var(--ok);font-size:12px">● 근무 중</small></h3><div class="alb-st"><span><b>${POSTS.length}</b>게시물</span><span><b>1,004</b>팔로워</span><span><b>1</b>팔로잉</span></div></div></div>
+      <p class="alb-bio"><b>당직이</b> · 귀요미 당직사관 🫡<br>○○대대 상황실 지킴이 · 충성이 보호자 🐕<br><small>시연용 가상 계정입니다</small></p>
+      <div class="alb-grid">${POSTS.map((p, i) => `<button type="button" data-i="${i}" data-h="${p[3] + (liked[i] ? 1 : 0)}" aria-label="사진 ${i + 1}: ${esc(p[4])}">${photo(p)}</button>`).join("")}</div>`;
+  };
+  const one1 = i => { const p = POSTS[i];
+    body.innerHTML = `<div class="alb-one"><button class="btn sm" id="albBack" type="button" style="margin-bottom:10px">← 사진첩</button>${photo(p)}
+      <div class="alb-like"><button type="button" id="albLike" class="${liked[i] ? "on" : ""}" aria-label="좋아요">${liked[i] ? "♥" : "♡"}</button><span>좋아요 <span id="albN">${p[3] + (liked[i] ? 1 : 0)}</span>개</span></div>
+      <p class="alb-cap"><b>dangjik_2</b>${esc(p[4])}<small>${esc(p[5])}</small></p></div>`;
+    $("#albBack").addEventListener("click", grid);
+    $("#albLike").addEventListener("click", () => { liked[i] = !liked[i]; one1(i); });
+  };
+  body.addEventListener("click", e => { const b = e.target.closest(".alb-grid button"); if (b) one1(+b.dataset.i); });
+  const close = () => { ov.hidden = true; };
+  $("#albX").addEventListener("click", close);
+  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !ov.hidden) close(); });
+  const av = document.querySelector(".bot-h .bot-av");
+  av.setAttribute("role", "button"); av.tabIndex = 0; av.title = "당직이 사진첩"; av.setAttribute("aria-label", "당직이 사진첩 열기");
+  const open = () => { grid(); ov.hidden = false; };
+  av.addEventListener("click", open);
+  av.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+}
 /* ===== 드론 손 조종: 웹캠으로 손을 보고 드론 조종 명령(위 · 아래 · 왼쪽 · 오른쪽 · 가까이 · 멀리)을 보낸다
    ✋ 손바닥을 편 채 화면 가운데에서 움직인 쪽으로 이동 · 👍 앞으로(가까이) · 👎 뒤로(멀리) · 가운데 = 멈춤
    주먹은 CCTV 화재 신호용이라 조종에 쓰지 않는다. CCTV 화면 드론과 3D 부대 드론 모두 쓸 수 있다.
