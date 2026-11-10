@@ -910,6 +910,17 @@ button.recip{background:var(--panel)}
 .bot-fab.flip .dj-dog.hop svg{animation-name:dgHopF}
 @keyframes dgHopF{0%,100%{transform:scaleX(-1) translateY(0)}40%{transform:scaleX(-1) translateY(-12px)}}
 @media (prefers-reduced-motion:reduce){.dj-dog .dg-tail,.dj-dog .dg-leg,.dj-dog .dg-top,.dj-dog.hop svg{animation:none!important}}
+
+/* ===== 드론 손 조종 (웹캠 · 손 모양 인식) ===== */
+.cc-hand{position:absolute;left:8px;bottom:8px;z-index:5;width:clamp(120px,34%,230px);background:rgba(8,10,12,.84);border:1px solid var(--line-2);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;pointer-events:none;color:var(--fg)}
+.cc-hand[hidden]{display:none}
+.cc-hand canvas{width:100%;height:auto;aspect-ratio:4/3;border-radius:8px;display:block;background:#000}
+.cc-hand b{font-size:13px;font-weight:800;color:var(--accent);padding:0 2px}
+.cc-hand b.idle{color:var(--muted)}
+.cc-hand small{display:none;font-size:11px;color:var(--muted);line-height:1.4;padding:0 2px}
+.cc-big.max .cc-hand small{display:block}
+.cc-big.max .cc-hand{width:300px}
+#ccHandBtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(240,164,58,.1)}
 </style>
 
 <div class="wrap">
@@ -4837,6 +4848,102 @@ djRoamUI();
 { const h = djHome(); djPlace(h.x, h.y, 0); }
 setTimeout(() => { if (!BOT.open) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
 setTimeout(djTick, 6000);
+/* ===== 드론 손 조종: 웹캠으로 손을 보고 드론 조종 명령(위 · 아래 · 왼쪽 · 오른쪽 · 가까이 · 멀리)을 보낸다
+   ✋ 손바닥을 편 채 화면 가운데에서 움직인 쪽으로 이동 · 👍 앞으로(가까이) · 👎 뒤로(멀리) · ✊ 주먹이나 가운데 = 멈춤
+   손 인식 모델을 못 불러오면 키보드 ← → ↑ ↓ (이동) · W / S (앞 · 뒤)로 같은 명령을 보낸다 */
+const HC = { on:false, gr:null, state:"idle", video:null, own:null, cv:null, ctx:null, last:"", cnt:0, dir:null, ts:0, t:null, keys:{} };
+const HC_TXT = { up:"▲ 위로", down:"▼ 아래로", left:"◀ 왼쪽으로", right:"오른쪽으로 ▶", near:"앞으로 (가까이) ＋", far:"뒤로 (멀리) －" };
+{ const ctl = $("#ccDroneCtl");
+  ctl.querySelector('[data-c="max"]').insertAdjacentHTML("beforebegin", '<button class="btn sm" id="ccHandBtn" type="button" aria-pressed="false" hidden>✋ 손으로 조종</button>');
+  $("#ccBigWrap").insertAdjacentHTML("beforeend", '<div class="cc-hand" id="ccHand" hidden><canvas width="240" height="180"></canvas><b id="ccHandCmd" class="idle">손을 카메라에 보여 주세요</b><small>✋ 손바닥: 움직인 쪽으로 이동 · 👍 앞으로 · 👎 뒤로 · ✊ 멈춤<br>키보드 ← → ↑ ↓ · W / S 도 됩니다</small></div>');
+  HC.cv = $("#ccHand canvas"); HC.ctx = HC.cv.getContext("2d");
+  $("#ccHandBtn").addEventListener("click", e => { e.stopPropagation(); hcToggle(!HC.on); });
+}
+async function hcModel(){
+  if (HC.gr || HC.state === "loading") return;
+  if (LV.gr){ HC.gr = LV.gr; HC.state = "ready"; return; }
+  HC.state = "loading"; hcLabel("손 인식 AI 불러오는 중…", true);
+  try {
+    const vision = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/vision_bundle.mjs`);
+    const files = await vision.FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/wasm`);
+    const opts = d => ({ baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task", delegate:d }, runningMode:"VIDEO", numHands:1 });
+    try { HC.gr = await vision.GestureRecognizer.createFromOptions(files, opts("GPU")); }
+    catch(e) { HC.gr = await vision.GestureRecognizer.createFromOptions(files, opts("CPU")); }
+    HC.state = "ready";
+  } catch(e) {
+    HC.state = "fail"; hcLabel("손 인식 모델 실패 · 키보드로 조종하세요", true);
+    toast("손 인식 모델을 불러오지 못했어요 (인터넷 연결 확인). 키보드 ← → ↑ ↓ 와 W / S 로 조종할 수 있습니다.");
+  }
+}
+async function hcCamera(){
+  if (LV.stream){ HC.video = LV.video; return true; }
+  if (HC.own) return true;
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video:{ width:{ideal:640}, height:{ideal:480} }, audio:false });
+    const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.srcObject = s; await v.play();
+    HC.own = s; HC.video = v; return true;
+  } catch(e) { toast("카메라를 열지 못했어요. 카메라 권한을 허용하면 손으로 조종할 수 있어요. 키보드 ← → ↑ ↓ · W / S 로도 됩니다."); return false; }
+}
+function hcLabel(t, idle){ const b = $("#ccHandCmd"); if (b){ b.textContent = t; b.classList.toggle("idle", !!idle); } }
+async function hcToggle(on){
+  if (on === HC.on) return;
+  HC.on = on; HC.dir = null; HC.last = ""; HC.cnt = 0; HC.keys = {};
+  $("#ccHandBtn").setAttribute("aria-pressed", String(on)); $("#ccHand").hidden = !on; ccDroneUI();
+  clearInterval(HC.t); HC.t = null;
+  if (!on){ if (HC.own){ HC.own.getTracks().forEach(t => t.stop()); HC.own = null; } HC.video = null; return; }
+  hcLabel("카메라 여는 중…", true);
+  ccLog("", `${CCD.cam || ""} · 드론 손 조종 시작`);
+  const cam = await hcCamera(); if (!HC.on) return;
+  if (cam) hcModel(); else { HC.state = HC.state === "ready" ? "ready" : "fail"; hcLabel("카메라 없음 · 키보드로 조종하세요", true); }
+  HC.t = setInterval(hcTick, 120);
+}
+function hcSend(dir){ if (CCD.on && CCD.phase === "orbit") ccdPost({ type:"drone-cmd", cmd:"joy", dir, hold:.4 }); }
+function hcTick(){
+  if (!HC.on) return;
+  const kd = HC.keys.ArrowUp ? "up" : HC.keys.ArrowDown ? "down" : HC.keys.ArrowLeft ? "left" : HC.keys.ArrowRight ? "right" : HC.keys.w ? "near" : HC.keys.s ? "far" : null;
+  const v = HC.video, c = HC.ctx, W = HC.cv.width, H = HC.cv.height;
+  let dir = null, pt = null, g = "";
+  if (v && v.readyState >= 2){
+    c.save(); c.translate(W, 0); c.scale(-1, 1); c.drawImage(v, 0, 0, W, H); c.restore();
+    if (HC.gr){
+      let ts = performance.now(); if (ts <= HC.ts) ts = HC.ts + 1; HC.ts = ts;
+      let r = null; try { r = HC.gr.recognizeForVideo(v, ts); } catch(e) {}
+      const L = r && r.landmarks && r.landmarks[0];
+      if (L){
+        g = (r.gestures && r.gestures[0] && r.gestures[0][0] && r.gestures[0][0].score >= .5) ? r.gestures[0][0].categoryName : "";
+        const ids = [0, 5, 9, 13, 17]; let x = 0, y = 0; ids.forEach(i => { x += L[i].x; y += L[i].y; }); x = 1 - x / ids.length; y /= ids.length;
+        pt = { x, y };
+        if (g === "Thumb_Up") dir = "near"; else if (g === "Thumb_Down") dir = "far"; else if (g === "Closed_Fist") dir = null;
+        else { const dx = x - .5, dy = y - .5, dz = .13; if (Math.max(Math.abs(dx), Math.abs(dy)) > dz) dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"); }
+      }
+    }
+  } else { c.fillStyle = "#000"; c.fillRect(0, 0, W, H); }
+  /* 안내선: 가운데 멈춤 칸과 손 위치 */
+  c.strokeStyle = "rgba(255,255,255,.55)"; c.setLineDash([4, 4]); c.lineWidth = 1.5; c.strokeRect(W * .37, H * .37, W * .26, H * .26); c.setLineDash([]);
+  c.fillStyle = "rgba(255,255,255,.75)"; c.font = "bold 12px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillText("▲", W / 2, 10); c.fillText("▼", W / 2, H - 10); c.fillText("◀", 10, H / 2); c.fillText("▶", W - 10, H / 2);
+  if (pt){ c.beginPath(); c.arc(pt.x * W, pt.y * H, 8, 0, 7); c.fillStyle = dir ? "#f0a43a" : "#4bc48f"; c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 2; c.stroke(); }
+  /* 두 번 연속 같은 판단일 때만 명령 (손 떨림으로 튀지 않게) */
+  const key = kd || dir || "";
+  HC.cnt = key === HC.last ? HC.cnt + 1 : 1; HC.last = key;
+  if (!kd && HC.cnt >= 2) HC.dir = dir;
+  const send = kd || HC.dir;
+  const arrived = CCD.on && CCD.phase === "orbit";
+  if (!arrived) hcLabel(CCD.phase === "return" ? "복귀 중 · 조종할 수 없습니다" : "드론이 현장에 도착하면 조종됩니다", true);
+  else if (send){ hcSend(send); hcLabel(HC_TXT[send] + (kd ? " (키보드)" : "")); }
+  else hcLabel(pt ? (g === "Closed_Fist" ? "✊ 멈춤" : "멈춤 · 손을 움직여 보세요") : HC.state === "loading" ? "손 인식 AI 불러오는 중…" : HC.state === "fail" ? "키보드 ← → ↑ ↓ · W / S 로 조종" : "손을 카메라에 보여 주세요", true);
+}
+window.addEventListener("keydown", e => {
+  if (!HC.on || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","s"].includes(k)){ e.preventDefault(); if (!HC.keys[k]){ HC.keys[k] = true; const d = { ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right", w:"near", s:"far" }[k]; hcSend(d); if (CCD.on && CCD.phase === "orbit") hcLabel(HC_TXT[d] + " (키보드)"); } }
+});
+window.addEventListener("keyup", e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; delete HC.keys[k]; });
+window.addEventListener("blur", () => { HC.keys = {}; });
+{ const _ui = ccDroneUI;
+  ccDroneUI = function(){ _ui(); const arrived = CCD.on && CCD.phase === "orbit"; $("#ccHandBtn").hidden = !arrived; if (!CCD.on && HC.on) hcToggle(false);
+    if (HC.on && arrived){ const n = $("#ccDroneNote"); n.hidden = false; n.className = "cc-drone-note"; n.textContent = "손 조종 중 · ✋ 손바닥을 편 채 움직인 쪽으로 이동 · 👍 앞으로 · 👎 뒤로 · ✊ 멈춤 (키보드 ← → ↑ ↓ · W / S 도 됩니다)"; } };
+}
 /* ===== 보조견 충성이: 당직이 뒤를 따라다니고, 가끔 거들고, 누르면 짖는다 ===== */
 { const C = "#c98a4b", D = "#4a3424", L = "#8a5a2b";
   DJ.el.insertAdjacentHTML("beforeend", `<span class="dj-dog" id="djDog" role="img" aria-label="보조견 충성이"><span class="dog-say" id="dogSay" hidden></span><svg viewBox="0 0 64 52" aria-hidden="true">
