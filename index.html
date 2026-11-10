@@ -950,6 +950,8 @@ button.recip{background:var(--panel)}
 .alb-like{display:flex;gap:10px;align-items:center;margin:10px 2px 0;font-weight:700;font-size:14px}
 .alb-like button{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;padding:0;color:var(--muted);transition:transform .15s}
 .alb-like button.on{color:#ff5a52;transform:scale(1.2)}
+.rpt-paper[contenteditable="true"]{outline:2px solid #4c8dff;outline-offset:6px;cursor:text}
+.rpt-paper[contenteditable="true"] th{pointer-events:none}
 </style>
 
 <div class="wrap">
@@ -1036,7 +1038,7 @@ button.recip{background:var(--panel)}
   <section class="stage" id="stage3" hidden>
     <div class="rep-h"><h2>후속 조치 · 추가 보고</h2><span class="hint" id="followHint">초도보고 이후 남은 조치와 제2보 이후 보고를 이어서 처리합니다.</span></div>
     <div class="ai-cols" id="followBox"><div class="col-l" id="followL"></div><div class="col-r" id="followR"></div></div>
-    <section class="rpt" id="rptBox" hidden aria-label="상황보고서"><div class="rpt-bar"><b>최종 상황보고서</b><span class="hint" id="rptNote">할 일 체크 · 보고 · 추가 보고가 바뀌면 보고서도 바로 고쳐집니다</span><span class="rpt-act"><button class="btn sm hwp" id="rptHwp">한글 파일로 저장</button><button class="btn sm" id="rptCopy">복사</button><button class="btn sm" id="rptClose">접기</button></span></div><article class="rpt-paper" id="rptPaper"></article></section>
+    <section class="rpt" id="rptBox" hidden aria-label="상황보고서"><div class="rpt-bar"><b>최종 상황보고서 (초안)</b><span class="hint" id="rptNote">할 일 체크 · 보고 · 추가 보고가 바뀌면 보고서도 바로 고쳐집니다</span><span class="rpt-act"><button class="btn sm" id="rptEdit" type="button">초안 수정</button><button class="btn sm" id="rptAuto" type="button" hidden>자동 작성으로 되돌리기</button><button class="btn sm hwp" id="rptHwp">한글 파일로 저장</button><button class="btn sm" id="rptCopy">복사</button><button class="btn sm" id="rptClose">접기</button></span></div><article class="rpt-paper" id="rptPaper"></article></section>
   </section>
 
   <div hidden><span id="swNote"></span><span id="manS"></span><span id="ackNote"></span></div>
@@ -2278,7 +2280,7 @@ function renderAI(){
       </details>
       <div class="row">
         <button class="btn primary" id="sendBtn">확인 후 일괄 보고 (${r.recipients.length}명)</button>
-        <button class="btn hwp" id="hwpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>최종 보고서 작성</button>
+        <button class="btn hwp" id="hwpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>최종 보고서 초안 작성</button>
       </div>
     </div>`;
   renderVerdict(); renderTodo(); renderFields(); renderMissing(); renderUpdHist();
@@ -4688,8 +4690,8 @@ function rptHTML(){
   H += `<p class="rp-foot">※ 이 보고서는 원콜 당직상황실 AI가 작성한 초안입니다. 당직사령 확인 후 보고하십시오. 연락처 · 인명은 시연용 가상 정보입니다.</p>`;
   return H;
 }
-const RPT = { last:"" };
-function rptRender(){ if (!S.result) return; const h = rptHTML(); if (h === RPT.last) return; RPT.last = h; $("#rptPaper").innerHTML = h; }
+const RPT = { last:"", edit:false, manual:null, res:null, note:"" };
+function rptRender(){ if (!S.result) return; if (RPT.manual && RPT.res !== S.result){ RPT.manual = null; RPT.edit = false; rptEditUI(); } if (RPT.edit || RPT.manual) return; const h = rptHTML(); if (h === RPT.last) return; RPT.last = h; $("#rptPaper").innerHTML = h; }
 function rptOpen(){
   if (!S.result){ toast("먼저 상황을 보고해 주세요."); return; }
   const box = $("#rptBox"), first = box.hidden;
@@ -4700,6 +4702,23 @@ function rptOpen(){
 }
 setInterval(() => { if (!$("#rptBox").hidden){ if (!S.result) $("#rptBox").hidden = true; else rptRender(); } }, 1000);
 $("#rptHwp").addEventListener("click", saveHwp);
+/* 초안 직접 고치기: 고치는 동안과 고친 뒤에는 자동으로 다시 쓰지 않는다. 육하원칙 칸의 수정은 상황 정보에도 반영해 한글 파일에 함께 들어간다 */
+function rptEditUI(){
+  const p = $("#rptPaper"); p.contentEditable = RPT.edit ? "true" : "false"; if (!RPT.edit) p.removeAttribute("contenteditable");
+  $("#rptEdit").textContent = RPT.edit ? "수정 완료" : "초안 수정"; $("#rptEdit").classList.toggle("primary", RPT.edit);
+  $("#rptAuto").hidden = RPT.edit || !RPT.manual;
+  const n = $("#rptNote"); if (!RPT.note) RPT.note = n.textContent;
+  n.textContent = RPT.edit ? "보고서 글을 눌러 직접 고치세요. 다 고치면 '수정 완료'를 누르세요." : RPT.manual ? "직접 고친 초안입니다 · 할 일 · 보고가 바뀌어도 자동으로 고쳐지지 않아요. 한글 파일에는 육하원칙 수정만 함께 저장돼요." : RPT.note;
+}
+$("#rptEdit").addEventListener("click", () => {
+  if (!S.result) return; const p = $("#rptPaper");
+  if (!RPT.edit){ RPT.edit = true; RPT.res = S.result; if (!RPT.manual){ RPT.last = ""; rptRender(); } rptEditUI(); p.focus(); return; }
+  RPT.edit = false; RPT.manual = p.innerHTML; RPT.res = S.result;
+  let n = 0; p.querySelectorAll("th").forEach(th => { const f = FIELD_LABELS.find(([k, l]) => l === th.textContent.trim()), td = th.nextElementSibling; if (!f || !td) return; const v = td.innerText.trim(); if (v && v !== S.result.report[f[0]]){ S.result.report[f[0]] = v; n++; } });
+  if (n){ renderFields(); renderMissing(); if (typeof renderComposer === "function") renderComposer(); }
+  rptEditUI(); toast("고친 초안을 유지합니다." + (n ? " 육하원칙 " + n + "칸은 상황 정보에도 반영했어요." : ""));
+});
+$("#rptAuto").addEventListener("click", () => { RPT.manual = null; RPT.last = ""; rptEditUI(); rptRender(); toast("자동 작성 초안으로 되돌렸어요."); });
 $("#rptClose").addEventListener("click", () => { $("#rptBox").hidden = true; window.scrollTo({ top:0, behavior:"smooth" }); });
 $("#rptCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("#rptPaper").innerText); toast("보고서를 복사했어요."); } catch(e){ toast("복사하지 못했어요. 내용을 직접 선택해 주세요."); } });
 /* 3D 부대 화면 높이 맞춤: 남은 화면 높이 = 창 높이 - 지도 시작 위치 - 아래 당직일지 바 */
