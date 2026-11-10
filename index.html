@@ -4859,7 +4859,7 @@ setTimeout(djTick, 6000);
     </g></svg></span>`);
   const dog = $("#djDog"), ds = $("#dogSay");
   const DOG_IDLE = ["멍! 🐾", "멍멍!", "킁킁… 이상 무!", "왈! (동의)", "꼬리 살랑살랑~", "충성! 멍!", "간식은요…? 🦴", "순찰 같이 가요!"];
-  const DOG_TAP = ["멍멍! 🐾", "왈왈!", "충성이 출동!", "헥헥… 좋아요!", "저도 근무 중이에요!"];
+  const DOG_TAP = ["멍멍.."];
   let dsT = null, dLast = "";
   const pick = a => { let s; do { s = a[Math.floor(Math.random() * a.length)]; } while (a.length > 1 && s === dLast); return dLast = s; };
   const dogSay = (t, ms) => { ds.textContent = t; ds.hidden = false; clearTimeout(dsT); dsT = setTimeout(() => { ds.hidden = true; }, ms || 1800); };
@@ -4868,7 +4868,7 @@ setTimeout(djTick, 6000);
   const _say = djSay;
   djSay = function(text, ms){ _say(text, ms); if (!djBusy() && !BOT.open && Math.random() < .3) setTimeout(() => { if (!djBusy() && !BOT.open) { hop(); dogSay(pick(DOG_IDLE)); } }, (ms || 3200) * .55); };
   setInterval(() => dog.classList.toggle("calm", djBusy()), 1000);
-  BOT_QA.push(["충성이는 누구야?", ["충성이", "강아지", "군견", "보조견", "멍멍"], "충성이는 제 보조견이에요 🐕\n같이 순찰 돌고, 꼬리 흔들며 응원해요. 충성이를 누르면 대답해요! 멍!"]);
+  BOT_QA.push(["충성이는 누구야?", ["충성이", "강아지", "군견", "보조견", "멍멍"], "충성이는 제 보조견이에요 🐕\n같이 순찰 돌고, 꼬리 흔들며 응원해요. 충성이를 누르면 \"멍멍..\" 해요!"]);
 }
 
 /* 장소 낱말이 여러 개 겹치면 가장 긴(구체적인) 낱말의 정류장을 고른다: "2중대 행정반 옆 보일러실" → 2생활관 */
