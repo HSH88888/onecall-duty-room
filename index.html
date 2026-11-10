@@ -921,6 +921,7 @@ button.recip{background:var(--panel)}
 .cc-big.max .cc-hand small,.m3-stage .cc-hand small{display:block}
 .cc-big.max .cc-hand{width:300px}
 .m3-stage .cc-hand{right:auto;left:14px;top:108px;transform:none;width:250px}
+#m3HandBtn{display:none!important}
 #ccHandBtn[aria-pressed="true"],#m3HandBtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(240,164,58,.1)}
 </style>
 
@@ -1079,7 +1080,7 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1111life" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1111hand" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
@@ -5006,6 +5007,9 @@ window.addEventListener("blur", () => { HC.keys = {}; });
 { const _ui = ccDroneUI; ccDroneUI = function(){ _ui(); hcUI(); };
   const _ml = m3List; m3List = function(){ _ml(); hcUI(); };
 }
+/* 3D 부대 드론 화면 아래 버튼 줄의 '손으로 조종'과 연결 */
+window.addEventListener("message", e => { const f = $("#m3"); if (f.contentWindow && e.source === f.contentWindow && e.data && e.data.type === "hand-toggle") hcToggle(!(HC.on && HC.tgt === "m3"), "m3"); });
+{ let lastHS = null; const _hu = hcUI; hcUI = function(){ _hu(); const on = HC.on && HC.tgt === "m3"; if (on !== lastHS && m3Win()){ lastHS = on; m3Post({ type:"hand-state", on }); } }; }
 /* 다른 화면으로 가면 손 조종(웹캠)을 끈다 */
 setInterval(() => { if (HC.on && (HC.tgt === "m3" ? $("#view-3d").hidden : $("#view-cctv").hidden)) hcToggle(false); }, 1000);
 /* ===== 보조견 충성이: 당직이 뒤를 따라다니고, 가끔 거들고, 누르면 짖는다 ===== */
@@ -5123,7 +5127,7 @@ function ccDrone(camId){
   if (CC.sel !== i) selectCam(i);
   Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false, pad:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; vtBroadcast(); if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1111life"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; vtBroadcast(); if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1111hand"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
