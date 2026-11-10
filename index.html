@@ -647,6 +647,9 @@ body{padding-block:0 84px}
 .fcard{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .fcard-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .fcard-h h2{font-size:17px;font-weight:800}
+.fcard-h h2 .fh-sub{font-size:13px;font-weight:600;color:var(--muted)}
+.todo .task .ref{display:inline-block;margin-left:8px;padding:1px 6px;border-radius:5px;font:600 11.5px var(--mono);color:var(--sev4);background:rgba(98,169,212,.12);text-decoration:none;vertical-align:1px;white-space:nowrap}
+.todo input:checked ~ .task .ref{opacity:.6}
 .w6{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .w6 span{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px;border-radius:8px;font-size:12.5px;font-weight:700;border:1px solid var(--ok);color:var(--ok);background:rgba(75,196,143,.08);white-space:nowrap}
 .w6 span small{font-size:10.5px;font-weight:500;opacity:.85}
@@ -808,7 +811,7 @@ button.recip{background:var(--panel)}
         <div id="w6Slot"></div>
       </section>
       <section class="fcard" id="nowCard">
-        <div class="fcard-h"><h2>즉시 조치</h2><span class="hint" id="nowCnt"></span></div>
+        <div class="fcard-h"><h2>즉시 조치 <span class="fh-sub">(근무지침서에 근거)</span></h2><span class="hint" id="nowCnt"></span></div>
         <ul class="todo" id="nowList"></ul>
         <button type="button" class="btn sm" id="nowMore">전체 할 일 보기 →</button>
       </section>
@@ -3969,10 +3972,16 @@ function nowIdx(){
   if (ix.length < 3) ix = r.todo.map((x, i) => i).slice(0, 3);
   return ix.slice(0, 4);
 }
+/* 할 일마다 근무지침서 근거 (시연용 가상 문서의 절 번호). 보고 · 전파 항목은 '2-3 일반 상황 보고 요령', 나머지는 그 상황의 절 */
+function todoRef(r, task){
+  const man = getMan(r), sec = (man.sec.match(/\d+-\d+/) || ["2-3"])[0];
+  return /(1보|2보|보고|전파)/.test(task) && !/(신고|요청)/.test(task) ? { no:"2-3", title:MANUAL.ch["기타"].sec } : { no:sec, title:man.sec };
+}
+const refTag = (r, task) => { const f = todoRef(r, task); return `<small class="ref" title="${esc(f.title)}">지침서 ${f.no}</small>`; };
 function renderNow(){
   const r = S.result, ul = $("#nowList"); if (!r || !ul) return;
   const ix = nowIdx(), done = ix.filter(i => S.todoDone[i]).length;
-  ul.innerHTML = ix.map(i => { const x = r.todo[i]; return `<li><label for="nw-${i}"><input type="checkbox" id="nw-${i}" data-i="${i}" ${S.todoDone[i]?"checked":""}><span class="when ${whenClass(x.when)}">${esc(x.when)}</span><span class="task">${esc(x.task)}</span></label></li>`; }).join("");
+  ul.innerHTML = ix.map(i => { const x = r.todo[i]; return `<li><label for="nw-${i}"><input type="checkbox" id="nw-${i}" data-i="${i}" ${S.todoDone[i]?"checked":""}><span class="when ${whenClass(x.when)}">${esc(x.when)}</span><span class="task">${esc(x.task)}${refTag(r, x.task)}</span></label></li>`; }).join("");
   $("#nowCnt").textContent = `${done} / ${ix.length} 완료`;
   $("#nowMore").textContent = `전체 할 일 ${r.todo.length}개 보기 →`;
 }
@@ -3991,7 +4000,9 @@ function renderW6(){
   box.innerHTML = FIELD_LABELS.map(([k, l]) => { const m = !r.report[k] || isMiss(r.report[k]); return `<span class="${m ? "miss" : ""}" title="${esc(r.report[k] || "")}">${l === "조치사항" ? "조치" : l}<small>${m ? "확인 중" : "확인"}</small></span>`; }).join("");
   $("#w6Cnt").textContent = miss ? `${FIELD_LABELS.length - miss} / ${FIELD_LABELS.length} 확인 · 빈칸은 '확인 중'으로 보고` : "모두 확인됨";
 }
-{ const _rt = renderTodo; renderTodo = function(){ _rt(); renderNow(); if (S.recips?.length) renderComposer(); }; }
+{ const _rt = renderTodo; renderTodo = function(){ _rt();
+  if (S.result) document.querySelectorAll("#todoList li").forEach((li, i) => { const t = li.querySelector(".task"), x = S.result.todo[i]; if (t && x && !t.querySelector(".ref")) t.insertAdjacentHTML("beforeend", refTag(S.result, x.task)); });
+  renderNow(); if (S.recips?.length) renderComposer(); }; }
 { const _rf = renderFields; renderFields = function(c){ _rf(c); renderW6(); }; }
 $("#w6Slot").addEventListener("input", () => renderW6());
 function renderFeat(){
