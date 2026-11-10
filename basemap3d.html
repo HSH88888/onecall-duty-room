@@ -107,6 +107,51 @@ body.minimal .title, body.minimal .chips{display:none}
 body.nocam .cpin{display:none}
 #info .btn-open{background:#6fc3e8;color:#0e161c;font-size:13.5px;font-weight:500;padding:8px 14px;border-radius:8px}
 #info .btn-open[hidden],#info .btn-alert[hidden]{display:none}
+#info .actions{flex-wrap:wrap}
+#info .btn-drone{background:#6fc3e8;color:#0e161c;font-size:13.5px;font-weight:500;padding:8px 14px;border-radius:8px}
+#info .btn-drone[hidden]{display:none}
+/* ===== 드론 카메라 모드 ===== */
+#drone{position:fixed;inset:0;z-index:8;pointer-events:none;color:#eafff3;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+#drone[hidden]{display:none}
+body.drone #labels,body.drone #camPins,body.drone .top,body.drone .bottom,body.drone #banner{display:none}
+body.drone.nvg canvas#c{filter:grayscale(1) sepia(1) hue-rotate(62deg) saturate(3.2) brightness(1.9) contrast(1.15)}
+#drone .scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0 1px,transparent 1px 3px);opacity:.55}
+#drone .vig{position:absolute;inset:0;box-shadow:inset 0 0 140px 30px rgba(0,0,0,.55)}
+#drone .cnr{position:absolute;width:34px;height:34px;border:2px solid rgba(234,255,243,.85)}
+#drone .cnr.a{left:14px;top:14px;border-right:0;border-bottom:0}#drone .cnr.b{right:14px;top:14px;border-left:0;border-bottom:0}
+#drone .cnr.c{left:14px;bottom:14px;border-right:0;border-top:0}#drone .cnr.d{right:14px;bottom:14px;border-left:0;border-top:0}
+#drone .cross{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border:1.5px solid rgba(234,255,243,.6);border-radius:50%}
+#drone .cross::before,#drone .cross::after{content:"";position:absolute;background:rgba(234,255,243,.75)}
+#drone .cross::before{left:50%;top:-14px;bottom:-14px;width:1.5px;margin-left:-.75px;clip-path:polygon(0 0,100% 0,100% 30%,0 30%,0 70%,100% 70%,100% 100%,0 100%)}
+#drone .cross::after{top:50%;left:-14px;right:-14px;height:1.5px;margin-top:-.75px;clip-path:polygon(0 0,30% 0,30% 100%,0 100%,0 0,70% 0,70% 100%,100% 100%,100% 0)}
+#drone .tl{position:absolute;left:28px;top:26px;display:flex;flex-direction:column;gap:5px}
+#drone .tr{position:absolute;right:28px;top:26px;display:flex;flex-direction:column;gap:5px;align-items:flex-end;text-align:right}
+#drone .rec{display:flex;align-items:center;gap:7px;font-weight:500;letter-spacing:.06em}
+#drone .rec i{width:10px;height:10px;border-radius:50%;background:#ff3b30;animation:drBlink 1s steps(1) infinite}
+@keyframes drBlink{50%{opacity:.15}}
+#drone .src{font-size:10.5px;opacity:.8;font-family:"IBM Plex Sans KR",sans-serif}
+#drone .tele{position:absolute;left:28px;bottom:74px;display:grid;grid-template-columns:auto auto;gap:3px 12px;align-items:baseline}
+#drone .tele span{opacity:.7;font-size:10.5px;letter-spacing:.08em}
+#drone .tele b{font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+#drone .tgt{position:absolute;left:50%;top:26px;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center;max-width:46%}
+#drone .tgt b{font:700 15px "IBM Plex Sans KR",sans-serif;background:rgba(10,18,14,.6);padding:5px 12px;border-radius:7px;border:1px solid rgba(234,255,243,.35);white-space:nowrap}
+#drone .tgt b.hot{border-color:#ff5a52;color:#ffb3ad}
+#drone .tgt span{font:500 12px "IBM Plex Sans KR",sans-serif;opacity:.9}
+#drone .stamp{position:absolute;left:50%;top:50%;transform:translate(-50%,58px);font:700 14px "IBM Plex Sans KR",sans-serif;padding:7px 14px;border-radius:8px;background:rgba(10,18,14,.75);border:1.5px solid #4bc48f;color:#bff5db;white-space:nowrap}
+#drone .stamp.bad{border-color:#ff5a52;color:#ffc2bd}
+#drone .stamp[hidden]{display:none}
+#drone .bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding:0 20px;pointer-events:auto;text-shadow:none}
+#drone .bar button{font:500 13.5px "IBM Plex Sans KR",sans-serif;padding:9px 14px;border-radius:9px;background:rgba(14,22,18,.82);color:#eafff3;border:1px solid rgba(234,255,243,.3);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#drone .bar button[hidden]{display:none}
+#drone .bar .ok{border-color:#4bc48f;color:#bff5db}#drone .bar .bad{border-color:#ff5a52;color:#ffc2bd}
+#drone .bar .back{background:#ece7d4;color:#1f281f;border-color:#ece7d4}
+#drone .bar button[aria-pressed="true"]{background:#eafff3;color:#0e1612}
+#droneNoise{position:fixed;inset:0;width:100%;height:100%;z-index:9;image-rendering:pixelated;pointer-events:none;transition:opacity .35s}
+#droneNoise[hidden]{display:none}
+#droneLink{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;font:500 14px "IBM Plex Mono",monospace;color:#eafff3;background:rgba(0,0,0,.6);padding:10px 16px;border-radius:8px;letter-spacing:.04em;pointer-events:none;white-space:nowrap}
+#droneLink[hidden]{display:none}
+@media (max-width:600px){#drone .tele{bottom:112px}#drone .tgt{top:64px;max-width:80%}#drone .cross{width:48px;height:48px;margin:-24px 0 0 -24px}#drone .tr .src{display:none}}
+@media (prefers-reduced-motion: reduce){#drone .rec i{animation:none}}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;z-index:9;background:var(--bg);color:var(--ink)}
 @media (max-width:600px){ .title h1{font-size:17px} .title p{display:none} #banner{top:calc(env(safe-area-inset-top,0px) + 70px)} }
 @media (prefers-reduced-motion: reduce){ .lbl.alert::before,.cpin.hit::before{animation:none} }
@@ -147,10 +192,31 @@ body.nocam .cpin{display:none}
       <button class="btn-open" id="btnOpen" hidden>영상 보기</button>
       <button class="btn-alert" id="btnAlert">위기상황 표시</button>
       <button class="btn-ghost" id="btnFocus">가까이 보기</button>
+      <button class="btn-drone" id="btnDrone">드론 보내기</button>
     </div>
   </section>
   <nav class="chips panel" id="chips" aria-label="건물로 이동"></nav>
 </div>
+<!-- 드론 카메라 HUD: 영상(아래 canvas)만 바꾸면 실제 드론 스트림에도 그대로 쓸 수 있는 층 -->
+<div id="drone" hidden aria-live="polite">
+  <div class="scan"></div><div class="vig"></div>
+  <i class="cnr a"></i><i class="cnr b"></i><i class="cnr c"></i><i class="cnr d"></i>
+  <div class="cross"></div>
+  <div class="tl"><div class="rec"><i></i>REC · DRONE-01</div><div id="drClock">--:--:--</div><div id="drPhase">이륙 준비</div></div>
+  <div class="tgt"><b id="drTgt"></b><span id="drMsg"></span></div>
+  <div class="tr"><div>BAT <b id="drBat">96</b>%</div><div>SIG ▮▮▮▮▯ · GPS 14</div><div class="src" id="drSrc">영상 소스: 3D 시뮬레이션 (실제 적용 시 드론 실시간 영상)</div></div>
+  <div class="tele"><span>ALT</span><b id="drAlt">0 m</b><span>SPD</span><b id="drSpd">0 km/h</b><span>DIST</span><b id="drDist">0 m</b></div>
+  <div class="stamp" id="drStamp" hidden></div>
+  <div class="bar">
+    <button id="drSkip">건너뛰기</button>
+    <button id="drOrbit" aria-pressed="true" hidden>자동 선회</button>
+    <button class="ok" id="drOk" hidden>이상 없음</button>
+    <button class="bad" id="drBad" hidden>조치 필요</button>
+    <button class="back" id="drBack">상황실 화면으로</button>
+  </div>
+</div>
+<canvas id="droneNoise" width="160" height="90" hidden></canvas>
+<div id="droneLink" hidden>드론 영상 연결 중…</div>
 <div id="err">이 브라우저에서는 WebGL을 사용할 수 없어 3D 배치도를 표시하지 못했어요.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -180,6 +246,13 @@ body.nocam .cpin{display:none}
     postMessage({ type:'cam-focus', id:'CAM-07' })
     postMessage({ type:'alert', cam:'CAM-07', message:'...' })   // 카메라가 있는 건물에 표시
     // 카메라 핀을 누르면 부모로 { type:'camera-select', id, loc }, '영상 보기'를 누르면 { type:'camera-open', id }
+
+  드론 현장확인:
+    BaseMap.drone('ammo')                 // 드론 카메라 모드로 전환해 그 건물로 비행
+    BaseMap.droneExit()
+    postMessage({ type:'drone', id:'ammo' })
+    // 부모로 { type:'drone', event:'launch'|'arrive'|'report'|'return', id, name, result } 가 전달돼요.
+    // 지금은 영상 소스가 이 3D 화면이고, 실제 적용 때는 같은 HUD 아래에 드론 실시간 영상을 넣으면 돼요.
 
   주소 끝에 ?ui=minimal 을 붙이면 제목 카드와 하단 버튼을 숨겨요.
 */
@@ -638,6 +711,7 @@ instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
 }
 
 /* ---------- 카메라 · 조작 ---------- */
+const DR = { on: false };   // 드론 카메라 모드 상태 (아래 '드론 현장확인'에서 채움)
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08;
 controls.maxPolarAngle = Math.PI * .47; controls.minDistance = 15; controls.maxDistance = 900;
@@ -645,7 +719,8 @@ const HOME = { cam: new THREE.Vector3(150, 150, 230), tgt: new THREE.Vector3(0, 
 let fly = null;
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-function flyTo(cam, tgt) {
+function flyTo(cam, tgt, force) {
+  if (DR.on && !force) return;
   const c = cam.clone();
   if (camera.aspect < .8) c.sub(tgt).multiplyScalar(1.5).add(tgt);
   if (reduceMotion) { camera.position.copy(c); controls.target.copy(tgt); controls.update(); return; }
@@ -701,6 +776,7 @@ function viewOfCam(c) {
   return [tgt.clone().add(dir.multiplyScalar(58)), tgt];
 }
 function selectCamera(id, move) {
+  if (DR.on) return false;
   const c = findCam(id); if (!c) return false;
   selectBuilding(null); setCamSel(c); renderInfo(); info.hidden = false;
   if (move) { const [cam, t] = viewOfCam(c); flyTo(cam, t); }
@@ -717,6 +793,7 @@ function setCamState(id, state, message) {
 }
 function find(idOrName) { if (!idOrName) return null; const k = String(idOrName).trim(); return BUILDINGS.find(b => b.id === k || b.name === k || b.name.replace(/\s/g, '') === k.replace(/\s/g, '')) || null; }
 function selectBuilding(id, move) {
+  if (DR.on) return;
   setCamSel(null);
   const b = find(id); selected = b;
   BUILDINGS.forEach(x => x.label.classList.toggle('sel', x === b));
@@ -732,7 +809,7 @@ function selectBuilding(id, move) {
 }
 function renderInfo() {
   const c = selectedCam;
-  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c;
+  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c; $('btnDrone').hidden = !!c;
   if (c) {
     const home = c.bid ? find(c.bid) : null;
     $('infoCode').textContent = c.id + (c.live ? ' · LIVE' : ''); $('infoName').textContent = c.loc;
@@ -784,6 +861,7 @@ toggle($('btnNight'), on => setNight(on));
 toggle($('btnCams'), on => setCams(on));
 function setCams(on) { camsOn = on; document.body.classList.toggle('nocam', !on); CAMERAS.forEach(c => { c.group.visible = on; refreshCone(c); }); if (!on && selectedCam) selectBuilding(null); }
 function setNight(n) {
+  if (DR.on) document.body.classList.toggle('nvg', !!n);
   sun.intensity = n ? .12 : .95; sun.color.set(n ? 0x8899cc : 0xfff3e0);
   hemi.intensity = n ? .28 : .62; hemi.color.set(n ? 0x34446e : 0xdfe9f5); hemi.groundColor.set(n ? 0x121418 : 0x7a7458);
   skyU.top.value.set(n ? 0x050916 : 0x6e9fcf); skyU.bottom.value.set(n ? 0x18203a : 0xdfe6e4);
@@ -799,6 +877,7 @@ const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => {
+  if (DR.on) { downAt = null; return; }
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) { downAt = null; return; }
   downAt = null;
   const r = canvas.getBoundingClientRect();
@@ -811,7 +890,7 @@ canvas.addEventListener('pointerup', e => {
 });
 let hoverPending = false;
 canvas.addEventListener('pointermove', e => {
-  if (e.pointerType !== 'mouse' || hoverPending) return; hoverPending = true;
+  if (e.pointerType !== 'mouse' || hoverPending || DR.on) return; hoverPending = true;
   requestAnimationFrame(() => {
     hoverPending = false;
     const r = canvas.getBoundingClientRect();
@@ -820,6 +899,109 @@ canvas.addEventListener('pointermove', e => {
     canvas.style.cursor = ray.intersectObjects(buildingMeshes, false).length ? 'pointer' : '';
   });
 });
+
+/* ---------- 드론 현장확인 ----------
+   건물을 고르고 '드론 보내기'를 누르면 화면이 드론 카메라로 바뀐다.
+   연결(노이즈) → 대대본부 옥상 이륙 → 목표로 비행 → 도착 후 선회(마우스로 직접 돌려 볼 수 있음) → 복귀 */
+const drEl = $('drone'), drNoise = $('droneNoise'), drNoiseG = drNoise.getContext('2d'), drLink = $('droneLink');
+const drLook = new THREE.Vector3(), drP0 = new THREE.Vector3(), drP1 = new THREE.Vector3(), drPrev = new THREE.Vector3();
+const drPost = (event, extra) => {
+  const detail = Object.assign({ event, id: DR.b.id, name: DR.b.name }, extra);
+  window.dispatchEvent(new CustomEvent('basemap:drone', { detail }));
+  if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'drone' }, detail), '*'); } catch (e) {} }
+};
+function drPhase(p) {
+  DR.phase = p; DR.k = 0;
+  const fl = p === 'link' || p === 'takeoff' || p === 'cruise';
+  $('drSkip').hidden = !fl; $('drOrbit').hidden = $('drOk').hidden = $('drBad').hidden = p !== 'orbit';
+  $('drPhase').textContent = { link: '영상 연결 중', takeoff: '이륙 · 대대본부 옥상', cruise: '목표로 비행 중', orbit: '현장 도착 · 선회 촬영' }[p] || '';
+  $('drMsg').textContent = p === 'orbit' ? '끌어서 직접 살펴볼 수 있어요. 확인 결과를 눌러 기록하세요.' : alerts.has(DR.b.id) ? `위기상황: ${alerts.get(DR.b.id).message}` : '현장확인 출동';
+}
+function droneStart(id) {
+  const b = find(id); if (!b || DR.on) return false;
+  const hq = BUILDINGS.find(x => x.id === 'hq');
+  DR.save = { cam: camera.position.clone(), tgt: controls.target.clone(), min: controls.minDistance, max: controls.maxDistance, sel: b.id };
+  selectBuilding(null);
+  Object.assign(DR, { on: true, b, bat: 96, spd: 0, hud: 0, auto: true, result: null });
+  DR.tgt = new THREE.Vector3(b.center.x, Math.max(2, b.box.max.y * .5), b.center.z);
+  DR.R = b.size * .75 + 24; DR.H = Math.max(20, b.box.max.y + 13);
+  drP0.set(hq.center.x + 6, 34, hq.center.z);
+  const dir = new THREE.Vector3(drP0.x - DR.tgt.x, 0, drP0.z - DR.tgt.z); if (dir.lengthSq() < 1) dir.set(.4, 0, 1); dir.normalize();
+  drP1.set(DR.tgt.x + dir.x * DR.R, DR.H, DR.tgt.z + dir.z * DR.R);
+  DR.dur = Math.max(2.6, drP0.distanceTo(drP1) / 26);
+  fly = null; controls.enabled = false; controls.autoRotate = false;
+  document.body.classList.add('drone'); document.body.classList.toggle('nvg', $('btnNight').getAttribute('aria-pressed') === 'true');
+  drEl.hidden = false; $('drStamp').hidden = true; $('drOrbit').setAttribute('aria-pressed', 'true');
+  $('drTgt').textContent = `${b.code} ${b.name}`; $('drTgt').classList.toggle('hot', alerts.has(b.id));
+  camera.position.set(drP0.x, hq.box.max.y + 1.2, drP0.z); drPrev.copy(camera.position);
+  drNoise.hidden = reduceMotion; drNoise.style.opacity = 1; drLink.hidden = false; drLink.textContent = '드론 영상 연결 중…';
+  drPhase('link'); drPost('launch');
+  return true;
+}
+function droneArrive() {
+  camera.position.copy(drP1); controls.target.copy(DR.tgt);
+  controls.enabled = true; controls.autoRotate = DR.auto; controls.autoRotateSpeed = 1.4;
+  controls.minDistance = 18; controls.maxDistance = 130;
+  drNoise.hidden = true; drLink.hidden = true;
+  drPhase('orbit'); drPost('arrive');
+}
+function droneReport(ok) {
+  if (!DR.on || DR.phase !== 'orbit') return;
+  DR.result = ok ? '이상 없음' : '조치 필요';
+  const st = $('drStamp'); st.hidden = false; st.classList.toggle('bad', !ok);
+  st.textContent = `확인 결과: ${DR.result} · 기록됨`;
+  if (!ok && !alerts.has(DR.b.id)) { setAlert(DR.b.id, '드론 확인: 조치 필요'); $('drTgt').classList.add('hot'); }
+  drPost('report', { result: DR.result });
+}
+function droneExit() {
+  if (!DR.on) return;
+  const sv = DR.save, b = DR.b, result = DR.result;
+  controls.enabled = true; controls.autoRotate = false; controls.minDistance = sv.min; controls.maxDistance = sv.max;
+  document.body.classList.remove('drone', 'nvg'); drEl.hidden = true; drNoise.hidden = true; drLink.hidden = true;
+  drPost('return', { result });
+  DR.on = false;
+  selectBuilding(sv.sel, false);
+  flyTo(sv.cam, sv.tgt, true);
+}
+function droneStep(dt) {
+  const ph = DR.phase; DR.k += dt;
+  if (ph === 'link') {
+    camera.position.y += dt * .4; drLook.copy(DR.tgt); controls.target.copy(drLook);
+    if (DR.k > .9) drNoise.style.opacity = Math.max(0, 1 - (DR.k - .9) / .4);
+    if (DR.k >= 1.3 || reduceMotion) { drNoise.hidden = true; drLink.hidden = true; drPhase('takeoff'); DR.y0 = camera.position.y; }
+  } else if (ph === 'takeoff') {
+    const e = ease(Math.min(1, DR.k / 1.7));
+    camera.position.set(drP0.x, DR.y0 + (drP0.y - DR.y0) * e, drP0.z); controls.target.copy(DR.tgt);
+    if (DR.k >= 1.7) drPhase('cruise');
+  } else if (ph === 'cruise') {
+    const e = ease(Math.min(1, DR.k / DR.dur));
+    camera.position.lerpVectors(drP0, drP1, e); controls.target.copy(DR.tgt);
+    if (DR.k >= DR.dur) droneArrive();
+  }
+  // 계기판
+  const v = camera.position.distanceTo(drPrev) / Math.max(dt, .001); drPrev.copy(camera.position);
+  DR.spd += (v - DR.spd) * Math.min(1, dt * 4); DR.bat = Math.max(20, DR.bat - dt * .12);
+  DR.hud -= dt;
+  if (DR.hud <= 0) {
+    DR.hud = .2; const d = new Date(), p2 = n => String(n).padStart(2, '0');
+    $('drClock').textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+    $('drAlt').textContent = `${camera.position.y.toFixed(0)} m`; $('drSpd').textContent = `${(DR.spd * 3.6 * .45).toFixed(0)} km/h`;   // 시연용 배속 비행이라 표시 속도는 실제 드론 수준으로 낮춤
+    $('drDist').textContent = `${Math.hypot(camera.position.x - DR.tgt.x, camera.position.z - DR.tgt.z).toFixed(0)} m`;
+    $('drBat').textContent = DR.bat.toFixed(0);
+  }
+  if (!drNoise.hidden) {
+    const im = drNoiseG.createImageData(160, 90), a = im.data;
+    for (let i = 0; i < a.length; i += 4) { const g = Math.random() * 255 | 0; a[i] = a[i + 1] = a[i + 2] = g; a[i + 3] = 255; }
+    drNoiseG.putImageData(im, 0, 0);
+  }
+}
+$('btnDrone').addEventListener('click', () => { if (selected) droneStart(selected.id); });
+$('drSkip').addEventListener('click', () => { if (DR.on && DR.phase !== 'orbit') droneArrive(); });
+$('drOrbit').addEventListener('click', () => { DR.auto = !DR.auto; controls.autoRotate = DR.auto; $('drOrbit').setAttribute('aria-pressed', String(DR.auto)); });
+$('drOk').addEventListener('click', () => droneReport(true));
+$('drBad').addEventListener('click', () => droneReport(false));
+$('drBack').addEventListener('click', droneExit);
+addEventListener('keydown', e => { if (e.key === 'Escape' && DR.on) droneExit(); });
 
 /* ---------- 외부 연동 API ---------- */
 window.BaseMap = {
@@ -834,6 +1016,9 @@ window.BaseMap = {
   camState: (id, state, message) => setCamState(id, state, message),
   focusCam: id => selectCamera(id, true),
   setCams: on => { $('btnCams').setAttribute('aria-pressed', String(!!on)); setCams(!!on); },
+  drone: id => droneStart(id),
+  droneExit: () => droneExit(),
+  droneState: () => DR.on ? { id: DR.b.id, name: DR.b.name, phase: DR.phase, result: DR.result } : null,
   active: () => [...alerts.entries()].map(([id, a]) => ({ id, name: find(id).name, message: a.message, since: a.since })),
 };
 window.addEventListener('message', e => {
@@ -842,6 +1027,7 @@ window.addEventListener('message', e => {
   else if (m.type === 'cam-state') setCamState(m.id, m.state, m.message);
   else if (m.type === 'cam-focus') selectCamera(m.id, true);
   else if (m.type === 'cams') BaseMap.setCams(m.on);
+  else if (m.type === 'drone') { if (m.exit) droneExit(); else droneStart(m.id); }
   else if (m.type === 'clear') clearAlert(m.id);
   else if (m.type === 'focus') BaseMap.focus(m.id);
   else if (m.type === 'overview') BaseMap.overview();
@@ -895,7 +1081,9 @@ function loop() {
     camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e);
     if (fly.k >= 1) fly = null;
   }
+  if (DR.on) droneStep(dt);
   controls.update();
+  if (DR.on) camera.rotation.z += Math.sin(t * 1.7) * .006 + Math.sin(t * 4.3) * .002;   // 기체 흔들림
   if (controls.target.y < 0) controls.target.y = 0;
   if (alerts.size) {
     const p = (Math.sin(t * 5) + 1) / 2, k = (t * .7) % 1;

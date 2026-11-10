@@ -763,7 +763,7 @@ button.recip{background:var(--panel)}
   </div>
   <div id="view-3d" hidden>
     <section class="cc-head">
-      <div class="cc-title"><span class="live-dot"></span><div><h2>3D 부대 · 영내 배치도</h2><p class="hint">끌면 돌아가고 휠이나 두 손가락으로 확대합니다. 건물이나 카메라 핀을 누르면 정보가 나오고, 접수된 상황과 CCTV 감지는 그 위치에 자동으로 표시됩니다. (시연용 가상 부대)</p></div></div>
+      <div class="cc-title"><span class="live-dot"></span><div><h2>3D 부대 · 영내 배치도</h2><p class="hint">끌면 돌아가고 휠이나 두 손가락으로 확대합니다. 건물을 누르고 <b>드론 보내기</b>를 누르면 드론 카메라 화면으로 현장을 확인합니다. 접수된 상황과 CCTV 감지는 그 위치에 자동으로 표시됩니다. (시연용 가상 부대)</p></div></div>
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
@@ -4150,7 +4150,7 @@ setTimeout(djTick, 6000);
 affectedStop = function(text){ let best = null, bl = 0; for (const st of BUS_STOPS) for (const k of st.kw) if (k.length > bl && text.includes(k)){ bl = k.length; best = st; } return best; };
 
 /* ===== 3D 부대: basemap3d.html(three.js 배치도)을 iframe으로 띄우고 접수된 상황 · CCTV 감지를 그 위치에 표시 ===== */
-const M3 = { on:false, ready:false, sent:null, camSent:null, sel:null, selCam:null, pendingCam:null, cams:[], listHtml:"", camHtml:"" };
+const M3 = { drone:null, on:false, ready:false, sent:null, camSent:null, sel:null, selCam:null, pendingCam:null, cams:[], listHtml:"", camHtml:"" };
 /* [건물 id, 이름, 상황 문장에서 찾을 낱말] — 긴(구체적인) 낱말이 먼저 이긴다 */
 const M3_B = [
   ["gate","위병소",["위병소","정문","면회"]],
@@ -4215,7 +4215,7 @@ function m3List(){
   const ch = CAMS.map(c => `<button type="button" data-id="${c.id}" title="${c.id} ${esc(c.loc)}" aria-label="${c.id} ${esc(c.loc)}" class="${ci && ci.id === c.id ? ci.state : M3.selCam === c.id ? "on" : ""}">${c.id.slice(4)}</button>`).join("");
   if (ch !== M3.camHtml){ $("#m3Cams").innerHTML = ch; M3.camHtml = ch; }
   const st = $("#m3Status"), hot = inc || (ci && ci.state === "hit"); st.classList.toggle("alert", !!hot);
-  st.textContent = inc ? `상황 발생 · ${inc.name} · ${inc.msg}` : ci ? `CCTV ${ci.state === "hit" ? "화재 감지" : "의심 감지"} · ${ci.id} ${CAMS.find(c => c.id === ci.id).loc}` : "평시 · 이상 없음 · CCTV 25대 정상";
+  st.textContent = M3.drone ? `드론 현장확인 중 · ${M3.drone.name}${M3.drone.result ? " · " + M3.drone.result : M3.drone.arrived ? " · 선회 촬영" : " · 비행 중"}` : inc ? `상황 발생 · ${inc.name} · ${inc.msg}` : ci ? `CCTV ${ci.state === "hit" ? "화재 감지" : "의심 감지"} · ${ci.id} ${CAMS.find(c => c.id === ci.id).loc}` : "평시 · 이상 없음 · CCTV 25대 정상";
   $("#m3Dot").hidden = !hot;
 }
 function m3Start(){
@@ -4242,6 +4242,14 @@ window.addEventListener("message", e => {
   const m = e.data; if (!m) return;
   if (m.type === "building-select"){ M3.sel = m.id; M3.selCam = null; m3List(); }
   else if (m.type === "camera-select"){ M3.selCam = m.id; M3.sel = null; m3List(); }
+  else if (m.type === "drone"){
+    /* 드론 현장확인 → 당직일지 기록 */
+    if (m.event === "launch"){ M3.drone = { name:m.name }; log(`드론 현장확인 출동 → ${m.name} (당직사관 지시)`, "send"); }
+    else if (m.event === "arrive"){ if (M3.drone) M3.drone.arrived = true; log(`드론 ${m.name} 상공 도착 · 영상 확인 중`, "info"); }
+    else if (m.event === "report"){ if (M3.drone) M3.drone.result = m.result; log(`드론 영상 확인 결과: ${m.name} ${m.result}`, m.result === "조치 필요" ? "alert" : "ack"); toast(`${m.name} 드론 확인 결과 '${m.result}'을(를) 당직일지에 기록했습니다.`); }
+    else if (m.event === "return"){ M3.drone = null; log(`드론 복귀 · ${m.name} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info"); }
+    m3List();
+  }
   else if (m.type === "camera-open"){ const i = CAMS.findIndex(c => c.id === m.id); if (i >= 0){ showView("cctv"); selectCam(i); } }
 });
 if (location.hash === "#map3d") showView("map3d");
