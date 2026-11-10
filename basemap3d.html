@@ -227,7 +227,8 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     <button id="drOrbit" aria-pressed="false" hidden>자동 선회</button>
     <button class="ok" id="drOk" hidden>이상 없음</button>
     <button class="bad" id="drBad" hidden>조치 필요</button>
-    <button class="back" id="drBack">상황실 화면으로</button>
+    <button class="back" id="drHome">드론 복귀</button>
+    <button id="drBack">드론 화면 종료</button>
   </div>
 </div>
 <canvas id="droneNoise" width="160" height="90" hidden></canvas>
@@ -936,7 +937,7 @@ function drAhead(out) { return out.set(camera.position.x + DR.head.x * 60, camer
 function drPhase(p) {
   DR.phase = p; DR.k = 0;
   const fl = p === 'link' || p === 'takeoff' || p === 'cruise';
-  $('drSkip').hidden = !fl; $('drOrbit').hidden = $('drOk').hidden = $('drBad').hidden = p !== 'orbit';
+  $('drSkip').hidden = !fl; $('drHome').hidden = DR_BACK.includes(p); $('drOrbit').hidden = $('drOk').hidden = $('drBad').hidden = p !== 'orbit';
   $('drPhase').textContent = { link: '영상 연결 중', takeoff: '이륙 중 · 대대본부 옥상', cruise: '목표로 비행 중', orbit: DR.auto ? '현장 도착 · 선회 촬영' : '현장 도착 · 제자리 비행', return: '복귀 비행 중', land: '착륙 중 · 대대본부 옥상', off: '착륙 완료 · 영상 종료' }[p] || '';
   $('drMsg').textContent = DR_BACK.includes(p) ? '현장확인 종료 · 기지 복귀' : p === 'orbit' ? '끌어서 직접 살펴볼 수 있어요. 확인 결과를 눌러 기록하세요.' : DR.b.note ? DR.b.note : alerts.has(DR.b.bid) ? `위기상황: ${alerts.get(DR.b.bid).message}` : '현장확인 출동';
 }
@@ -970,7 +971,6 @@ function droneStart(id, backLabel) {
   DR.homeY = hq.box.max.y + 1.2;
   camera.position.set(drP0.x, DR.homeY, drP0.z); drPrev.copy(camera.position); controls.target.copy(drAhead(drLook));
   drNoise.hidden = reduceMotion; drNoise.style.opacity = 1; drLink.hidden = false; drLink.textContent = '드론 영상 연결 중…';
-  $('drBack').textContent = backLabel || '상황실 화면으로';
   drPhase('link'); drPost('launch');
   return true;
 }
@@ -1078,6 +1078,7 @@ $('drOrbit').addEventListener('click', () => { if (!DR.on) return; DR.auto = !DR
 $('drOk').addEventListener('click', () => droneReport(true));
 $('drBad').addEventListener('click', () => droneReport(false));
 $('drBack').addEventListener('click', droneExit);
+$('drHome').addEventListener('click', droneReturn);
 addEventListener('keydown', e => { if (e.key === 'Escape' && DR.on) droneExit(); });
 
 /* ---------- 외부 연동 API ---------- */
