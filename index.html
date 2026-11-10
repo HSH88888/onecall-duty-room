@@ -335,6 +335,7 @@ textarea.bubble[readonly]{color:var(--muted)}
 #busMap{display:block;width:100%;height:auto}
 .bm-b{font-size:11px;fill:#c3ccc7;font-family:var(--font);font-weight:500;paint-order:stroke;stroke:#0b120e;stroke-width:3px;stroke-opacity:.6}
 .bm-s{font-size:12.5px;font-weight:700;fill:#fff;font-family:var(--font);paint-order:stroke;stroke:#0b120e;stroke-width:4.5px}
+.bm-c{font-family:var(--mono);font-size:9.5px;fill:#F0A43A;opacity:.85}
 .bm-stop{cursor:pointer}
 .bm-stop.on > circle:first-child{stroke:#fff;stroke-width:3.5}
 .bb-haz{fill:#ffb020;opacity:0}
@@ -369,8 +370,38 @@ textarea.bubble[readonly]{color:var(--muted)}
 #busLayer g.em .bm-pulse{opacity:1;animation:pulse 1.2s infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.4);opacity:0}}
 .bus-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.bus-card{cursor:pointer;text-align:left;color:inherit;font:inherit}
+.bus-card:hover{border-color:var(--line-2)}
+.bus-card.sel{border-color:var(--accent);background:var(--accent-soft)}
+.bus-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bc-pick{font-size:12px;color:var(--muted)}
+.bus-card.sel .bc-pick{color:var(--accent);font-weight:700}
+#busLayer > g{cursor:pointer}
+#busLayer.pick > g:not(.sel){opacity:.38}
+#busLayer > g.sel .bus-tag rect:first-child{stroke:var(--accent);stroke-width:2.5}
+#busRouteLayer{pointer-events:none}
+#busRouteLayer .br-flow{fill:none;stroke:var(--accent);stroke-width:4;stroke-linejoin:round;stroke-dasharray:10 14;animation:brFlow 1s linear infinite}
+@keyframes brFlow{to{stroke-dashoffset:-24}}
+#busRouteLayer .br-n circle{fill:var(--accent);stroke:#0e1412;stroke-width:1.5}
+#busRouteLayer .br-n text{font:800 10px var(--mono);fill:#1C1305}
+#busRouteLayer .br-eta{font:700 11px var(--font);fill:var(--accent);paint-order:stroke;stroke:#0b120e;stroke-width:4px}
+#busRouteLayer .br-eta.off{fill:#ff8a80}
+.bus-route{border:1px solid var(--accent);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--accent-soft)}
+.bus-route[hidden]{display:none}
+.br-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.br-head b{font-size:15px}
+.br-head .btn{margin-left:auto}
+.br-line{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px}
+.br-line li{display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:8px;background:var(--panel-2);min-width:0;font-size:12.5px}
+.br-line li i{font:800 11px var(--mono);font-style:normal;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#1C1305;display:grid;place-items:center}
+.br-line li b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.br-line li small{color:var(--muted)}
+.br-line li.now{outline:1.5px solid var(--accent)}
+.br-line li.off{opacity:.55}
+.br-line li.off i{background:var(--sev1);color:#fff}
+@media (prefers-reduced-motion:reduce){#busRouteLayer .br-flow{animation:none}}
 @media (max-width:700px){.bus-cards{grid-template-columns:minmax(0,1fr)}}
-.bus-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:10px;background:var(--panel-2);border:1px solid transparent;min-width:0}
+.bus-card{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:10px;background:var(--panel-2);border:1px solid transparent;min-width:0;width:100%}
 .bus-card.em{border-color:var(--sev1);background:rgba(255,90,82,.08)}
 .bc-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
 .bc-top b{font-size:15px}
@@ -750,7 +781,7 @@ button.recip{background:var(--panel)}
   </div>
   <div id="view-bus" hidden>
     <section class="cc-head">
-      <div class="cc-title"><span class="live-dot"></span><div><h2>부대 버스 · 영내 순환버스</h2><p class="hint">버스 3대의 실시간 위치와 정류장별 도착 예정 시간을 보여 줍니다. 정류장을 누르면 우회를 지정하거나 해제합니다.</p></div></div>
+      <div class="cc-title"><span class="live-dot"></span><div><h2>부대 버스 · 영내 순환버스</h2><p class="hint">버스 3대의 실시간 위치와 정류장별 도착 예정 시간을 보여 줍니다. 버스(1 · 2 · 3호차)를 누르면 그 버스의 노선을, 정류장을 누르면 우회를 지정하거나 해제합니다.</p></div></div>
       <div class="cc-stats">
         <div class="kv"><span class="label">운행</span><b class="mono" id="busRun">3대</b></div>
         <div class="kv"><span class="label">우회 정류장</span><b class="mono" id="busOff" style="color:var(--sev2)">0곳</b></div>
@@ -763,6 +794,7 @@ button.recip{background:var(--panel)}
       <div class="pane bus-mapbox">
         <div class="pane-h"><h2 style="font-size:15px">순환 노선도</h2><span class="hint">3D 부대와 같은 배치 · 정류장마다 4초 정차 · 한 바퀴 약 3분</span></div>
         <div class="bus-map-wrap"><svg id="busMap" viewBox="0 0 820 640" role="img" aria-label="영내 순환버스 노선도"></svg></div>
+        <div class="bus-route" id="busRoute" hidden></div>
         <div class="bus-cards" id="busCards"></div>
       </div>
       <aside class="cc-side">
@@ -3176,13 +3208,13 @@ const BX = x => 410 + x*2.8, BY = z => 318 + z*2.8;
 const BUS_PATH = [[0,84,"gate"],[0,47,"hq"],[27,47],[27,12],[50,12,"mess"],[50,-15,"med"],[50,-55,"motor"],[50,-96],[0,-96,"heli"],[-50,-96],[-50,-72,"ammo"],[-50,-22,"b2"],[-50,12,"b1"],[27,12],[27,47],[0,47]];
 /* lx · ly · la: 이름표 위치(정류장 기준)와 정렬 */
 const BUS_STOPS = [
-  { id:"gate",  name:"정문 위병소",   lx:-19, ly:4,   la:"end",   kw:["정문","위병소","면회실"] },
+  { id:"gate",  name:"위병소",        lx:-19, ly:4,   la:"end",   kw:["정문","위병소","면회실"] },
   { id:"hq",    name:"대대본부",      lx:-19, ly:5,   la:"end",   kw:["대대본부","행정반","총기 보관실","통신실","당직실","주차장"] },
   { id:"mess",  name:"취사장",        lx:19,  ly:27,  la:"start", kw:["취사장","펌프실"] },
   { id:"med",   name:"의무대",        lx:-19, ly:4,   la:"end",   kw:["의무대","의무실"] },
-  { id:"motor", name:"정비고 · 유류고", lx:-17, ly:-19, la:"end",   kw:["정비고","유류고"] },
+  { id:"motor", name:"차량정비고",    lx:-17, ly:-19, la:"end",   kw:["정비고","유류고"] },
   { id:"heli",  name:"헬기장",        lx:19,  ly:-7,  la:"start", kw:["헬기장"] },
-  { id:"ammo",  name:"탄약고 입구",   lx:19,  ly:4,   la:"start", kw:["탄약고"] },
+  { id:"ammo",  name:"탄약고",        lx:19,  ly:4,   la:"start", kw:["탄약고"] },
   { id:"b2",    name:"생활관 2동",    lx:19,  ly:4,   la:"start", kw:["생활관 2동","2생활관","2중대","보일러실","세탁실","PX","3생활관","휴게실","연병장"] },
   { id:"b1",    name:"생활관 1동",    lx:19,  ly:27,  la:"start", kw:["생활관 1동","1생활관","1중대","체력단련실"] },
 ];
@@ -3195,7 +3227,7 @@ const BUSES = [
   { no:2, cap:25, driver:"상병 이○○", s:0,   dwell:0, load:14, state:"운행" },
   { no:3, cap:15, driver:"일병 박○○", s:0,   dwell:0, load:3,  state:"운행" },
 ];
-const BUS = { L:[], P:[], total:0, closed:{}, reason:{}, emergency:null, incKey:null, log:[], built:false, last:0 };
+const BUS = { sel:null, routeHtml:"", cardHtml:"", L:[], P:[], total:0, closed:{}, reason:{}, emergency:null, incKey:null, log:[], built:false, last:0 };
 (function geom(){
   let acc = 0;
   BUS_PATH.forEach((p, i) => {
@@ -3265,7 +3297,7 @@ function busTick(){
   });
 }
 setInterval(() => { busTick(); if (!$("#view-bus").hidden) renderBusLive(); }, 100);
-setInterval(() => { syncBusIncident(); if (!$("#view-bus").hidden) { renderStops(); renderBusSide(); renderTimetable(); } }, 1000);
+setInterval(() => { syncBusIncident(); if (!$("#view-bus").hidden) { renderStops(); renderBusSide(); renderBusRoute(); renderTimetable(); } }, 1000);
 
 /* ---------- 상황실 연동 ---------- */
 function affectedStop(text){
@@ -3316,6 +3348,7 @@ function drawBusMapStatic(){
   const trees = (cx, cy, n, r=26, seed=1) => Array.from({length:n}, (_,i) => { const a = rnd(seed+i)*Math.PI*2, d = Math.sqrt(rnd(seed+i+50))*r; return tree(cx+Math.cos(a)*d, cy+Math.sin(a)*d, 5 + rnd(seed+i+90)*5); }).join("");
   // 사각 구역: 중심 (x, z) · 가로 w · 세로 d (3D 부대와 같은 값)
   const R = (x, z, w, d, attr) => `<rect x="${f(X(x - w/2))}" y="${f(Y(z - d/2))}" width="${f(w*K)}" height="${f(d*K)}" ${attr}/>`;
+  const N = (code, name) => `<tspan class="bm-c">${code}</tspan> ${name}`;      // 3D 부대와 같은 건물 번호 + 이름
   const B = (x, z, w, d, name, kind="bld", ly) => {
     const roof = { green:"url(#gRoofG)", red:"url(#gRoofR)", slate:"url(#gRoofB)", metal:"url(#gRoofM)" }[kind] || "url(#gRoof)";
     const px = X(x - w/2), py = Y(z - d/2), pw = w*K, ph = d*K;
@@ -3354,7 +3387,7 @@ function drawBusMapStatic(){
     ${R(-92,-72,56,56,`rx="5" fill="#1a2a20" stroke="#c9a14a" stroke-opacity=".6" stroke-dasharray="3 4"`)}
     ${R(-92,-72,50,50,`rx="4" fill="none" stroke="#c9a14a" stroke-opacity=".3" stroke-dasharray="3 4"`)}
     ${[-82,-62].map(z => `${R(-96,z,18,12,`rx="15" fill="#2a3b2c" stroke="#0b120e"`)}${R(-96,z,12,7,`rx="9" fill="#344a37"`)}${R(-86.4,z,1.6,5,`fill="#7b8580"`)}`).join("")}
-    <text x="${f(X(-92))}" y="${f(Y(-49))}" text-anchor="middle" class="bm-b">탄약고 (출입 통제)</text>
+    <text x="${f(X(-92))}" y="${f(Y(-49))}" text-anchor="middle" class="bm-b">${N("B-08","탄약고")}</text>
 
     <!-- 도로 · 포장 구역 -->
     ${roads.map(r => r[0]).join("")}${roads.map(r => r[1]).join("")}
@@ -3371,25 +3404,26 @@ function drawBusMapStatic(){
     <!-- 헬기장 -->
     <circle cx="${f(X(0))}" cy="${f(Y(-82))}" r="27" fill="#3a4240" stroke="#d7dcda" stroke-opacity=".5" stroke-width="2"/>
     <text x="${f(X(0))}" y="${f(Y(-82)+7)}" text-anchor="middle" style="font:800 20px var(--font);fill:#e6ece9;opacity:.8">H</text>
+    <text x="${f(X(0))}" y="${f(Y(-82)+42)}" text-anchor="middle" class="bm-b">${N("B-12","헬기장")}</text>
     <!-- 유류고 (방유턱 + 탱크 2기) -->
     ${R(114,-74,16,25,`rx="2" fill="#1d241f" stroke="#7b8580" stroke-opacity=".7"`)}
     ${[-80,-68].map(z => `<circle cx="${f(X(114))}" cy="${f(Y(z))}" r="11.5" fill="#a9b0ab" stroke="#0a0f0d"/><circle cx="${f(X(114))}" cy="${f(Y(z))}" r="5" fill="#7b8580"/>`).join("")}
-    <text x="${f(X(114))}" y="${f(Y(-56))}" text-anchor="middle" class="bm-b">유류고</text>
+    <text x="${f(X(114))}" y="${f(Y(-56))}" text-anchor="middle" class="bm-b">${N("B-11","유류고")}</text>
     <!-- 주차장 · 정비고 앞 차량 -->
     ${[52,57.5,63].map((z,i) => car(36,z,["#7d8b9a","#a0a7a3","#6f3f38"][i]) + car(46,z,["#4f5b3a","#8a948f","#c9c4b0"][i])).join("")}
     <text x="${f(X(41))}" y="${f(Y(77))}" text-anchor="middle" class="bm-b">주차장</text>
     ${[66,74,82,90].map(x => truck(x,-54)).join("")}
 
     <!-- 건물 -->
-    ${B(0,35,40,14,"대대본부")}
+    ${B(0,35,40,14,N("B-02","대대본부"))}
     <line x1="${f(X(-14))}" y1="${f(Y(50))}" x2="${f(X(-14))}" y2="${f(Y(50)-16)}" stroke="#cfd6d2" stroke-width="1.5"/><rect x="${f(X(-14))}" y="${f(Y(50)-16)}" width="11" height="7" fill="#d6dde0"/>
-    ${B(-76,30,42,14,"생활관 1동","green")}${B(-76,-22,42,14,"생활관 2동","green")}
-    ${B(72,35,32,18,"취사장","red")}
-    ${B(72,-15,26,14,"의무대")}<path d="M${f(X(81))} ${f(Y(-15)-6)}v12M${f(X(81)-6)} ${f(Y(-15))}h12" stroke="#d94a40" stroke-width="3.2"/>
-    ${B(80,-72,40,22,"차량정비고","metal")}
-    ${B(-76,62,30,14,"체력단련실","slate")}
-    ${B(104,40,9,7,"급수 펌프실","bld",25)}
-    ${B(16,88,10,7,"위병소","bld",25)}
+    ${B(-76,30,42,14,N("B-03","생활관 1동"),"green")}${B(-76,-22,42,14,N("B-04","생활관 2동"),"green")}
+    ${B(72,35,32,18,N("B-05","취사장"),"red")}
+    ${B(72,-15,26,14,N("B-06","의무대"))}<path d="M${f(X(82))} ${f(Y(-19)-4)}v8M${f(X(82)-4)} ${f(Y(-19))}h8" stroke="#d94a40" stroke-width="2.6"/>
+    ${B(80,-72,40,22,N("B-07","차량정비고"),"metal")}
+    ${B(-76,62,30,14,N("B-09","체력단련실"),"slate")}
+    ${B(104,40,9,7,N("B-10","급수 펌프실"),"bld",25)}
+    ${B(16,88,10,7,N("B-01","위병소"),"bld",25)}
     <line x1="${f(X(-4.6))}" y1="${f(Y(100))}" x2="${f(X(4.6))}" y2="${f(Y(100))}" stroke="#e0e6e3" stroke-width="2.5" stroke-dasharray="4 3"/>
 
     <!-- 나무 -->
@@ -3405,7 +3439,9 @@ function drawBusMapStatic(){
     <g transform="translate(796,46)"><circle r="14" fill="#0e1412" stroke="#59625e"/><path d="M0 -10 L4 4 L0 1 L-4 4Z" fill="#e3e9e4"/><text y="-17" text-anchor="middle" class="bm-b" style="fill:#e3e9e4">N</text></g>
     <g transform="translate(620,626)"><rect width="70" height="4" fill="#e3e9e4"/><rect x="70" width="70" height="4" fill="#59625e"/><text x="0" y="-4" class="bm-b">0</text><text x="140" y="-4" text-anchor="end" class="bm-b">50m</text></g>
     <text x="${f(X(0)+20)}" y="630" class="bm-b">관사 · ○○역 방면</text>
+    <g id="busRouteLayer"></g>
     <g id="busLayer"></g>`;
+  BUS.routeHtml = ""; renderBusRoute();
   $("#busMap").querySelectorAll(".bm-stop").forEach(g => { g.addEventListener("click", () => toggleStop(g.dataset.id)); g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleStop(g.dataset.id); } }); });
 }
 function busSVG(no){
@@ -3424,7 +3460,7 @@ function busSVG(no){
 function renderBusLive(){
   const layer = $("#busLayer"); if (!layer) return;
   if (!layer.childElementCount){
-    layer.innerHTML = BUSES.map(b => `<g id="bus${b.no}"><circle class="bm-pulse" r="26" fill="rgba(255,90,82,.3)"/><g class="bus-rot">${busSVG(b.no)}</g><g class="bus-flag"><rect x="-16" y="14" width="32" height="15" rx="7.5"/><text x="0" y="25" text-anchor="middle">정차</text></g>
+    layer.innerHTML = BUSES.map(b => `<g id="bus${b.no}" data-no="${b.no}" role="button" aria-label="${b.no}호차 노선 보기"><circle class="bm-pulse" r="26" fill="rgba(255,90,82,.3)"/><g class="bus-rot">${busSVG(b.no)}</g><g class="bus-flag"><rect x="-16" y="14" width="32" height="15" rx="7.5"/><text x="0" y="25" text-anchor="middle">정차</text></g>
       <g class="bus-tag"><rect x="-31" y="-36" width="62" height="22" rx="8"/>
         <path d="M-23 -30.5a2.2 2.2 0 1 0 0.01 0M-26.2 -21.5c0-3 1.6-4.6 3.2-4.6s3.2 1.6 3.2 4.6z" class="bm-p"/>
         <text x="-16" y="-22.5" class="bm-n"><tspan class="bm-no">${b.no}호</tspan><tspan class="bm-load" dx="3">${b.load}/${b.cap}</tspan></text>
@@ -3435,13 +3471,14 @@ function renderBusLive(){
     const p = posAt(b.s), em = !!(BUS.emergency && BUS.emergency.bus === b);
     g.setAttribute("transform", `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
     g.querySelector(".bus-rot").setAttribute("transform", `rotate(${(p.ang*180/Math.PI).toFixed(1)})`);
-    g.classList.toggle("em", em);
+    g.classList.toggle("em", em); g.classList.toggle("sel", BUS.sel === b.no);
     g.classList.toggle("stop", b.hold != null && b.dwell > 0);
     const pct = b.load / b.cap;
     g.querySelector(".bm-load").textContent = `${b.load}/${b.cap}`;
     const bar = g.querySelector(".bm-bar"); bar.setAttribute("width", (52*pct).toFixed(1));
     g.classList.toggle("full", pct >= .85);
   });
+  layer.classList.toggle("pick", BUS.sel != null);
   document.querySelectorAll("#busMap .bm-stop").forEach((g, i) => g.classList.toggle("on", BUSES.some(b => b.hold != null && b.at === i)));
 }
 function toggleStop(id){
@@ -3467,18 +3504,58 @@ function renderStops(){
 }
 function renderBusSide(){
   const el = $("#busCards"); if (!el) return;
-  el.innerHTML = BUSES.map(b => {
-    const em = BUS.emergency && BUS.emergency.bus === b, nx = BUS_STOPS[b.next];
+  const html = BUSES.map(b => {
+    const em = BUS.emergency && BUS.emergency.bus === b, nx = BUS_STOPS[b.next], sel = BUS.sel === b.no;
     const pct = Math.round(b.load / b.cap * 100);
-    return `<div class="bus-card ${em?"em":""}">
+    return `<button type="button" class="bus-card ${em?"em":""} ${sel?"sel":""}" data-no="${b.no}" aria-pressed="${sel}">
       <div class="bc-top"><b>${b.no}호차</b><span class="hint">${b.cap}인승 · 운전 ${esc(b.driver)}</span></div>
       <div class="bc-st">${esc(b.state)}${b.hold != null && b.dwell > 0 && !em ? ` · ${Math.ceil(b.dwell)}초 뒤 출발` : ""}</div>
       <div class="bc-row"><span class="hint">다음 정류장</span><b>${em ? esc(BUS.emergency.stop.name) + " (직행)" : esc(nx.name)}</b></div>
       <div class="bc-row"><span class="hint">탑승</span><b class="mono">${b.load} / ${b.cap}명</b></div>
       <div class="meter"><i style="width:${pct}%;background:${pct>85?"var(--sev2)":"var(--ok)"}"></i></div>
-    </div>`;
+      <span class="bc-pick">${sel ? "노선 표시 중 · 다시 누르면 닫기" : "눌러서 노선 보기"}</span>
+    </button>`;
   }).join("");
+  if (html !== BUS.cardHtml){ el.innerHTML = html; BUS.cardHtml = html; }
 }
+/* ---------- 버스별 노선 보기: 1 · 2 · 3호차를 누르면 그 버스가 앞으로 들를 정류장 순서와 도착 예정 ---------- */
+function pickBus(no){
+  BUS.sel = BUS.sel === no ? null : no;
+  if (BUS.sel != null) busLog(`${BUS.sel}호차 노선 보기`, "");
+  renderBusSide(); renderBusRoute(); renderBusLive();
+}
+function busRouteOf(b){
+  const n = BUS_STOPS.length, em = BUS.emergency && BUS.emergency.bus === b ? BUS.emergency : null;
+  if (em){
+    const i = BUS_STOPS.indexOf(em.stop), t = em.phase === "going" ? ahead(((b.s % BUS.total)+BUS.total)%BUS.total, BUS.L[i]) / (BUS_SPEED*1.8) : 0;
+    return { em, list:[{ i, st:em.stop, k:1, t, label: em.phase === "going" ? `직행 · ${fmtEta(t)}` : em.phase === "loading" ? "대피 인원 탑승 중" : "탑승 완료 · 대피 장소로" }] };
+  }
+  const start = b.hold != null ? b.at : nextStopIdx(b.s), list = [];
+  for (let k = 0; k < n; k++){ const i = (start + k) % n, st = BUS_STOPS[i], off = !!BUS.closed[st.id], t = etaFor(b, i); list.push({ i, st, k:k+1, t, off, label: off ? "우회" : fmtEta(t) }); }
+  return { em:null, list };
+}
+function renderBusRoute(){
+  const box = $("#busRoute"), layer = $("#busRouteLayer"); if (!box) return;
+  const b = BUSES.find(x => x.no === BUS.sel);
+  if (!b){ if (!box.hidden){ box.hidden = true; box.innerHTML = ""; BUS.panelHtml = ""; } if (layer && BUS.routeHtml){ layer.innerHTML = ""; } BUS.routeHtml = ""; return; }
+  const r = busRouteOf(b), clock = t => hms(new Date(Date.now() + t*1000)).slice(0,5);
+  /* 지도: 흐르는 노선 + 정류장마다 순서 번호와 도착 예정 */
+  if (layer){
+    const flow = r.em ? "" : `<polygon class="br-flow" points="${BUS.P.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
+    const svg = flow + r.list.map(x => { const s = x.st; return `<g class="br-n"><circle cx="${s.x+11}" cy="${s.y-11}" r="8"/><text x="${s.x+11}" y="${s.y-7.5}" text-anchor="middle">${x.k}</text></g>
+      <text class="br-eta ${x.off?"off":""}" x="${s.x + s.lx}" y="${s.y + s.ly + 14}" text-anchor="${s.la}">${esc(x.label)}</text>`; }).join("");
+    if (svg !== BUS.routeHtml){ layer.innerHTML = svg; BUS.routeHtml = svg; }
+  }
+  /* 지도 아래: 들르는 순서 */
+  const head = r.em ? `비상 수송 중 · ${esc(r.em.stop.name)} 직행, 다른 정류장은 건너뜁니다` : `${esc(b.state)} · 지금부터 한 바퀴 들르는 순서`;
+  const html = `<div class="br-head"><b>${b.no}호차 노선</b><span class="hint">${head}</span><button type="button" class="btn sm" data-x="1">닫기</button></div>
+    <ol class="br-line">${r.list.map(x => `<li class="${x.off?"off":""} ${x.t <= 0 && !x.off ? "now" : ""}"><i>${x.k}</i><b title="${esc(x.st.name)}">${esc(x.st.name)}</b><span>${esc(x.label)}</span>${x.off || r.em ? "" : `<small class="mono">${x.t <= 0 ? "지금" : clock(x.t) + " 도착"}</small>`}</li>`).join("")}</ol>`;
+  box.hidden = false;
+  if (html !== BUS.panelHtml){ box.innerHTML = html; BUS.panelHtml = html; }
+}
+$("#busCards").addEventListener("click", e => { const c = e.target.closest(".bus-card"); if (c) pickBus(+c.dataset.no); });
+$("#busRoute").addEventListener("click", e => { if (e.target.closest("[data-x]") && BUS.sel != null) pickBus(BUS.sel); });
+$("#busMap").addEventListener("click", e => { const g = e.target.closest("#busLayer > g"); if (g) pickBus(+g.dataset.no); });
 function renderBanner(){
   const el = $("#busBanner"); if (!el) return;
   const inc = BUS.inc && BUS.incKey ? BUS.inc : null;
