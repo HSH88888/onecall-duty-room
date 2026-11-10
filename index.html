@@ -761,8 +761,8 @@ button.recip{background:var(--panel)}
     <div id="busBanner" style="margin-top:14px"></div>
     <div class="bus-layout">
       <div class="pane bus-mapbox">
-        <div class="pane-h"><h2 style="font-size:15px">순환 노선도</h2><span class="hint">정류장마다 4초 정차 · 한 바퀴 약 3분 · 시연용 시뮬레이션</span></div>
-        <div class="bus-map-wrap"><svg id="busMap" viewBox="0 0 820 470" role="img" aria-label="영내 순환버스 노선도"></svg></div>
+        <div class="pane-h"><h2 style="font-size:15px">순환 노선도</h2><span class="hint">3D 부대와 같은 배치 · 정류장마다 4초 정차 · 한 바퀴 약 3분</span></div>
+        <div class="bus-map-wrap"><svg id="busMap" viewBox="0 0 820 640" role="img" aria-label="영내 순환버스 노선도"></svg></div>
         <div class="bus-cards" id="busCards"></div>
       </div>
       <aside class="cc-side">
@@ -3170,18 +3170,24 @@ function drawFistFire(c, W, H){
    - 상황실에 1 · 2급 상황이 접수되면 해당 구역 정류장을 자동 우회
    - '비상 수송 배차'로 가장 빨리 갈 수 있는 버스를 현장으로 보냄
    ========================================================= */
+/* 노선도는 3D 부대(basemap3d.html)와 같은 좌표를 쓴다: x = 동(+)·서(-), z = 남(+)·북(-), 단위 m */
+const BX = x => 410 + x*2.8, BY = z => 318 + z*2.8;
+/* 버스가 지나는 길 (도로 꺾이는 점 + 정류장). 정문 ↔ 본부 옆 진입로 구간은 왕복한다. */
+const BUS_PATH = [[0,84,"gate"],[0,47,"hq"],[27,47],[27,12],[50,12,"mess"],[50,-15,"med"],[50,-55,"motor"],[50,-96],[0,-96,"heli"],[-50,-96],[-50,-72,"ammo"],[-50,-22,"b2"],[-50,12,"b1"],[27,12],[27,47],[0,47]];
+/* lx · ly · la: 이름표 위치(정류장 기준)와 정렬 */
 const BUS_STOPS = [
-  { id:"gate",  name:"정문 위병소",   x:90,  y:390, kw:["정문","위병소"] },
-  { id:"hq",    name:"대대본부",      x:210, y:300, kw:["대대본부","행정반","총기 보관실","통신실"] },
-  { id:"b1",    name:"1생활관",       x:330, y:220, kw:["1생활관"] },
-  { id:"b2",    name:"2생활관",       x:470, y:160, kw:["2생활관","2중대","보일러실","세탁실"] },
-  { id:"mess",  name:"취사장",        x:620, y:120, kw:["취사장"] },
-  { id:"px",    name:"PX · 3생활관",  x:730, y:220, kw:["PX","3생활관","휴게실"] },
-  { id:"med",   name:"의무실",        x:690, y:350, kw:["의무실"] },
-  { id:"gym",   name:"체력단련실",    x:540, y:400, kw:["체력단련실","연병장","헬기장"] },
-  { id:"motor", name:"정비고 · 유류고", x:370, y:420, kw:["정비고","유류고","주차장","펌프실"] },
+  { id:"gate",  name:"정문 위병소",   lx:-19, ly:4,   la:"end",   kw:["정문","위병소","면회실"] },
+  { id:"hq",    name:"대대본부",      lx:-19, ly:5,   la:"end",   kw:["대대본부","행정반","총기 보관실","통신실","당직실","주차장"] },
+  { id:"mess",  name:"취사장",        lx:19,  ly:27,  la:"start", kw:["취사장","펌프실"] },
+  { id:"med",   name:"의무대",        lx:-19, ly:4,   la:"end",   kw:["의무대","의무실"] },
+  { id:"motor", name:"정비고 · 유류고", lx:-17, ly:-19, la:"end",   kw:["정비고","유류고"] },
+  { id:"heli",  name:"헬기장",        lx:19,  ly:-7,  la:"start", kw:["헬기장"] },
+  { id:"ammo",  name:"탄약고 입구",   lx:19,  ly:4,   la:"start", kw:["탄약고"] },
+  { id:"b2",    name:"생활관 2동",    lx:19,  ly:4,   la:"start", kw:["생활관 2동","2생활관","2중대","보일러실","세탁실","PX","3생활관","휴게실","연병장"] },
+  { id:"b1",    name:"생활관 1동",    lx:19,  ly:27,  la:"start", kw:["생활관 1동","1생활관","1중대","체력단련실"] },
 ];
-const BUS_SPEED = 13;            // 화면 px / 초 (한 바퀴 약 3분)
+BUS_STOPS.forEach(st => { const p = BUS_PATH.find(q => q[2] === st.id); st.x = BX(p[0]); st.y = BY(p[1]); });
+const BUS_SPEED = 14;            // 화면 px / 초 (한 바퀴 약 3분)
 const BUS_DWELL = 4;             // 정류장 정차 초
 const BUS_EASE = 3;              // 정류장 앞 감속 · 출발 가속으로 더 걸리는 초
 const BUSES = [
@@ -3189,19 +3195,23 @@ const BUSES = [
   { no:2, cap:25, driver:"상병 이○○", s:0,   dwell:0, load:14, state:"운행" },
   { no:3, cap:15, driver:"일병 박○○", s:0,   dwell:0, load:3,  state:"운행" },
 ];
-const BUS = { L:[], total:0, closed:{}, reason:{}, emergency:null, incKey:null, log:[], built:false, last:0 };
+const BUS = { L:[], P:[], total:0, closed:{}, reason:{}, emergency:null, incKey:null, log:[], built:false, last:0 };
 (function geom(){
   let acc = 0;
-  BUS_STOPS.forEach((st, i) => { BUS.L[i] = acc; const n = BUS_STOPS[(i+1) % BUS_STOPS.length]; acc += Math.hypot(n.x - st.x, n.y - st.y); });
+  BUS_PATH.forEach((p, i) => {
+    const x = BX(p[0]), y = BY(p[1]), n = BUS_PATH[(i+1) % BUS_PATH.length], seg = Math.hypot(BX(n[0]) - x, BY(n[1]) - y);
+    BUS.P[i] = { x, y, s:acc, seg, ang:Math.atan2(BY(n[1]) - y, BX(n[0]) - x) };
+    if (p[2]) BUS.L[BUS_STOPS.findIndex(st => st.id === p[2])] = acc;
+    acc += seg;
+  });
   BUS.total = acc;
   BUSES.forEach((b, i) => { b.s = (BUS.total / BUSES.length) * i + 20; b.next = nextStopIdx(b.s); });
 })();
 function posAt(s){
   s = ((s % BUS.total) + BUS.total) % BUS.total;
-  for (let i = 0; i < BUS_STOPS.length; i++){
-    const a = BUS_STOPS[i], b = BUS_STOPS[(i+1) % BUS_STOPS.length], L0 = BUS.L[i], seg = Math.hypot(b.x-a.x, b.y-a.y);
-    if (s <= L0 + seg || i === BUS_STOPS.length-1){ const k = Math.min(1, (s - L0)/seg); return { x:a.x + (b.x-a.x)*k, y:a.y + (b.y-a.y)*k, ang:Math.atan2(b.y-a.y, b.x-a.x) }; }
-  }
+  let i = BUS.P.length - 1; while (i > 0 && BUS.P[i].s > s) i--;
+  const a = BUS.P[i], k = Math.min(1, (s - a.s)/a.seg), ca = Math.cos(a.ang), sa = Math.sin(a.ang);
+  return { x:a.x + ca*a.seg*k - sa*5, y:a.y + sa*a.seg*k + ca*5, ang:a.ang };      // 우측통행: 진행 방향 오른쪽으로 5px
 }
 function nextStopIdx(s){ s = ((s % BUS.total) + BUS.total) % BUS.total; for (let i=0;i<BUS_STOPS.length;i++) if (BUS.L[i] > s + .5) return i; return 0; }
 const ahead = (from, to) => { const d = to - from; return d >= 0 ? d : d + BUS.total; };
@@ -3300,97 +3310,101 @@ function buildBus(){
   busLog("영내 순환버스 3대 운행 시작 (06:30 ~ 22:00)", "g");
 }
 function drawBusMapStatic(){
-  const pts = BUS_STOPS.map(s => `${s.x},${s.y}`).join(" ");
+  const X = BX, Y = BY, K = 2.8, f = v => v.toFixed(1);
   const rnd = (i) => { const x = Math.sin(i*12.9898)*43758.5453; return x - Math.floor(x); };
-  const trees = (cx, cy, n, r=26, seed=1) => Array.from({length:n}, (_,i) => { const a = rnd(seed+i)*Math.PI*2, d = Math.sqrt(rnd(seed+i+50))*r, s = 5 + rnd(seed+i+90)*5; const x = cx+Math.cos(a)*d, y = cy+Math.sin(a)*d;
-    return `<circle cx="${(x+1.5).toFixed(1)}" cy="${(y+2).toFixed(1)}" r="${s.toFixed(1)}" fill="#050806" opacity=".45"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${s.toFixed(1)}" fill="url(#gTree)"/>`; }).join("");
-  // 건물: [x, y, w, h, 이름, 종류]
-  const B = (x,y,w,h,name,kind="bld") => {
-    const roof = kind === "barr" ? "url(#gRoofB)" : kind === "red" ? "url(#gRoofR)" : "url(#gRoof)";
-    const ridge = w > h ? `<line x1="${x+4}" y1="${y+h/2}" x2="${x+w-4}" y2="${y+h/2}" stroke="#000" stroke-opacity=".25"/>` : `<line x1="${x+w/2}" y1="${y+4}" x2="${x+w/2}" y2="${y+h-4}" stroke="#000" stroke-opacity=".25"/>`;
-    return `<g><rect x="${x+4}" y="${y+5}" width="${w}" height="${h}" rx="2" fill="#000" opacity=".4"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${roof}" stroke="#0a0f0d" stroke-width="1"/>${ridge}
-      <text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" class="bm-b">${name}</text></g>`;
+  const tree = (x, y, r) => `<circle cx="${f(x+1.5)}" cy="${f(y+2)}" r="${f(r)}" fill="#050806" opacity=".45"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="url(#gTree)"/>`;
+  const trees = (cx, cy, n, r=26, seed=1) => Array.from({length:n}, (_,i) => { const a = rnd(seed+i)*Math.PI*2, d = Math.sqrt(rnd(seed+i+50))*r; return tree(cx+Math.cos(a)*d, cy+Math.sin(a)*d, 5 + rnd(seed+i+90)*5); }).join("");
+  // 사각 구역: 중심 (x, z) · 가로 w · 세로 d (3D 부대와 같은 값)
+  const R = (x, z, w, d, attr) => `<rect x="${f(X(x - w/2))}" y="${f(Y(z - d/2))}" width="${f(w*K)}" height="${f(d*K)}" ${attr}/>`;
+  const B = (x, z, w, d, name, kind="bld", ly) => {
+    const roof = { green:"url(#gRoofG)", red:"url(#gRoofR)", slate:"url(#gRoofB)", metal:"url(#gRoofM)" }[kind] || "url(#gRoof)";
+    const px = X(x - w/2), py = Y(z - d/2), pw = w*K, ph = d*K;
+    const ridge = kind === "bld" ? "" : `<line x1="${f(px+4)}" y1="${f(py+ph/2)}" x2="${f(px+pw-4)}" y2="${f(py+ph/2)}" stroke="#000" stroke-opacity=".25"/>`;
+    return `<g><rect x="${f(px+4)}" y="${f(py+5)}" width="${f(pw)}" height="${f(ph)}" rx="2" fill="#000" opacity=".4"/><rect x="${f(px)}" y="${f(py)}" width="${f(pw)}" height="${f(ph)}" rx="2" fill="${roof}" stroke="#0a0f0d" stroke-width="1"/>${ridge}
+      <text x="${f(px+pw/2)}" y="${f(ly === undefined ? py+ph/2+4 : py+ph/2+ly)}" text-anchor="middle" class="bm-b">${name}</text></g>`;
   };
-  const car = (x,y,c="#8a948f",r=0) => `<rect x="${x}" y="${y}" width="12" height="6" rx="1.5" fill="${c}" transform="rotate(${r} ${x+6} ${y+3})"/>`;
+  const road = (pts, w, lined) => { const d = pts.map(p => `${f(X(p[0]))},${f(Y(p[1]))}`).join(" ");
+    return [`<polyline points="${d}" fill="none" stroke="#0f1412" stroke-width="${f(w*K+6)}" stroke-linejoin="round"/>`, `<polyline points="${d}" fill="none" stroke="#2c3330" stroke-width="${f(w*K)}" stroke-linejoin="round"/>`, lined ? `<polyline points="${d}" fill="none" stroke="#d7c46a" stroke-opacity=".75" stroke-width="1.6" stroke-dasharray="8 8"/>` : ""]; };
+  const roads = [road([[0,118],[0,42]],8,1), road([[-112,12],[112,12]],9,1), road([[50,16],[50,-96],[-50,-96],[-50,16]],8,1), road([[27,50],[27,8]],6,0), road([[-66,-72],[-46,-72]],6,0), road([[22,47],[27,47]],6,0)];
+  const route = BUS_PATH.map(p => `${f(X(p[0]))},${f(Y(p[1]))}`).join(" ");
+  // 순환 방향 화살표 (한 방향으로만 도는 구간)
+  const arrow = (x, z, deg) => `<path d="M-5 -4L4 0L-5 4" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".8" stroke-linecap="round" stroke-linejoin="round" transform="translate(${f(X(x))},${f(Y(z))}) rotate(${deg})"/>`;
+  const car = (x, z, c="#8a948f") => `<rect x="${f(X(x)-6)}" y="${f(Y(z)-3)}" width="12" height="6" rx="1.5" fill="${c}"/>`;
+  const truck = (x, z) => `<rect x="${f(X(x)-3.5)}" y="${f(Y(z)-9)}" width="7" height="18" rx="1.5" fill="#55663f" stroke="#0a0f0d" stroke-width=".6"/>`;
   $("#busMap").innerHTML = `
     <defs>
       <linearGradient id="gGrass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16251c"/><stop offset="1" stop-color="#12201a"/></linearGradient>
       <radialGradient id="gTree" cx=".35" cy=".35"><stop offset="0" stop-color="#3d5c44"/><stop offset="1" stop-color="#1f3326"/></radialGradient>
-      <linearGradient id="gRoof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55605b"/><stop offset="1" stop-color="#434c48"/></linearGradient>
+      <linearGradient id="gRoof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b6460"/><stop offset="1" stop-color="#474f4c"/></linearGradient>
       <linearGradient id="gRoofB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c5d6a"/><stop offset="1" stop-color="#3c4a55"/></linearGradient>
-      <linearGradient id="gRoofR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d4a40"/><stop offset="1" stop-color="#583b33"/></linearGradient>
-      <pattern id="pField" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#1b3323"/><rect width="5" height="10" fill="#1e3826"/></pattern>
+      <linearGradient id="gRoofR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4338"/><stop offset="1" stop-color="#5e332b"/></linearGradient>
+      <linearGradient id="gRoofG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a6645"/><stop offset="1" stop-color="#3a5237"/></linearGradient>
+      <linearGradient id="gRoofM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7e8884"/><stop offset=".5" stop-color="#99a39e"/><stop offset="1" stop-color="#6c7672"/></linearGradient>
       <pattern id="pHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#0d1511" stroke-width="2"/></pattern>
     </defs>
-    <rect width="820" height="470" fill="#0c1410"/>
-    <rect width="820" height="470" fill="url(#pHatch)" opacity=".6"/>
-    ${trees(10,20,14,30,3)}${trees(812,60,10,24,40)}${trees(812,440,10,26,80)}${trees(8,250,8,22,120)}
-    <rect x="28" y="24" width="782" height="432" rx="10" fill="url(#gGrass)"/>
-    <rect x="28" y="24" width="782" height="432" rx="10" fill="none" stroke="#9aa59f" stroke-opacity=".55" stroke-width="2" stroke-dasharray="2 5"/>
+    <rect width="820" height="640" fill="#0c1410"/>
+    <rect width="820" height="640" fill="url(#pHatch)" opacity=".6"/>
+    ${trees(14,24,12,26,3)}${trees(806,90,10,22,40)}${trees(800,610,9,22,80)}${trees(16,330,8,18,120)}${trees(120,622,8,20,160)}${trees(640,10,7,14,190)}
+    <!-- 부대 울타리 (가로 260m × 세로 205m) -->
+    ${R(0,-2.5,260,205,`rx="6" fill="url(#gGrass)"`)}
+    ${R(0,-2.5,260,205,`rx="6" fill="none" stroke="#9aa59f" stroke-opacity=".55" stroke-width="2" stroke-dasharray="2 5"`)}
+    ${[[124,94],[-124,94],[124,-99],[-124,-99]].map(p => R(p[0],p[1],5,5,`rx="1" fill="#59644a" stroke="#0a0f0d"`)).join("")}
 
-    <!-- 탄약고 구역 (흙 덮인 벙커 + 별도 울타리) -->
-    <rect x="44" y="40" width="190" height="100" rx="6" fill="#1a2a20" stroke="#c9a14a" stroke-opacity=".6" stroke-dasharray="3 4"/>
-    ${[0,1,2].map(i => `<ellipse cx="${80+i*58}" cy="88" rx="24" ry="20" fill="#2a3b2c" stroke="#0b120e"/><ellipse cx="${80+i*58}" cy="86" rx="15" ry="12" fill="#344a37"/><rect x="${72+i*58}" y="102" width="16" height="6" fill="#59625e"/>`).join("")}
-    <text x="139" y="132" text-anchor="middle" class="bm-b">탄약고 (출입 통제)</text>
-    <!-- 유류고 -->
-    <rect x="44" y="180" width="110" height="70" rx="4" fill="#1d241f" stroke="#59625e" stroke-dasharray="3 3"/>
-    ${[0,1,2].map(i => `<circle cx="${70+i*30}" cy="208" r="12" fill="#7b8580" stroke="#0a0f0d"/><circle cx="${70+i*30}" cy="208" r="5" fill="#5f6964"/>`).join("")}
-    <text x="99" y="240" text-anchor="middle" class="bm-b">유류고</text>
+    <!-- 탄약고 (이중 울타리 + 흙 덮인 벙커 2동) -->
+    ${R(-92,-72,56,56,`rx="5" fill="#1a2a20" stroke="#c9a14a" stroke-opacity=".6" stroke-dasharray="3 4"`)}
+    ${R(-92,-72,50,50,`rx="4" fill="none" stroke="#c9a14a" stroke-opacity=".3" stroke-dasharray="3 4"`)}
+    ${[-82,-62].map(z => `${R(-96,z,18,12,`rx="15" fill="#2a3b2c" stroke="#0b120e"`)}${R(-96,z,12,7,`rx="9" fill="#344a37"`)}${R(-86.4,z,1.6,5,`fill="#7b8580"`)}`).join("")}
+    <text x="${f(X(-92))}" y="${f(Y(-49))}" text-anchor="middle" class="bm-b">탄약고 (출입 통제)</text>
 
-    <!-- 순환 도로 (아스팔트 · 연석 · 중앙선) -->
-    <line x1="${BUS_STOPS[0].x}" y1="${BUS_STOPS[0].y}" x2="-10" y2="452" stroke="#0f1412" stroke-width="30" stroke-linecap="round"/>
-    <line x1="${BUS_STOPS[0].x}" y1="${BUS_STOPS[0].y}" x2="-10" y2="452" stroke="#2c3330" stroke-width="24"/>
-    <polygon points="${pts}" fill="none" stroke="#0f1412" stroke-width="30" stroke-linejoin="round"/>
-    <polygon points="${pts}" fill="none" stroke="#2c3330" stroke-width="24" stroke-linejoin="round"/>
-    <polygon points="${pts}" fill="none" stroke="#d7c46a" stroke-opacity=".75" stroke-width="1.6" stroke-dasharray="8 8" stroke-linejoin="round"/>
-    <line x1="${BUS_STOPS[0].x}" y1="${BUS_STOPS[0].y}" x2="-10" y2="452" stroke="#d7c46a" stroke-opacity=".75" stroke-width="1.6" stroke-dasharray="8 8"/>
-    <polygon points="${pts}" fill="none" stroke="var(--accent)" stroke-opacity=".22" stroke-width="10" stroke-linejoin="round"/>
+    <!-- 도로 · 포장 구역 -->
+    ${roads.map(r => r[0]).join("")}${roads.map(r => r[1]).join("")}
+    ${R(0,47,44,10,`fill="#3a403d"`)}${R(80,-55,48,12,`fill="#2c3330"`)}${R(41,60,18,24,`rx="2" fill="#262c2a"`)}
+    ${roads.map(r => r[2]).join("")}
+    <polygon points="${route}" fill="none" stroke="var(--accent)" stroke-opacity=".24" stroke-width="10" stroke-linejoin="round"/>
+    ${arrow(50,-36,-90)}${arrow(50,-78,-90)}${arrow(26,-96,180)}${arrow(-26,-96,180)}${arrow(-50,-48,90)}${arrow(-50,-4,90)}${arrow(-12,12,0)}${arrow(39,12,0)}
 
-    <!-- 연병장 (트랙 + 잔디) -->
-    <ellipse cx="520" cy="285" rx="96" ry="48" fill="#6b3d33"/>
-    <ellipse cx="520" cy="285" rx="82" ry="36" fill="url(#pField)"/>
-    <ellipse cx="520" cy="285" rx="89" ry="42" fill="none" stroke="#e8dcd4" stroke-opacity=".35" stroke-dasharray="4 4"/>
-    <line x1="520" y1="250" x2="520" y2="320" stroke="#dfe7e2" stroke-opacity=".35"/>
-    <circle cx="520" cy="285" r="10" fill="none" stroke="#dfe7e2" stroke-opacity=".35"/>
-    <text x="520" y="289" text-anchor="middle" class="bm-b" style="fill:#cfd8d3">연병장</text>
+    <!-- 연병장 -->
+    ${R(0,-34,70,52,`fill="#6e5f47"`)}${R(0,-34,65,47,`fill="none" stroke="#e9e3cf" stroke-opacity=".5" stroke-width="1.5"`)}
+    <line x1="${f(X(0))}" y1="${f(Y(-57.5))}" x2="${f(X(0))}" y2="${f(Y(-10.5))}" stroke="#e9e3cf" stroke-opacity=".5" stroke-width="1.5"/>
+    <circle cx="${f(X(0))}" cy="${f(Y(-34))}" r="18" fill="none" stroke="#e9e3cf" stroke-opacity=".5" stroke-width="1.5"/>
+    <text x="${f(X(0))}" y="${f(Y(-34)+4)}" text-anchor="middle" class="bm-b" style="fill:#efe9d6">연병장</text>
     <!-- 헬기장 -->
-    <circle cx="355" cy="330" r="27" fill="#3a4240" stroke="#d7dcda" stroke-opacity=".5" stroke-width="2"/>
-    <text x="355" y="337" text-anchor="middle" style="font:800 20px var(--font);fill:#e6ece9;opacity:.8">H</text>
-    <text x="355" y="372" text-anchor="middle" class="bm-b">헬기장</text>
-    <!-- 간부 주차장 -->
-    <rect x="240" y="320" width="62" height="44" rx="3" fill="#262c2a"/>
-    ${[0,1,2,3].map(i => `<line x1="${246+i*14}" y1="322" x2="${246+i*14}" y2="340" stroke="#9aa59f" stroke-opacity=".4"/>`).join("")}
-    ${car(248,326,"#7d8b9a",90)}${car(262,326,"#a0a7a3",90)}${car(276,326,"#6f3f38",90)}
-    <text x="271" y="358" text-anchor="middle" class="bm-b">주차장</text>
+    <circle cx="${f(X(0))}" cy="${f(Y(-82))}" r="27" fill="#3a4240" stroke="#d7dcda" stroke-opacity=".5" stroke-width="2"/>
+    <text x="${f(X(0))}" y="${f(Y(-82)+7)}" text-anchor="middle" style="font:800 20px var(--font);fill:#e6ece9;opacity:.8">H</text>
+    <!-- 유류고 (방유턱 + 탱크 2기) -->
+    ${R(114,-74,16,25,`rx="2" fill="#1d241f" stroke="#7b8580" stroke-opacity=".7"`)}
+    ${[-80,-68].map(z => `<circle cx="${f(X(114))}" cy="${f(Y(z))}" r="11.5" fill="#a9b0ab" stroke="#0a0f0d"/><circle cx="${f(X(114))}" cy="${f(Y(z))}" r="5" fill="#7b8580"/>`).join("")}
+    <text x="${f(X(114))}" y="${f(Y(-56))}" text-anchor="middle" class="bm-b">유류고</text>
+    <!-- 주차장 · 정비고 앞 차량 -->
+    ${[52,57.5,63].map((z,i) => car(36,z,["#7d8b9a","#a0a7a3","#6f3f38"][i]) + car(46,z,["#4f5b3a","#8a948f","#c9c4b0"][i])).join("")}
+    <text x="${f(X(41))}" y="${f(Y(77))}" text-anchor="middle" class="bm-b">주차장</text>
+    ${[66,74,82,90].map(x => truck(x,-54)).join("")}
 
     <!-- 건물 -->
-    ${B(110,238,82,40,"대대본부","red")}<line x1="200" y1="236" x2="200" y2="214" stroke="#cfd6d2" stroke-width="1.5"/><rect x="200" y="214" width="12" height="7" fill="#d6dde0"/>
-    ${B(232,146,104,32,"1생활관","barr")}
-    ${B(386,82,116,32,"2생활관","barr")}
-    ${B(560,44,96,40,"취사장")}
-    ${B(746,170,52,34,"PX")}${B(744,250,54,40,"3생활관","barr")}
-    ${B(708,386,76,36,"의무실","red")}
-    ${B(500,420,90,30,"체력단련실")}
-    ${B(250,424,104,26,"정비고")}${car(206,432,"#4f6b4a")}${car(206,442,"#4f6b4a")}${car(222,437,"#4f6b4a")}
-    ${B(626,150,46,30,"통신실")}
-    <!-- 위병소 · 차단기 -->
-    <rect x="52" y="392" width="20" height="14" rx="2" fill="#6b7570" stroke="#0a0f0d"/>
-    <line x1="74" y1="404" x2="74" y2="430" stroke="#e0e6e3" stroke-width="2.5" stroke-dasharray="4 3"/>
-    <text x="62" y="386" text-anchor="middle" class="bm-b">위병소</text>
+    ${B(0,35,40,14,"대대본부")}
+    <line x1="${f(X(-14))}" y1="${f(Y(50))}" x2="${f(X(-14))}" y2="${f(Y(50)-16)}" stroke="#cfd6d2" stroke-width="1.5"/><rect x="${f(X(-14))}" y="${f(Y(50)-16)}" width="11" height="7" fill="#d6dde0"/>
+    ${B(-76,30,42,14,"생활관 1동","green")}${B(-76,-22,42,14,"생활관 2동","green")}
+    ${B(72,35,32,18,"취사장","red")}
+    ${B(72,-15,26,14,"의무대")}<path d="M${f(X(81))} ${f(Y(-15)-6)}v12M${f(X(81)-6)} ${f(Y(-15))}h12" stroke="#d94a40" stroke-width="3.2"/>
+    ${B(80,-72,40,22,"차량정비고","metal")}
+    ${B(-76,62,30,14,"체력단련실","slate")}
+    ${B(104,40,9,7,"급수 펌프실","bld",25)}
+    ${B(16,88,10,7,"위병소","bld",25)}
+    <line x1="${f(X(-4.6))}" y1="${f(Y(100))}" x2="${f(X(4.6))}" y2="${f(Y(100))}" stroke="#e0e6e3" stroke-width="2.5" stroke-dasharray="4 3"/>
 
     <!-- 나무 -->
-    ${trees(430,250,5,14,200)}${trees(620,350,5,16,220)}${trees(300,265,3,10,240)}${trees(690,90,5,14,260)}${trees(205,190,4,12,280)}${trees(785,330,4,10,300)}${trees(440,450,4,12,320)}
+    ${[[-110,60],[-112,75],[-95,82],[110,75],[100,85],[112,60],[-30,80],[-40,72],[-22,88],[110,-20],[112,-5],[-112,-20],[-112,0],[70,-100],[-30,-103]].map((p,i) => tree(X(p[0]), Y(p[1]), 6 + rnd(i+7)*3)).join("")}
 
     <!-- 정류장 -->
     ${BUS_STOPS.map(s => { const c = BUS.closed[s.id]; return `<g class="bm-stop" data-id="${s.id}" tabindex="0" role="button" aria-label="${s.name} 정류장 ${c?"우회 중":"운행"}">
       <circle cx="${s.x}" cy="${s.y}" r="13" fill="${c?"var(--sev1)":"#0e1412"}" stroke="${c?"#fff":"var(--accent)"}" stroke-width="2.5"/>
       ${c ? `<path d="M${s.x-5} ${s.y-5}L${s.x+5} ${s.y+5}M${s.x+5} ${s.y-5}L${s.x-5} ${s.y+5}" stroke="#fff" stroke-width="2.6"/>` : `<rect x="${s.x-6}" y="${s.y-5}" width="12" height="9" rx="2" fill="var(--accent)"/><rect x="${s.x-4}" y="${s.y-3}" width="8" height="3" fill="#0e1412"/><circle cx="${s.x-3}" cy="${s.y+5}" r="1.4" fill="var(--accent)"/><circle cx="${s.x+3}" cy="${s.y+5}" r="1.4" fill="var(--accent)"/>`}
-      <text x="${s.x}" y="${s.y-20}" text-anchor="middle" class="bm-s">${s.name}</text></g>`; }).join("")}
+      <text x="${s.x + s.lx}" y="${s.y + s.ly}" text-anchor="${s.la}" class="bm-s">${s.name}</text></g>`; }).join("")}
 
     <!-- 방위 · 축척 -->
-    <g transform="translate(784,52)"><circle r="14" fill="#0e1412" stroke="#59625e"/><path d="M0 -10 L4 4 L0 1 L-4 4Z" fill="#e3e9e4"/><text y="-17" text-anchor="middle" class="bm-b" style="fill:#e3e9e4">N</text></g>
-    <g transform="translate(660,446)"><rect width="40" height="4" fill="#e3e9e4"/><rect x="40" width="40" height="4" fill="#59625e"/><text x="0" y="-4" class="bm-b">0</text><text x="80" y="-4" text-anchor="end" class="bm-b">200m</text></g>
-    <text x="10" y="466" class="bm-b">관사 · ○○역 방면</text>
+    <g transform="translate(796,46)"><circle r="14" fill="#0e1412" stroke="#59625e"/><path d="M0 -10 L4 4 L0 1 L-4 4Z" fill="#e3e9e4"/><text y="-17" text-anchor="middle" class="bm-b" style="fill:#e3e9e4">N</text></g>
+    <g transform="translate(620,626)"><rect width="70" height="4" fill="#e3e9e4"/><rect x="70" width="70" height="4" fill="#59625e"/><text x="0" y="-4" class="bm-b">0</text><text x="140" y="-4" text-anchor="end" class="bm-b">50m</text></g>
+    <text x="${f(X(0)+20)}" y="630" class="bm-b">관사 · ○○역 방면</text>
     <g id="busLayer"></g>`;
   $("#busMap").querySelectorAll(".bm-stop").forEach(g => { g.addEventListener("click", () => toggleStop(g.dataset.id)); g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleStop(g.dataset.id); } }); });
 }
@@ -4075,7 +4089,7 @@ const M3_B = [
   ["fuel","유류고",["유류고","유류","주유"]],
   ["heli","헬기장",["헬기장","헬기"]],
 ];
-const M3_STOP = { gate:"gate", hq:"hq", b1:"barracks1", b2:"barracks2", px:"barracks2", mess:"mess", med:"medical", gym:"gym", motor:"motorpool" };
+const M3_STOP = { gate:"gate", hq:"hq", b1:"barracks1", b2:"barracks2", mess:"mess", med:"medical", motor:"motorpool", heli:"heli", ammo:"ammo" };
 function m3Incident(){
   if (!S.result || ["idle","closed"].includes(S.phase)) return null;
   const msg = S.result.headline || S.result.type || "상황 발생";

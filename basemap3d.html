@@ -373,9 +373,11 @@ function road(x1, z1, x2, z2, w, lined = true) {
 }
 road(0, 140, 0, 42, 8);          // 정문 진입로 (부대 밖까지)
 road(-112, 12, 112, 12, 9);      // 동서 주도로
-road(50, 18, 50, -92, 8);        // 동쪽 도로
-road(-50, 18, -50, -92, 8);      // 서쪽 도로
+road(50, 18, 50, -100, 8);       // 동쪽 도로
+road(-50, 18, -50, -100, 8);     // 서쪽 도로
+road(-46, -96, 46, -96, 8);      // 북쪽 도로 (순환버스가 도는 길)
 road(27, 50, 27, 8, 6, false);   // 본부 옆 진입로
+plane(3, 6, MAT.roadPlain, 23, .05, 47);         // 광장 ↔ 본부 옆 진입로 연결
 road(-66, -72, -46, -72, 6, false); // 탄약고 진입로
 plane(48, 12, MAT.roadPlain, 80, .05, -55);      // 정비고 앞마당
 plane(18, 24, MAT.roadPlain, 41, .05, 60);       // 주차장
@@ -620,7 +622,7 @@ instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
     if (NO.some(([a, b, c, d]) => x > a && x < c && z > b && z < d)) continue;
     const h = heightAt(x, z); list.push([x, Math.max(0, h), z, 1 + rnd() * 1.4]);
   }
-  for (const [x, z] of [[-110, 60], [-112, 75], [-95, 82], [110, 75], [100, 85], [112, 60], [-30, 80], [-40, 72], [-22, 88], [110, -20], [112, -5], [-112, -20], [-112, 0], [30, -97], [-24, -97]])
+  for (const [x, z] of [[-110, 60], [-112, 75], [-95, 82], [110, 75], [100, 85], [112, 60], [-30, 80], [-40, 72], [-22, 88], [110, -20], [112, -5], [-112, -20], [-112, 0], [70, -100], [-30, -103]])
     list.push([x + rnd() * 3, 0, z + rnd() * 3, .8 + rnd() * .4]);
   const trunkGeo = new THREE.CylinderGeometry(.2, .35, 3, 5); trunkGeo.translate(0, 1.5, 0);
   const trunks = new THREE.InstancedMesh(trunkGeo, Lm({ color: 0x5b4030 }), list.length);
