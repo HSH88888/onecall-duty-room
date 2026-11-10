@@ -717,7 +717,7 @@ button.recip{background:var(--panel)}
   </div>
   <div id="view-cctv" hidden>
     <section class="cc-head">
-      <div class="cc-title"><span class="live-dot"></span><div><h2>CCTV 관제 · 25대</h2><p class="hint">AI가 모든 카메라를 실시간으로 분석해 연기 · 불꽃을 찾습니다. CAM-25는 실제 웹캠으로, 비춘 불꽃을 진짜로 인식합니다.</p></div></div>
+      <div class="cc-title"><span class="live-dot"></span><div><h2>CCTV 관제 · 25대</h2><p class="hint">카메라를 고르고 <b>드론 보내기</b>를 누르면 그 지점을 드론 화면으로 확인합니다. AI가 모든 카메라를 실시간으로 분석해 연기 · 불꽃을 찾습니다. CAM-25는 실제 웹캠으로, 비춘 불꽃을 진짜로 인식합니다.</p></div></div>
       <div class="cc-stats">
         <div class="kv"><span class="label">정상</span><b class="mono" id="ccOk">25</b></div>
         <div class="kv"><span class="label">감지</span><b class="mono" id="ccHit" style="color:var(--sev1)">0</b></div>
@@ -729,7 +729,7 @@ button.recip{background:var(--panel)}
       <div class="cc-grid" id="ccGrid"></div>
       <aside class="cc-side">
         <div class="pane cc-focus">
-          <div class="pane-h"><h2 style="font-size:15px" id="ccFocusT">CAM-07 · 2중대 보일러실</h2><span class="hint mono" id="ccFocusS">AI 정상</span><button class="btn sm" id="ccTo3d" type="button" style="margin-left:auto">3D 위치</button></div>
+          <div class="pane-h"><h2 style="font-size:15px" id="ccFocusT">CAM-07 · 2중대 보일러실</h2><span class="hint mono" id="ccFocusS">AI 정상</span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" id="ccTo3d" type="button">3D 위치</button><button class="btn primary sm" id="ccDrone" type="button">드론 보내기</button></span></div>
           <div class="cc-big"><canvas id="ccBig" width="640" height="360"></canvas><div class="cc-box" id="ccBigBox" hidden><span></span></div></div>
           <div id="liveCtl" class="live-ctl" hidden>
             <div class="row"><button class="btn primary sm" id="liveOn">웹캠 연결</button><button class="btn sm" id="liveOff" disabled>연결 해제</button>
@@ -2895,9 +2895,10 @@ function raiseAlert(){
       <h3>화재 감지 · 당직사관 확인 필요</h3>
       <dl><dt>카메라</dt><dd>${cam.id} · ${esc(cam.loc)}</dd><dt>AI 추정</dt><dd><b>${esc(cam.fire.name)}</b></dd><dt>감지</dt><dd>${cam.live && LV.src === "fist" ? `실제 웹캠 · 손 인식 AI가 시연 신호(주먹)를 감지` : cam.live ? `실제 영상 분석 · 불꽃 색 픽셀 ${(LV.ratio*100).toFixed(2)}% · 흔들림 ${Math.round(LV.flick*100)}%${LV.aiWhat ? ` · AI 2차 확인: ${esc(LV.aiWhat)}` : " · 규칙 기반 2차 판정"}` : `${cam.fire.v.tone==="black"?"검은 연기":cam.fire.v.tone==="white"?"흰 연기":"연기"} → 불꽃 순서로 감지${cam.fire.v.multi>1?" · 여러 지점 확산":""}${cam.fire.v.sparks?" · 전기 불꽃":""}`}</dd><dt>신뢰도</dt><dd><span class="mono" id="ccConf">${cf}%</span><div class="meter"><i id="ccMeter" style="width:${cf}%"></i></div></dd><dt>감지 시각</dt><dd class="mono">${hms(new Date())}</dd></dl>
       <span class="hint">위 영상으로 실제 화재인지 확인한 뒤 접수하세요. 접수하면 위치가 채워진 화재 보고 흐름이 바로 시작됩니다.</span>
-      <div class="row"><button class="btn danger" id="ccAccept">실제 화재 · 상황 접수</button><button class="btn" id="ccDismiss">오탐 처리</button></div>
+      <div class="row"><button class="btn danger" id="ccAccept">실제 화재 · 상황 접수</button><button class="btn" id="ccDismiss">오탐 처리</button><button class="btn" id="ccAlertDrone">드론으로 확인</button></div>
     </div>`;
   $("#ccAccept").addEventListener("click", acceptFire);
+  $("#ccAlertDrone").addEventListener("click", () => m3Drone(cam.id));
   $("#ccDismiss").addEventListener("click", () => { if (cam.live) LV.mute = Date.now() + 8000; ccLog("g", `${cam.id} · 당직사관 확인: 오탐 처리 (학습 데이터로 저장)`); log(`CCTV ${cam.id} 감지 · 당직사관 오탐 처리`,"info"); clearCam(cam); CC.inc = null; $("#ccAlert").innerHTML = ""; hideBar(); });
   if ($("#view-cctv").hidden) showBar(`CCTV 화재 감지 · ${cam.id} ${cam.loc} · ${cam.fire.name}`);
   $("#vdot").hidden = false;
@@ -4150,7 +4151,7 @@ setTimeout(djTick, 6000);
 affectedStop = function(text){ let best = null, bl = 0; for (const st of BUS_STOPS) for (const k of st.kw) if (k.length > bl && text.includes(k)){ bl = k.length; best = st; } return best; };
 
 /* ===== 3D 부대: basemap3d.html(three.js 배치도)을 iframe으로 띄우고 접수된 상황 · CCTV 감지를 그 위치에 표시 ===== */
-const M3 = { drone:null, on:false, ready:false, sent:null, camSent:null, sel:null, selCam:null, pendingCam:null, cams:[], listHtml:"", camHtml:"" };
+const M3 = { drone:null, droneFrom:null, pendingDrone:null, on:false, ready:false, sent:null, camSent:null, sel:null, selCam:null, pendingCam:null, cams:[], listHtml:"", camHtml:"" };
 /* [건물 id, 이름, 상황 문장에서 찾을 낱말] — 긴(구체적인) 낱말이 먼저 이긴다 */
 const M3_B = [
   ["gate","위병소",["위병소","정문","면회"]],
@@ -4207,6 +4208,12 @@ function m3Sync(){
     M3.camSent = ck;
   }
 }
+/* CCTV 화면에서 드론 보내기: 3D 부대의 드론 카메라 화면으로 바꿔 그 카메라가 비추는 지점으로 보낸다. 끝나면 CCTV 화면으로 돌아온다. */
+function m3Drone(camId){
+  M3.droneFrom = "cctv"; showView("map3d");
+  if (m3Win()) m3Post({ type:"drone", cam:camId, back:"CCTV 화면으로" }); else M3.pendingDrone = camId;
+  $("#view-3d").querySelector(".m3-stage").scrollIntoView({ block:"nearest" });
+}
 function m3FocusCam(id){ M3.selCam = id; M3.sel = null; if (m3Win()) m3Post({ type:"cam-focus", id }); else M3.pendingCam = id; m3List(); }
 function m3List(){
   const inc = m3Incident(), ci = m3CamInc();
@@ -4225,7 +4232,8 @@ function m3Start(){
     f.addEventListener("load", () => {
       try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); M3.cams = f.contentWindow.BaseMap.cameras(); } catch(e) {}
       M3.ready = true; M3.sent = null; M3.camSent = null; m3Sync();
-      if (M3.pendingCam){ m3Post({ type:"cam-focus", id:M3.pendingCam }); M3.pendingCam = null; }
+      if (M3.pendingDrone){ m3Post({ type:"drone", cam:M3.pendingDrone, back:"CCTV 화면으로" }); M3.pendingDrone = null; }
+      else if (M3.pendingCam){ m3Post({ type:"cam-focus", id:M3.pendingCam }); M3.pendingCam = null; }
       else { const inc = m3Incident(), ci = m3CamInc(); if (inc && inc.cam) m3Post({ type:"cam-focus", id:inc.cam }); else if (inc) m3Post({ type:"focus", id:inc.id }); else if (ci) m3Post({ type:"cam-focus", id:ci.id }); }
       m3List();
     });
@@ -4236,6 +4244,7 @@ function m3Start(){
 setInterval(() => { const inc = m3Incident(), ci = m3CamInc(); $("#m3Dot").hidden = !(inc || (ci && ci.state === "hit")); m3Sync(); if (!$("#view-3d").hidden) m3List(); }, 1000);
 $("#m3List").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M3.sel = b.dataset.id; M3.selCam = null; m3Post({ type:"focus", id:b.dataset.id }); m3List(); });
 $("#m3Cams").addEventListener("click", e => { const b = e.target.closest("button"); if (b) m3FocusCam(b.dataset.id); });
+$("#ccDrone").addEventListener("click", () => m3Drone(CAMS[CC.sel].id));
 $("#ccTo3d").addEventListener("click", () => { const id = CAMS[CC.sel].id; showView("map3d"); m3FocusCam(id); });
 window.addEventListener("message", e => {
   const f = $("#m3"); if (!f.contentWindow || e.source !== f.contentWindow) return;
@@ -4244,10 +4253,14 @@ window.addEventListener("message", e => {
   else if (m.type === "camera-select"){ M3.selCam = m.id; M3.sel = null; m3List(); }
   else if (m.type === "drone"){
     /* 드론 현장확인 → 당직일지 기록 */
-    if (m.event === "launch"){ M3.drone = { name:m.name }; log(`드론 현장확인 출동 → ${m.name} (당직사관 지시)`, "send"); }
-    else if (m.event === "arrive"){ if (M3.drone) M3.drone.arrived = true; log(`드론 ${m.name} 상공 도착 · 영상 확인 중`, "info"); }
-    else if (m.event === "report"){ if (M3.drone) M3.drone.result = m.result; log(`드론 영상 확인 결과: ${m.name} ${m.result}`, m.result === "조치 필요" ? "alert" : "ack"); toast(`${m.name} 드론 확인 결과 '${m.result}'을(를) 당직일지에 기록했습니다.`); }
-    else if (m.event === "return"){ M3.drone = null; log(`드론 복귀 · ${m.name} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info"); }
+    const where = m.cam ? `${m.cam} ${m.name}` : m.name;
+    if (m.event === "launch"){ M3.drone = { name:where }; if (!m.cam) M3.droneFrom = null; log(`드론 현장확인 출동 → ${where} (${m.cam && M3.droneFrom === "cctv" ? "CCTV 화면에서 당직사관 지시" : "당직사관 지시"})`, "send"); }
+    else if (m.event === "arrive"){ if (M3.drone) M3.drone.arrived = true; log(`드론 ${where} 상공 도착 · 영상 확인 중`, "info"); }
+    else if (m.event === "report"){ if (M3.drone) M3.drone.result = m.result; log(`드론 영상 확인 결과: ${where} ${m.result}`, m.result === "조치 필요" ? "alert" : "ack"); if (m.cam && typeof ccLog === "function") ccLog(m.result === "조치 필요" ? "r" : "g", `${m.cam} · 드론 현장확인: ${m.result}`); toast(`${where} 드론 확인 결과 '${m.result}'을(를) 당직일지에 기록했습니다.`); }
+    else if (m.event === "return"){
+      M3.drone = null; log(`드론 복귀 · ${where} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info");
+      if (M3.droneFrom === "cctv"){ M3.droneFrom = null; const i = CAMS.findIndex(c => c.id === m.cam); showView("cctv"); if (i >= 0) selectCam(i); }   // 보냈던 CCTV 화면으로 복귀
+    }
     m3List();
   }
   else if (m.type === "camera-open"){ const i = CAMS.findIndex(c => c.id === m.id); if (i >= 0){ showView("cctv"); selectCam(i); } }

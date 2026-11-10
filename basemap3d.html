@@ -249,6 +249,7 @@ body.drone.nvg canvas#c{filter:grayscale(1) sepia(1) hue-rotate(62deg) saturate(
 
   드론 현장확인:
     BaseMap.drone('ammo')                 // 드론 카메라 모드로 전환해 그 건물로 비행
+    BaseMap.drone('CAM-07')               // CCTV 카메라 id를 주면 그 카메라가 비추는 지점으로 비행
     BaseMap.droneExit()
     postMessage({ type:'drone', id:'ammo' })
     // 부모로 { type:'drone', event:'launch'|'arrive'|'report'|'return', id, name, result } 가 전달돼요.
@@ -809,7 +810,7 @@ function selectBuilding(id, move) {
 }
 function renderInfo() {
   const c = selectedCam;
-  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c; $('btnDrone').hidden = !!c;
+  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c;
   if (c) {
     const home = c.bid ? find(c.bid) : null;
     $('infoCode').textContent = c.id + (c.live ? ' · LIVE' : ''); $('infoName').textContent = c.loc;
@@ -906,7 +907,7 @@ canvas.addEventListener('pointermove', e => {
 const drEl = $('drone'), drNoise = $('droneNoise'), drNoiseG = drNoise.getContext('2d'), drLink = $('droneLink');
 const drLook = new THREE.Vector3(), drP0 = new THREE.Vector3(), drP1 = new THREE.Vector3(), drPrev = new THREE.Vector3();
 const drPost = (event, extra) => {
-  const detail = Object.assign({ event, id: DR.b.id, name: DR.b.name }, extra);
+  const detail = Object.assign({ event, id: DR.b.id, name: DR.b.name, cam: DR.b.cam || null }, extra);
   window.dispatchEvent(new CustomEvent('basemap:drone', { detail }));
   if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'drone' }, detail), '*'); } catch (e) {} }
 };
@@ -915,26 +916,34 @@ function drPhase(p) {
   const fl = p === 'link' || p === 'takeoff' || p === 'cruise';
   $('drSkip').hidden = !fl; $('drOrbit').hidden = $('drOk').hidden = $('drBad').hidden = p !== 'orbit';
   $('drPhase').textContent = { link: '영상 연결 중', takeoff: '이륙 · 대대본부 옥상', cruise: '목표로 비행 중', orbit: '현장 도착 · 선회 촬영' }[p] || '';
-  $('drMsg').textContent = p === 'orbit' ? '끌어서 직접 살펴볼 수 있어요. 확인 결과를 눌러 기록하세요.' : alerts.has(DR.b.id) ? `위기상황: ${alerts.get(DR.b.id).message}` : '현장확인 출동';
+  $('drMsg').textContent = p === 'orbit' ? '끌어서 직접 살펴볼 수 있어요. 확인 결과를 눌러 기록하세요.' : DR.b.note ? DR.b.note : alerts.has(DR.b.bid) ? `위기상황: ${alerts.get(DR.b.bid).message}` : '현장확인 출동';
 }
-function droneStart(id) {
-  const b = find(id); if (!b || DR.on) return false;
+/* id: 건물 id · 이름, 또는 CCTV 카메라 id (카메라면 그 카메라가 비추는 지점으로 간다) */
+function droneStart(id, backLabel) {
+  if (DR.on) return false;
+  const c = findCam(id), bld = c ? (c.bid ? find(c.bid) : null) : find(id);
+  if (!c && !bld) return false;
   const hq = BUILDINGS.find(x => x.id === 'hq');
-  DR.save = { cam: camera.position.clone(), tgt: controls.target.clone(), min: controls.minDistance, max: controls.maxDistance, sel: b.id };
+  DR.save = { cam: camera.position.clone(), tgt: controls.target.clone(), min: controls.minDistance, max: controls.maxDistance, sel: c ? null : bld.id, selCam: c ? c.id : null };
   selectBuilding(null);
+  const b = c ? { id: c.id, cam: c.id, name: c.loc, code: c.id, bid: bld ? bld.id : null, note: c.state === 'hit' ? `CCTV 화재 감지: ${c.msg || '확인 필요'}` : c.state === 'warn' ? `CCTV 의심 감지: ${c.msg || '분석 중'}` : `${c.id} 화면 확인 요청` }
+              : { id: bld.id, name: bld.name, code: bld.code, bid: bld.id };
   Object.assign(DR, { on: true, b, bat: 96, spd: 0, hud: 0, auto: true, result: null });
-  DR.tgt = new THREE.Vector3(b.center.x, Math.max(2, b.box.max.y * .5), b.center.z);
-  DR.R = b.size * .75 + 24; DR.H = Math.max(20, b.box.max.y + 13);
+  // 벽에 달린 카메라: 그 벽면을 정면에서 본다 · 기둥 카메라: 카메라 뒤쪽에서 같은 방향을 본다
+  if (c) { DR.tgt = c.pole ? new THREE.Vector3(c.at[0], 2, c.at[2]) : new THREE.Vector3(c.p[0], Math.max(2, c.p[1] * .7), c.p[2]); DR.R = c.pole ? 34 : 30; DR.H = c.pole ? 20 : 16; }
+  else { DR.tgt = new THREE.Vector3(bld.center.x, Math.max(2, bld.box.max.y * .5), bld.center.z); DR.R = bld.size * .75 + 24; DR.H = Math.max(20, bld.box.max.y + 13); }
   drP0.set(hq.center.x + 6, 34, hq.center.z);
-  const dir = new THREE.Vector3(drP0.x - DR.tgt.x, 0, drP0.z - DR.tgt.z); if (dir.lengthSq() < 1) dir.set(.4, 0, 1); dir.normalize();
+  const dir = c ? new THREE.Vector3((c.pole ? 1 : -1) * (c.p[0] - c.at[0]), 0, (c.pole ? 1 : -1) * (c.p[2] - c.at[2])) : new THREE.Vector3(drP0.x - DR.tgt.x, 0, drP0.z - DR.tgt.z);
+  if (dir.lengthSq() < 1) dir.set(.4, 0, 1); dir.normalize();
   drP1.set(DR.tgt.x + dir.x * DR.R, DR.H, DR.tgt.z + dir.z * DR.R);
   DR.dur = Math.max(2.6, drP0.distanceTo(drP1) / 26);
   fly = null; controls.enabled = false; controls.autoRotate = false;
   document.body.classList.add('drone'); document.body.classList.toggle('nvg', $('btnNight').getAttribute('aria-pressed') === 'true');
   drEl.hidden = false; $('drStamp').hidden = true; $('drOrbit').setAttribute('aria-pressed', 'true');
-  $('drTgt').textContent = `${b.code} ${b.name}`; $('drTgt').classList.toggle('hot', alerts.has(b.id));
+  $('drTgt').textContent = `${b.code} ${b.name}`; $('drTgt').classList.toggle('hot', alerts.has(b.bid) || !!(c && c.state === 'hit'));
   camera.position.set(drP0.x, hq.box.max.y + 1.2, drP0.z); drPrev.copy(camera.position);
   drNoise.hidden = reduceMotion; drNoise.style.opacity = 1; drLink.hidden = false; drLink.textContent = '드론 영상 연결 중…';
+  $('drBack').textContent = backLabel || '상황실 화면으로';
   drPhase('link'); drPost('launch');
   return true;
 }
@@ -950,7 +959,7 @@ function droneReport(ok) {
   DR.result = ok ? '이상 없음' : '조치 필요';
   const st = $('drStamp'); st.hidden = false; st.classList.toggle('bad', !ok);
   st.textContent = `확인 결과: ${DR.result} · 기록됨`;
-  if (!ok && !alerts.has(DR.b.id)) { setAlert(DR.b.id, '드론 확인: 조치 필요'); $('drTgt').classList.add('hot'); }
+  if (!ok && DR.b.bid && !alerts.has(DR.b.bid)) { setAlert(DR.b.bid, '드론 확인: 조치 필요'); $('drTgt').classList.add('hot'); }
   drPost('report', { result: DR.result });
 }
 function droneExit() {
@@ -960,7 +969,7 @@ function droneExit() {
   document.body.classList.remove('drone', 'nvg'); drEl.hidden = true; drNoise.hidden = true; drLink.hidden = true;
   drPost('return', { result });
   DR.on = false;
-  selectBuilding(sv.sel, false);
+  if (sv.selCam) selectCamera(sv.selCam, false); else selectBuilding(sv.sel, false);
   flyTo(sv.cam, sv.tgt, true);
 }
 function droneStep(dt) {
@@ -995,7 +1004,7 @@ function droneStep(dt) {
     drNoiseG.putImageData(im, 0, 0);
   }
 }
-$('btnDrone').addEventListener('click', () => { if (selected) droneStart(selected.id); });
+$('btnDrone').addEventListener('click', () => { if (selectedCam) droneStart(selectedCam.id); else if (selected) droneStart(selected.id); });
 $('drSkip').addEventListener('click', () => { if (DR.on && DR.phase !== 'orbit') droneArrive(); });
 $('drOrbit').addEventListener('click', () => { DR.auto = !DR.auto; controls.autoRotate = DR.auto; $('drOrbit').setAttribute('aria-pressed', String(DR.auto)); });
 $('drOk').addEventListener('click', () => droneReport(true));
@@ -1027,7 +1036,7 @@ window.addEventListener('message', e => {
   else if (m.type === 'cam-state') setCamState(m.id, m.state, m.message);
   else if (m.type === 'cam-focus') selectCamera(m.id, true);
   else if (m.type === 'cams') BaseMap.setCams(m.on);
-  else if (m.type === 'drone') { if (m.exit) droneExit(); else droneStart(m.id); }
+  else if (m.type === 'drone') { if (m.exit) droneExit(); else droneStart(m.cam || m.id, m.back); }
   else if (m.type === 'clear') clearAlert(m.id);
   else if (m.type === 'focus') BaseMap.focus(m.id);
   else if (m.type === 'overview') BaseMap.overview();
