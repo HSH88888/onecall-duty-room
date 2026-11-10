@@ -561,6 +561,24 @@ body{padding-block:0 84px}
 .appbar .status{margin-left:auto;display:flex;align-items:center;gap:16px}
 .appbar .who{color:var(--muted);font-size:14.5px;white-space:nowrap}
 .appbar .clock{font-size:19px;font-weight:700}
+.clock-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid transparent;border-radius:9px;padding:3px 8px;color:inherit;font:inherit;cursor:pointer}
+.clock-btn:hover,.clock-btn[aria-expanded="true"]{background:var(--panel-2);border-color:var(--line-2)}
+.clock-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.vt-tag{font-size:11px;font-weight:700;color:#1C1305;background:var(--accent);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.vt-pop{position:fixed;z-index:90;width:min(330px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line-2);border-radius:14px;padding:14px;box-shadow:0 14px 40px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.vt-pop[hidden]{display:none}
+.vt-h{display:flex;align-items:center;gap:8px}.vt-h b{font-size:15px}
+.vt-x{margin-left:auto;width:30px;height:30px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer}
+.vt-now{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;background:var(--panel-2)}
+.vt-now b{font-size:24px}.vt-now span{font-size:12.5px;color:var(--muted)}
+.vt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.vt-grid .btn{padding-left:4px;padding-right:4px;white-space:nowrap}
+.vt-grid .btn.on,.vt-seg .btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.vt-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.vt-row > label,.vt-row > span{color:var(--muted);min-width:68px}
+.vt-row input[type=time]{flex:1;min-width:0;background:var(--panel-2);color:var(--fg);border:1px solid var(--line-2);border-radius:8px;padding:6px 8px;font:inherit;color-scheme:dark}
+.vt-seg{display:flex;gap:6px;flex:1}.vt-seg .btn{flex:1}
+.vt-pop .hint{font-size:12px;line-height:1.55;margin:0}
 .appbar .phase{border:0;background:rgba(75,196,143,.13);color:var(--ok);padding:9px 16px;font-size:14.5px}
 .appbar .phase[data-p="alert"]{background:rgba(255,90,82,.15);color:var(--sev1)}
 .appbar .phase[data-p="send"]{background:var(--accent-soft);color:var(--accent)}
@@ -711,12 +729,27 @@ button.recip{background:var(--panel)}
     </nav>
     <div class="status">
       <span class="who">○○대대 · 당직사관 중위 김○○</span>
-      <span id="dateLbl" hidden></span><b class="clock mono" id="clock">--:--</b>
+      <span id="dateLbl" hidden></span><button type="button" class="clock-btn" id="clockBtn" aria-haspopup="dialog" aria-expanded="false" title="가상 시각 설정 (시연용)"><b class="clock mono" id="clock">--:--</b><span class="vt-tag" id="vtTag" hidden>가상</span></button>
       <span class="phase" id="phase" data-p="idle"><i></i><span id="phaseTxt">평시</span></span>
       <button class="gear" id="gearBtn" aria-label="설정 · AI 연결"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
     </div>
   </header>
   <div class="cc-bar" id="ccBar" hidden><span class="blip"></span><span id="ccBarTxt"></span><button class="btn sm" id="ccBarGo">영상 확인</button></div>
+  <div class="vt-pop" id="vtPop" role="dialog" aria-label="가상 시각 설정" hidden>
+    <div class="vt-h"><b>가상 시각</b><span class="hint">시연용</span><button type="button" class="vt-x" id="vtClose" aria-label="닫기">×</button></div>
+    <div class="vt-now"><b class="mono" id="vtNow">--:--:--</b><span id="vtLight"></span></div>
+    <div class="vt-grid" id="vtPresets">
+      <button type="button" class="btn sm" data-t="">실제 시각</button>
+      <button type="button" class="btn sm" data-t="03:00">03:00 새벽</button>
+      <button type="button" class="btn sm" data-t="07:00">07:00 일출</button>
+      <button type="button" class="btn sm" data-t="15:00">15:00 오후</button>
+      <button type="button" class="btn sm" data-t="17:30">17:30 해질녘</button>
+      <button type="button" class="btn sm" data-t="22:00">22:00 밤</button>
+    </div>
+    <div class="vt-row"><label for="vtTime">직접 입력</label><input type="time" id="vtTime" value="03:00"><button type="button" class="btn sm" id="vtSetBtn">적용</button></div>
+    <div class="vt-row"><span>흐르는 속도</span><div class="vt-seg" id="vtSpeed"><button type="button" class="btn sm" data-x="1">1배</button><button type="button" class="btn sm" data-x="10">10배</button><button type="button" class="btn sm" data-x="60">60배</button></div></div>
+    <p class="hint">당직일지 · 보고 문자 · CCTV · 드론 화면이 이 시각을 씁니다. 드론은 시각에 맞춰 주간 · 해질녘 · 야간투시 화면으로 바뀌고, 3D 배치도는 그대로입니다. 소요 시간은 실제 시간으로 잽니다.</p>
+  </div>
   <div id="view-ops">
   <nav class="stepper" aria-label="진행 단계">
     <button class="st-i cur" data-s="1"><b>1</b>말하기</button><i class="st-line"></i>
@@ -825,7 +858,7 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110l" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110m" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
@@ -1248,6 +1281,14 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const pad = n => String(n).padStart(2,"0");
 const hms = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 const hm  = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+/* ---------- 가상 시각 (시연용) ----------
+   화면에 보이는 시각(시계 · 당직일지 · 보고 문자 · CCTV · 드론 화면)은 이 가상 시각을 쓴다.
+   경과 시간(소요 시간 · 타이머)은 Date.now() 실제 시간 그대로라 시각을 바꿔도 측정값은 변하지 않는다. */
+const VT = (() => { try { const v = JSON.parse(localStorage.getItem("onecall.vt") || "null"); if (v && v.on) return v; } catch(e) {} return { on:false, r0:0, v0:0, speed:1 }; })();
+const vAt = ms => VT.on ? VT.v0 + (ms - VT.r0) * VT.speed : ms;      // 실제 시각(ms) → 가상 시각(ms)
+const vnow = () => vAt(Date.now());
+const vdate = ms => new Date(ms == null ? vnow() : vAt(+ms));
+function vtSave(){ try { localStorage.setItem("onecall.vt", JSON.stringify(VT)); } catch(e) {} }
 const DAYS = ["일","월","화","수","목","금","토"];
 const ymd = d => `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}.(${DAYS[d.getDay()]})`;
 const mmss = ms => { const s = Math.max(0, Math.floor(ms/1000)); return `${pad(Math.floor(s/60))}:${pad(s%60)}`; };
@@ -1288,7 +1329,7 @@ let sample = null;
 
 /* ---------- 시계 ---------- */
 function tick(){
-  const d = new Date();
+  const d = vdate();
   $("#clock").textContent = hm(d); $("#clock").title = hms(d);
   $("#dateLbl").textContent = ymd(d);
   if (S.t0){ $("#sw").textContent = mmss((S.tDone || Date.now()) - S.t0); }
@@ -1299,6 +1340,53 @@ function tick(){
   }
 }
 setInterval(tick, 250); tick();
+
+/* 가상 시각 설정 창 (헤더 시계를 누르면 열림) */
+function vtLight(h){                        // 드론 화면이 어떻게 보일지 (3D 쪽 조명 기준과 맞춤: 11월 일출 07:00 · 일몰 17:30)
+  if (h >= 6.6 && h < 7.6) return "일출 무렵 · 드론 저조도 화면";
+  if (h >= 7.6 && h < 16.9) return "주간 · 드론 주간 화면";
+  if (h >= 16.9 && h < 17.95) return "해질녘 · 드론 저조도 화면";
+  return "야간 · 드론 야간투시 화면";
+}
+function vtRender(){
+  const d = vdate(), h = d.getHours() + d.getMinutes()/60;
+  $("#vtNow").textContent = hms(d);
+  $("#vtLight").textContent = (VT.on ? `가상 시각${VT.speed > 1 ? ` · ${VT.speed}배 속도` : ""}` : "실제 시각") + " · " + vtLight(h);
+  const cur = VT.on ? hm(vdate(VT.r0)) : null;
+  $("#vtPresets").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t ? (VT.on && b.dataset.t === cur && VT.speed === 1 && Date.now() - VT.r0 < 60000) : !VT.on));
+  $("#vtSpeed").querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.x === (VT.on ? VT.speed : 1)));
+}
+/* 3D 화면들(배치도 · CCTV 드론 영상)에 가상 시각을 알려 준다. 받은 쪽은 속도에 맞춰 스스로 흘려 쓴다. */
+function vtBroadcast(){
+  const m = { type:"clock", v:vnow(), speed: VT.on ? VT.speed : 1 };
+  ["#m3", "#ccDroneFrame"].forEach(q => { const f = $(q); try { if (f && f.src && f.contentWindow) f.contentWindow.postMessage(m, location.origin); } catch(e) {} });
+}
+function vtApply(){
+  vtSave(); tick(); vtRender(); vtBroadcast();
+  $("#vtTag").hidden = !VT.on; $("#vtTag").textContent = VT.on && VT.speed > 1 ? `가상 ×${VT.speed}` : "가상";
+  if (typeof renderTimetable === "function") renderTimetable();
+}
+function vtSet(hhmm){
+  if (!hhmm) Object.assign(VT, { on:false, speed:1 });
+  else { const [h, m] = hhmm.split(":").map(Number), d = new Date(Date.now()); d.setHours(h, m, 0, 0); Object.assign(VT, { on:true, r0:Date.now(), v0:d.getTime() }); }
+  vtApply(); $("#vtTime").value = hm(vdate()); toast(VT.on ? `가상 시각을 ${hhmm}로 맞췄습니다.` : "실제 시각으로 돌아왔습니다.");
+}
+function vtPlace(){
+  const r = $("#clockBtn").getBoundingClientRect(), w = Math.min(330, innerWidth - 24);
+  $("#vtPop").style.top = `${Math.round(r.bottom + 8)}px`;
+  $("#vtPop").style.left = `${Math.round(Math.max(12, Math.min(innerWidth - w - 12, r.right - w)))}px`;
+}
+function vtOpen(on){ $("#vtPop").hidden = !on; $("#clockBtn").setAttribute("aria-expanded", String(on)); if (on){ vtPlace(); vtRender(); $("#vtTime").value = hm(vdate()); } }
+$("#clockBtn").addEventListener("click", () => vtOpen($("#vtPop").hidden));
+$("#vtClose").addEventListener("click", () => { vtOpen(false); $("#clockBtn").focus(); });
+$("#vtPresets").addEventListener("click", e => { const b = e.target.closest("button"); if (b) vtSet(b.dataset.t); });
+$("#vtSetBtn").addEventListener("click", () => { if ($("#vtTime").value) vtSet($("#vtTime").value); });
+$("#vtSpeed").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; const v = vnow(); Object.assign(VT, { on:true, r0:Date.now(), v0:v, speed:+b.dataset.x }); vtApply(); });
+document.addEventListener("pointerdown", e => { if (!$("#vtPop").hidden && !e.target.closest("#vtPop, #clockBtn")) vtOpen(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#vtPop").hidden){ vtOpen(false); $("#clockBtn").focus(); } });
+addEventListener("resize", () => { if (!$("#vtPop").hidden) vtPlace(); });
+setInterval(() => { if (!$("#vtPop").hidden) vtRender(); }, 250);
+$("#vtTag").hidden = !VT.on; if (VT.on && VT.speed > 1) $("#vtTag").textContent = `가상 ×${VT.speed}`;
 
 function setPhase(p){
   S.phase = p;
@@ -1312,7 +1400,7 @@ function setPhase(p){
 function startClock(){ if (!S.t0){ S.t0 = Date.now(); S.tDone = null; $("#swNote").innerHTML = `측정 중 · 기존 방식 <span class="old mono">약 07:00</span> (가정치)`; } }
 
 /* ---------- 타임라인 ---------- */
-function log(text, kind="info", at=new Date(), ex=false){
+function log(text, kind="info", at=vdate(), ex=false){
   const li = document.createElement("li");
   li.dataset.k = ex ? "sample" : kind; li.className = "new";
   li.innerHTML = `<time>${hms(at)}</time><span class="dot"></span><span>${esc(text)}${ex?'<span class="ex">예시</span>':""}</span>`;
@@ -1321,7 +1409,7 @@ function log(text, kind="info", at=new Date(), ex=false){
   $("#tl").prepend(li);
 }
 (function seed(){
-  const base = new Date();
+  const base = vdate();
   const at = (h,m)=>{ const d=new Date(base); d.setHours(h,m,0,0); if (d>base) d.setDate(d.getDate()-1); return d; };
   [[18,0,"당직근무 인수인계 완료 (당직사령 대위 박○○)"],[21,30,"순찰 1회차: 탄약고 · 위병소 이상 없음"],[22,0,"일석점호 결과 이상 없음"]]
     .sort((a,b)=>at(a[0],a[1])-at(b[0],b[1])).forEach(([h,m,t])=>log(t,"info",at(h,m),true));
@@ -1628,7 +1716,7 @@ async function analyze(){
   if (!text) return;
   clearAuto();
   setPhase("analyzing");
-  const at = new Date(S.t0 || Date.now());
+  const at = vdate(S.t0 || Date.now());
   log("보고 받아쓰기 완료 · AI 판단 요청","ai");
   $("#analyzeBtn").disabled = true;
   const steps = ["상황 유형 · 긴급 등급 판단", `지침서 ${MANUAL.total}쪽에서 해당 절차 찾기`, "지금 할 일 순서 정리", "보고 대상 선정 · 보고서 작성"];
@@ -1759,7 +1847,7 @@ function renderTodo(){
   $("#todoCnt").textContent = `${n} / ${r.todo.length} 완료`;
   $("#todoList").querySelectorAll("input").forEach(cb => cb.addEventListener("change", e => {
     const i = +e.target.dataset.i;
-    S.todoDone[i] = e.target.checked ? new Date() : null; S.todoAuto[i] = false;
+    S.todoDone[i] = e.target.checked ? vdate() : null; S.todoAuto[i] = false;
     if (e.target.checked) log(`조치 완료: ${S.result.todo[i].task}`,"ack");
     renderTodo();
   }));
@@ -1852,7 +1940,7 @@ function mergePatch(p, text){
   const tagNo = S.sent ? S.reportNo : 1;
   const changed = {};
   for (const [k,v] of Object.entries(p.set || {})) if (r.report[k] !== undefined && v && String(v) !== r.report[k]) { r.report[k] = String(v); changed[k] = true; }
-  const now = new Date();
+  const now = vdate();
   (p.done || []).map(Number).filter(i => r.todo[i] && !S.todoDone[i]).forEach(i => { S.todoDone[i] = now; S.todoAuto[i] = true; });
   (p.resolve || []).map(Number).filter(i => r.missing[i] !== undefined && !S.missOk[i]).forEach(i => { S.missOk[i] = tagNo; });
   (p.add || []).slice(0,3).forEach(x => { const a = Array.isArray(x) ? {when:x[0],task:x[1]} : x; if (a && a.task) r.todo.push({ when:String(a.when||"즉시"), task:String(a.task), added: tagNo }); });
@@ -1922,7 +2010,7 @@ function stLabel(r){
 function shortDate(d){ return `${d.getMonth()+1}.${d.getDate()}.(${DAYS[d.getDay()]})`; }
 function sevTrail(){ const h = S.sevHist || []; return h.length ? `${SEV[h[0]].name.slice(0,2)} → ${SEV[S.result.severity].name}` : SEV[S.result.severity].name; }
 function msgFor(rec, no){
-  const r = S.result, at = new Date(S.t0 || Date.now());
+  const r = S.result, at = vdate(S.t0 || Date.now());
   const act = isMiss(r.report.action) ? "초동조치 진행 중" : r.report.action;
   const up = isUp(rec.role);
   const greet = up ? `충성. ${honor(rec.role)}, ○○대대 ${ME}입니다.` : `${honor(rec.role)}, ○○대대 ${ME}입니다.`;
@@ -1945,7 +2033,7 @@ function msgFor(rec, no){
 /* 전화 음성용 대본: 기호를 빼고 말하듯이 */
 function sayTime(d){ return `${d.getHours()}시 ${d.getMinutes()}분`; }
 function speechFor(rec, no){
-  const r = S.result, at = new Date(S.t0 || Date.now());
+  const r = S.result, at = vdate(S.t0 || Date.now());
   const clean = s => String(s).replace(/○/g,"").replace(/\s*·\s*/g,", ").replace(/[()]/g," ").replace(/→/g,"에서").replace(/\s{2,}/g," ").trim();
   const act = isMiss(r.report.action) ? "초동조치를 진행하고 있습니다" : `현재 조치 사항은 ${clean(r.report.action)}입니다`;
   const up = isUp(rec.role);
@@ -2022,7 +2110,7 @@ async function callTo(i){
   await speak(reply, { pitch: 0.75, rate: 1.0, onProgress: k => { const y = $("#callScript .you:last-child span"); if (y) y.innerHTML = `<mark>${esc(reply.slice(0,k))}</mark>${esc(reply.slice(k))}`; } });
   if (me.cancelled) return endCall(timer, me);
   const dur = mmss(Date.now() - me.t0);
-  rec.s = "ack"; rec.ackAt = new Date();
+  rec.s = "ack"; rec.ackAt = vdate();
   S.lastMsg = S.lastMsg || {}; S.lastMsg[msgKey(rec, no)] = `(AI 음성 전화 보고 · 통화 ${dur})\n\n${script}\n\n▶ 응답: ${reply}`;
   log(`AI 음성 전화 보고 완료 → ${rec.role} 확인 (통화 ${dur})`,"ack");
   log(`${rec.role} 응답: "${reply}"`,"ack");
@@ -2146,10 +2234,10 @@ function sendTo(i){
       if (!t){ t = { role:"작전과장", reason:"대대장 미확인 시 대리 보고", s:"wait", sentNo:0, esc:true }; S.recips.push(t); }
       else t.esc = true;
       later(400, () => { sendTo(S.recips.indexOf(t)); renderComposer(); });
-      later(6500, () => { if (r.sentNo===no){ r.s="ack"; r.ackAt=new Date(); renderRecips(); renderComposer(); log("대대장 확인 (지연)","ack"); checkAllAck(); } });
+      later(6500, () => { if (r.sentNo===no){ r.s="ack"; r.ackAt=vdate(); renderRecips(); renderComposer(); log("대대장 확인 (지연)","ack"); checkAllAck(); } });
     });
   } else {
-    later(2600 + Math.random()*2400, () => { if (r.sentNo===no){ r.s="ack"; r.ackAt=new Date(); renderRecips(); renderComposer(); log(`${r.role} 확인 (제${no}보)`,"ack"); checkAllAck(); } });
+    later(2600 + Math.random()*2400, () => { if (r.sentNo===no){ r.s="ack"; r.ackAt=vdate(); renderRecips(); renderComposer(); log(`${r.role} 확인 (제${no}보)`,"ack"); checkAllAck(); } });
   }
 }
 /* 이미 보낸 대상에게 같은 보(報)를 다시 보낸다. 고친 문구가 있으면 그 문구로 보낸다. */
@@ -2163,7 +2251,7 @@ function resendTo(i){
   log(`제${no}보 문자 다시 보냄 (${r.resent}회째) → ${r.role} (${ROSTER[r.role]?.name})`,"send");
   renderRecips();
   later(1300 + Math.random()*800, () => { if (r.tk === tk && r.s === "sent" && r.sentNo === no){ r.s = "recv"; renderRecips(); renderComposer(); } });
-  later(2600 + Math.random()*2400, () => { if (r.tk === tk && r.sentNo === no && r.s !== "ack"){ r.s = "ack"; r.ackAt = new Date(); renderRecips(); renderComposer(); log(`${r.role} 확인 (제${no}보 다시 보냄)`,"ack"); checkAllAck(); } });
+  later(2600 + Math.random()*2400, () => { if (r.tk === tk && r.sentNo === no && r.s !== "ack"){ r.s = "ack"; r.ackAt = vdate(); renderRecips(); renderComposer(); log(`${r.role} 확인 (제${no}보 다시 보냄)`,"ack"); checkAllAck(); } });
 }
 function dispatch(){
   if (!S.result) return;
@@ -2179,7 +2267,7 @@ function checkAllAck(){
 /* ---------- 일지 ---------- */
 function eventItems(){ return [...$("#tl").querySelectorAll("li")].filter(li=>!li._sample).reverse().map(li=>({t:li._t, text:li._text})); }
 function buildJournal(){
-  const r = S.result, at = new Date(S.t0||Date.now());
+  const r = S.result, at = vdate(S.t0||Date.now());
   const man = getMan(r);
   const L = [];
   L.push("■ 당직 상황일지");
@@ -2247,7 +2335,7 @@ function table(rows, widths, headRow){
   return `<hp:p id="${pid++}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:tbl id="${pid++}" zOrder="0" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="CELL" repeatHeader="1" rowCnt="${rows.length}" colCnt="${widths.length}" cellSpacing="0" borderFillIDRef="${BF.cell}" noAdjust="0"><hp:sz width="${W}" widthRelTo="ABSOLUTE" height="${rows.length*1800}" heightRelTo="ABSOLUTE" protect="0"/><hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="COLUMN" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/><hp:outMargin left="0" right="0" top="0" bottom="0"/><hp:inMargin left="510" right="510" top="141" bottom="141"/>${trs}</hp:tbl></hp:run></hp:p>`;
 }
 function buildSection(){
-  const r = S.result, at = new Date(S.t0 || Date.now()), now = new Date();
+  const r = S.result, at = vdate(S.t0 || Date.now()), now = vdate();
   const man = getMan(r);
   const P = [];
   P.push(hp([["상 황 보 고 서", CP.title]], PP.center));
@@ -2316,7 +2404,7 @@ async function saveHwp(){
   if (!S.result) { toast("먼저 상황을 보고해 주세요."); return; }
   let blob;
   try { blob = await buildHwpx(); } catch(e){ toast("한글 파일을 만들지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요."); return; }
-  const at = new Date(S.t0 || Date.now());
+  const at = vdate(S.t0 || Date.now());
   const name = `상황보고서_${at.getFullYear()}${pad(at.getMonth()+1)}${pad(at.getDate())}_${pad(at.getHours())}${pad(at.getMinutes())}_${S.result.type.split(" ")[0].replace(/[\\/:*?"<>|()]/g,"")}.hwpx`;
   if (IN_CLAUDE){
     let dl = null; try { dl = await window.claude.use("downloads"); } catch(e) {}
@@ -2906,7 +2994,7 @@ function ccFrame(now){
 }
 requestAnimationFrame(ccFrame);
 setInterval(() => {
-  const s = hms(new Date());
+  const s = hms(vdate());
   document.querySelectorAll("[data-clock]").forEach(el => el.textContent = s);
 }, 1000);
 
@@ -2915,7 +3003,7 @@ setInterval(() => {
   CC.frames += CAMS.length; if (!$("#view-cctv").hidden) $("#ccFrames").textContent = CC.frames.toLocaleString();
 }, 2000);
 function ccLog(cls, text){
-  CC.log.unshift({ t:new Date(), cls, text });
+  CC.log.unshift({ t:vdate(), cls, text });
   $("#ccLog").innerHTML = CC.log.slice(0,30).map(x => `<li><time>${hms(x.t)}</time><span class="${x.cls}">${esc(x.text)}</span></li>`).join("");
 }
 function boxFor(cam, el){
@@ -2978,7 +3066,7 @@ function raiseAlert(){
   $("#ccAlert").innerHTML = `
     <div class="cc-alert">
       <h3>화재 감지 · 당직사관 확인 필요</h3>
-      <dl><dt>카메라</dt><dd>${cam.id} · ${esc(cam.loc)}</dd><dt>AI 추정</dt><dd><b>${esc(cam.fire.name)}</b></dd><dt>감지</dt><dd>${cam.live && LV.src === "fist" ? `실제 웹캠 · 손 인식 AI가 시연 신호(주먹)를 감지` : cam.live ? `실제 영상 분석 · 불꽃 색 픽셀 ${(LV.ratio*100).toFixed(2)}% · 흔들림 ${Math.round(LV.flick*100)}%${LV.aiWhat ? ` · AI 2차 확인: ${esc(LV.aiWhat)}` : " · 규칙 기반 2차 판정"}` : `${cam.fire.v.tone==="black"?"검은 연기":cam.fire.v.tone==="white"?"흰 연기":"연기"} → 불꽃 순서로 감지${cam.fire.v.multi>1?" · 여러 지점 확산":""}${cam.fire.v.sparks?" · 전기 불꽃":""}`}</dd><dt>신뢰도</dt><dd><span class="mono" id="ccConf">${cf}%</span><div class="meter"><i id="ccMeter" style="width:${cf}%"></i></div></dd><dt>감지 시각</dt><dd class="mono">${hms(new Date())}</dd></dl>
+      <dl><dt>카메라</dt><dd>${cam.id} · ${esc(cam.loc)}</dd><dt>AI 추정</dt><dd><b>${esc(cam.fire.name)}</b></dd><dt>감지</dt><dd>${cam.live && LV.src === "fist" ? `실제 웹캠 · 손 인식 AI가 시연 신호(주먹)를 감지` : cam.live ? `실제 영상 분석 · 불꽃 색 픽셀 ${(LV.ratio*100).toFixed(2)}% · 흔들림 ${Math.round(LV.flick*100)}%${LV.aiWhat ? ` · AI 2차 확인: ${esc(LV.aiWhat)}` : " · 규칙 기반 2차 판정"}` : `${cam.fire.v.tone==="black"?"검은 연기":cam.fire.v.tone==="white"?"흰 연기":"연기"} → 불꽃 순서로 감지${cam.fire.v.multi>1?" · 여러 지점 확산":""}${cam.fire.v.sparks?" · 전기 불꽃":""}`}</dd><dt>신뢰도</dt><dd><span class="mono" id="ccConf">${cf}%</span><div class="meter"><i id="ccMeter" style="width:${cf}%"></i></div></dd><dt>감지 시각</dt><dd class="mono">${hms(vdate())}</dd></dl>
       <span class="hint">위 영상으로 실제 화재인지 확인한 뒤 접수하세요. 접수하면 위치가 채워진 화재 보고 흐름이 바로 시작됩니다.</span>
       <div class="row"><button class="btn danger" id="ccAccept">실제 화재 · 상황 접수</button><button class="btn" id="ccDismiss">오탐 처리</button><button class="btn" id="ccAlertDrone">드론으로 확인</button></div>
     </div>`;
@@ -3417,7 +3505,7 @@ function dispatchEmergency(){
   toast(`${best.no}호차를 ${inc.stop.name}(으)로 보냈습니다. 다른 정류장은 건너뜁니다.`);
   renderBanner(); renderBusSide();
 }
-function busLog(text, cls=""){ BUS.log.unshift({ t:new Date(), text, cls }); const ul = $("#busLog"); if (ul) ul.innerHTML = BUS.log.slice(0,30).map(x => `<li><time>${hms(x.t)}</time><span class="${x.cls}">${esc(x.text)}</span></li>`).join(""); }
+function busLog(text, cls=""){ BUS.log.unshift({ t:vdate(), text, cls }); const ul = $("#busLog"); if (ul) ul.innerHTML = BUS.log.slice(0,30).map(x => `<li><time>${hms(x.t)}</time><span class="${x.cls}">${esc(x.text)}</span></li>`).join(""); }
 
 /* ---------- 화면 ---------- */
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -3624,7 +3712,7 @@ function renderBusRoute(){
   const box = $("#busRoute"), layer = $("#busRouteLayer"); if (!box) return;
   const b = BUSES.find(x => x.no === BUS.sel);
   if (!b){ if (!box.hidden){ box.hidden = true; box.innerHTML = ""; BUS.panelHtml = ""; } if (layer && BUS.routeHtml){ layer.innerHTML = ""; } BUS.routeHtml = ""; return; }
-  const r = busRouteOf(b), clock = t => hms(new Date(Date.now() + t*1000)).slice(0,5);
+  const r = busRouteOf(b), clock = t => hms(vdate(Date.now() + t*1000)).slice(0,5);
   /* 지도: 흐르는 노선 + 정류장마다 순서 번호와 도착 예정 */
   if (layer){
     const flow = r.em ? "" : `<polygon class="br-flow" points="${BUS.P.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
@@ -3659,7 +3747,7 @@ const SHUTTLE = {
 };
 function renderTimetable(){
   const el = $("#busTT"); if (!el) return;
-  const now = new Date(), cur = now.getHours()*60 + now.getMinutes();
+  const now = vdate(), cur = now.getHours()*60 + now.getMinutes();
   const toMin = s => { const [h,m] = s.split(":").map(Number); return h*60+m; };
   const nextIn = arr => arr.findIndex(r => toMin(r[0]) >= cur);
   const tbl = (title, head, rows) => { const n = nextIn(rows); return `<div class="tt"><h3>${title}</h3><div class="tt-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r,i)=>`<tr class="${i===n?"nx":""} ${n>=0&&i<n||n<0?"past":""}">${r.map((c,k)=>`<td class="${k===0?"mono":""}">${c}${k===0&&i===n?' <span class="tag">다음</span>':""}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`; };
@@ -3845,11 +3933,11 @@ function endDraft(){
 }
 const endSent = () => S.recips.filter(x => x.sentNo > 0);
 function endSummary(){
-  const r = S.result, at = new Date(S.t0 || Date.now()), et = new Date(S.end ? S.end.t : Date.now());
+  const r = S.result, at = vdate(S.t0 || Date.now()), et = vdate(S.end ? S.end.t : Date.now());
   return [["상황", r.headline], ["등급", SEV[r.severity].name], ["장소", r.report.where], ["접수", `${shortDate(at)} ${hm(at)}`], ["종료", `${shortDate(et)} ${hm(et)}`], ["총 소요", mmss(et - at)]];
 }
 function endText(){
-  const r = S.result, e = S.end, at = new Date(S.t0 || Date.now()), et = new Date(e.t), L = [];
+  const r = S.result, e = S.end, at = vdate(S.t0 || Date.now()), et = vdate(e.t), L = [];
   L.push("상 황 종 료 보 고 서", `(${SEV[r.severity].name} · ${r.headline})`, "");
   L.push(`보고 일시 : ${ymd(et)} ${hm(et)}    보고자 : ${ME}`, "");
   L.push("1. 상황 개요");
@@ -3870,7 +3958,7 @@ function endText(){
   return L.join("\n");
 }
 function endSection(){
-  const r = S.result, e = S.end, at = new Date(S.t0 || Date.now()), et = new Date(e.t), P = [];
+  const r = S.result, e = S.end, at = vdate(S.t0 || Date.now()), et = vdate(e.t), P = [];
   P.push(hp([["상 황 종 료 보 고 서", CP.title]], PP.center));
   P.push(hp([[`(${SEV[r.severity].name} · ${r.headline})`, CP.red]], PP.center));
   P.push(hp(""));
@@ -3915,7 +4003,7 @@ async function saveEndHwp(){
     zip.file("Preview/PrvText.txt", `상황 종료 보고서 - ${S.result.headline}`);
     blob = await zip.generateAsync({ type:"blob", mimeType:"application/hwp+zip", compression:"DEFLATE" });
   } catch(e){ toast("한글 파일을 만들지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요."); return; }
-  const at = new Date(S.t0 || Date.now());
+  const at = vdate(S.t0 || Date.now());
   const name = `상황종료보고서_${at.getFullYear()}${pad(at.getMonth()+1)}${pad(at.getDate())}_${pad(at.getHours())}${pad(at.getMinutes())}_${S.result.type.split(" ")[0].replace(/[\\/:*?"<>|()]/g,"")}.hwpx`;
   if (IN_CLAUDE){
     let dl = null; try { dl = await window.claude.use("downloads"); } catch(e) {}
@@ -3969,7 +4057,7 @@ function endUI(){
   const eb = $("#endBtn"); eb.hidden = !(can || closed); eb.textContent = closed ? "종료 보고서" : "상황 종료"; eb.classList.toggle("end", !closed);
   $("#closeBtn").textContent = closed ? "당직일지 보기" : "상황 종료 · 종료 보고서";
   const c = $("#endCard"); c.hidden = !(can || closed); c.classList.toggle("done", closed);
-  if (closed){ const et = new Date(S.end.t); c.innerHTML = `<div><b>상황 종료 · ${hm(et)}</b><p>접수부터 종료까지 ${mmss(S.end.t - (S.t0 || S.end.t))} · 종료 보고서와 당직일지가 작성되었습니다.</p></div><div class="row"><button class="btn hwp" data-end="open">종료 보고서 보기</button><button class="btn" data-end="new">새 상황</button></div>`; }
+  if (closed){ const et = vdate(S.end.t); c.innerHTML = `<div><b>상황 종료 · ${hm(et)}</b><p>접수부터 종료까지 ${mmss(S.end.t - (S.t0 || S.end.t))} · 종료 보고서와 당직일지가 작성되었습니다.</p></div><div class="row"><button class="btn hwp" data-end="open">종료 보고서 보기</button><button class="btn" data-end="new">새 상황</button></div>`; }
   else if (can){ const pend = pendingIdx().length; c.innerHTML = `<div><b>${pend ? `아직 보고하지 않은 대상 ${pend}명` : "모든 대상에게 보고했습니다"}</b><p>상황이 정리되면 종료 보고서를 작성하고 상황을 종료하세요.</p></div><div class="row"><button class="btn end" data-end="open">상황 종료 · 종료 보고서 작성</button></div>`; }
 }
 $("#endBtn").addEventListener("click", openEnd);
@@ -3979,12 +4067,12 @@ $("#endOv").addEventListener("click", e => { if (e.target.id === "endOv") $("#en
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("#endOv").hidden = true; });
 const _endSetPhase = setPhase; setPhase = function(p){ if (p === "idle" || p === "intake") S.end = null; _endSetPhase(p); endUI(); };
 const _endRenderRecips = renderRecips; renderRecips = function(){ _endRenderRecips(); endUI(); };
-const _endJournal = buildJournal; buildJournal = function(){ let t = _endJournal(); if (S.end) t += `\n\n■ 상황 종료 (${hms(new Date(S.end.t))})\n  - 결과 : ${S.end.result}\n  - 인명 · 장비 피해 : ${S.end.damage || "기재 없음"}\n  - 후속 조치 : ${S.end.follow.split("\n").join(" / ")}${S.end.notify ? "\n  - 보고 대상 전원에게 상황 종료 보고 발송" : ""}`; return t; };
+const _endJournal = buildJournal; buildJournal = function(){ let t = _endJournal(); if (S.end) t += `\n\n■ 상황 종료 (${hms(vdate(S.end.t))})\n  - 결과 : ${S.end.result}\n  - 인명 · 장비 피해 : ${S.end.damage || "기재 없음"}\n  - 후속 조치 : ${S.end.follow.split("\n").join(" / ")}${S.end.notify ? "\n  - 보고 대상 전원에게 상황 종료 보고 발송" : ""}`; return t; };
 /* ===== 평시 문자: 연락망에서 사람을 눌러 정기 보고 · 업무 연락을 보낸다 (시연용 · 발송 시뮬레이션) ===== */
 const PS = { sel:null, st:{}, tpl:0 };
 const psGreet = r => kindOf(r) === "down" ? `${r}, ${ME}이다.` : (isUp(r) ? "충성. " : "") + `${honor(r)}, ○○대대 ${ME}입니다.`;
 const PS_TPL = [
-  ["정기 보고", r => `[정기 보고]\n${psGreet(r)}\n${hm(new Date())} 현재 인원 · 시설 · 경계 이상 없습니다.\n특이사항 발생 시 즉시 보고드리겠습니다.`],
+  ["정기 보고", r => `[정기 보고]\n${psGreet(r)}\n${hm(vdate())} 현재 인원 · 시설 · 경계 이상 없습니다.\n특이사항 발생 시 즉시 보고드리겠습니다.`],
   ["순찰 결과", r => `[순찰 결과 보고]\n${psGreet(r)}\n순찰 결과 탄약고 · 위병소 · 취사장 이상 없습니다.\n다음 순찰 후 다시 보고드리겠습니다.`],
   ["점호 결과", r => `[일석점호 결과 보고]\n${psGreet(r)}\n22:00 일석점호 결과 인원 이상 없습니다.`],
   ["업무 연락", r => `[업무 연락]\n${psGreet(r)}\n야간 당직 근무 중입니다. 확인이 필요한 사항이 있어 연락드립니다.\n(내용을 여기에 적어 주세요)`],
@@ -4011,12 +4099,12 @@ function psSend(){
   const role = PS.sel, text = ($("#psTa")?.value || "").trim();
   if (!role || S.result) return;
   if (!text){ toast("보낼 내용을 적어 주세요."); $("#psTa").focus(); return; }
-  const st = PS.st[role] = { s:"sent", at:new Date() };
+  const st = PS.st[role] = { s:"sent", at:vdate() };
   log(`평시 문자 ${VERB[kindOf(role)]} → ${role} (${ROSTER[role]?.name || ""}) · ${PS_TPL[PS.tpl][0]}`, "send");
   toast(`${role}에게 문자를 보냈습니다. (시연)`);
   renderRoster();
   setTimeout(() => { if (PS.st[role] === st){ st.s = "recv"; if (!S.result) renderRoster(); } }, 900);
-  setTimeout(() => { if (PS.st[role] === st){ st.s = "ack"; st.at = new Date(); log(`${role} 확인 (평시 문자)`, "ack"); if (!S.result) renderRoster(); } }, 2600);
+  setTimeout(() => { if (PS.st[role] === st){ st.s = "ack"; st.at = vdate(); log(`${role} 확인 (평시 문자)`, "ack"); if (!S.result) renderRoster(); } }, 2600);
 }
 const _psRoster = renderRoster;
 renderRoster = function(){
@@ -4076,7 +4164,7 @@ const BOT_RULES = [
   { kw:["cctv","씨씨","카메라","캠","감시"], a:"카메라 25대를 제가 같이 보고 있어요 👀\n연기나 불꽃이 보이면 바로 알려 드리고, CAM-25는 진짜 웹캠이에요!", act:[["CCTV 보기", () => botGo("cctv")]] },
   { kw:["등급","1급","2급","3급","4급"], a:"긴급 등급은 네 단계예요!\n🔴 1급 긴급: 즉시 보고 (인명 · 화재 · 총기 등)\n🟠 2급 중대: 신속 보고\n🟡 3급 주의: 지휘 보고\n🔵 4급 참고: 일지 기록" },
   { kw:["점호","순찰","인수인계"], a:"오늘 일석점호는 22:00에 이상 없이 끝났고, 순찰 1회차도 탄약고 · 위병소 이상 없었어요 ✅\n아래 '오늘 당직일지'에서 전체 기록을 볼 수 있어요!" },
-  { kw:["몇 시","몇시","시간","시계"], a:() => `지금은 ${hm(new Date())}이에요! ⏰` },
+  { kw:["몇 시","몇시","시간","시계"], a:() => `지금은 ${hm(vdate())}이에요! ⏰` },
   { kw:["사용법","도움","기능","뭐 할 수","뭐할수","어떻게 써","뭘 할"], a:"저는 이런 걸 도와드려요!\n① 상황을 말하면 '지금 할 일'만 정리\n② 보고 문자 · AI 음성 전화\n③ 한글 보고서 · 당직일지\n④ CCTV 화재 감지\n⑤ 부대 버스 우회 · 비상 수송\n\n'화재', '응급', '버스', '보고'처럼 물어보세요!" },
   { kw:["누구","이름","소개","정체"], a:"충성! 귀요미 당직사관 '당직이'입니다 🫡\n밤새 사관님 옆에서 지침서를 대신 읽어 드리는 게 제 임무예요.\n(시연용이라 정해 둔 낱말에만 답할 수 있어요.)" },
   { kw:["졸려","피곤","힘들","지쳤","잠 와","잠와"], a:"사관님 조금만 더 힘내요…! 💪\n제가 옆에서 같이 지키고 있을게요. 물 한 잔 마시고 스트레칭 한 번 어때요?" },
@@ -4305,7 +4393,7 @@ function ccdLaunch(){
   ccdPost({ type:"clear" }); CAMS.forEach(c => { if (!ci || ci.id !== c.id) ccdPost({ type:"cam-state", id:c.id, state:"normal" }); });
   if (inc && inc.id) ccdPost({ type:"alert", id:inc.id, message:inc.msg, focus:false });
   if (ci) ccdPost({ type:"cam-state", id:ci.id, state:ci.state, message:ci.msg });
-  ccdPost({ type:"drone", cam:CCD.cam });
+  vtBroadcast(); ccdPost({ type:"drone", cam:CCD.cam });
 }
 function ccDrone(camId){
   const i = CAMS.findIndex(c => c.id === camId); if (i < 0) return;
@@ -4313,7 +4401,7 @@ function ccDrone(camId){
   if (CC.sel !== i) selectCam(i);
   Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false, pad:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110l"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; vtBroadcast(); if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110m"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
@@ -4380,6 +4468,7 @@ function m3Start(){
     M3.on = true;
     f.addEventListener("load", () => {
       try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); M3.cams = f.contentWindow.BaseMap.cameras(); } catch(e) {}
+      vtBroadcast();
       M3.ready = true; M3.sent = null; M3.camSent = null; m3Sync();
       if (M3.pendingCam){ m3Post({ type:"cam-focus", id:M3.pendingCam }); M3.pendingCam = null; }
       else { const inc = m3Incident(), ci = m3CamInc(); if (inc && inc.cam) m3Post({ type:"cam-focus", id:inc.cam }); else if (inc) m3Post({ type:"focus", id:inc.id }); else if (ci) m3Post({ type:"cam-focus", id:ci.id }); }

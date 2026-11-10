@@ -229,7 +229,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
   <div class="cross"></div>
   <div class="tl"><div class="rec"><i></i>REC · DRONE-01</div><div id="drClock">--:--:--</div><div id="drPhase">이륙 준비</div></div>
   <div class="tgt"><b id="drTgt"></b><span id="drMsg"></span></div>
-  <div class="tr"><div>BAT <b id="drBat">96</b>%</div><div>SIG ▮▮▮▮▯ · GPS 14</div><div class="src" id="drSrc">영상 소스: 3D 시뮬레이션 (실제 적용 시 드론 실시간 영상)</div></div>
+  <div class="tr"><div id="drMode">EO · 주간</div><div>BAT <b id="drBat">96</b>%</div><div>SIG ▮▮▮▮▯ · GPS 14</div><div class="src" id="drSrc">영상 소스: 3D 시뮬레이션 (실제 적용 시 드론 실시간 영상)</div></div>
   <div class="tele"><span>ALT</span><b id="drAlt">0 m</b><span>SPD</span><b id="drSpd">0 km/h</b><span>DIST</span><b id="drDist">0 m</b></div>
   <div class="stamp" id="drStamp" hidden></div>
   <div id="drPad" role="group" aria-label="드론 조종" hidden>
@@ -282,6 +282,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     BaseMap.drone('ammo')                 // 드론 카메라 모드로 전환해 그 건물로 비행
     BaseMap.drone('CAM-07')               // CCTV 카메라 id를 주면 그 카메라가 비추는 지점으로 비행
     BaseMap.droneExit()
+    postMessage({ type:'clock', v: 가상시각ms, speed: 1 })   // 드론 화면은 이 시각에 맞춰 주간 · 해질녘 · 야간투시로 보임
     postMessage({ type:'drone', id:'ammo' })
     // 부모로 { type:'drone', event:'launch'|'arrive'|'report'|'return', id, name, result } 가 전달돼요.
     // 주소에 ?feed=1 을 붙이면 조작 버튼 없이 영상 + HUD만 나와요. 조작은 postMessage({ type:'drone-cmd', cmd:'skip'|'orbit'|'ok'|'bad'|'joy'(dir:'up'|'down'|'left'|'right'|'near'|'far', 누르는 동안 0.15초마다 반복)|'return'(날아서 복귀 후 종료)|'exit'(바로 종료) })
@@ -745,7 +746,10 @@ instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
 }
 
 /* ---------- 카메라 · 조작 ---------- */
-const DR = { on: false };   // 드론 카메라 모드 상태 (아래 '드론 현장확인'에서 채움)
+const DR = { on: false };
+/* 가상 시각: 부모 화면이 { type:'clock', v, speed }로 알려 주면 그 시각부터 speed배로 흘려 쓴다. 없으면 실제 시각 */
+const VC = { v: null, at: 0, speed: 1 };
+const vNow = () => VC.v == null ? Date.now() : VC.v + (performance.now() - VC.at) * VC.speed;   // 드론 카메라 모드 상태 (아래 '드론 현장확인'에서 채움)
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08;
 controls.maxPolarAngle = Math.PI * .47; controls.minDistance = 15; controls.maxDistance = 900;
@@ -895,17 +899,33 @@ $('btnHome').addEventListener('click', () => { selectBuilding(null); flyTo(HOME.
 toggle($('btnNight'), on => setNight(on));
 toggle($('btnCams'), on => setCams(on));
 function setCams(on) { camsOn = on; document.body.classList.toggle('nocam', !on); CAMERAS.forEach(c => { c.group.visible = on; refreshCone(c); }); if (!on && selectedCam) selectBuilding(null); }
-function setNight(n) {
-  if (DR.on) document.body.classList.toggle('nvg', !!n);
-  sun.intensity = n ? .12 : .95; sun.color.set(n ? 0x8899cc : 0xfff3e0);
-  hemi.intensity = n ? .28 : .62; hemi.color.set(n ? 0x34446e : 0xdfe9f5); hemi.groundColor.set(n ? 0x121418 : 0x7a7458);
-  skyU.top.value.set(n ? 0x050916 : 0x6e9fcf); skyU.bottom.value.set(n ? 0x18203a : 0xdfe6e4);
+/* 조명 L: 0(밤) ~ 1(낮), W: 노을빛 0 ~ 1. 3D 배치도의 '야간' 버튼은 L=0 / 1만 쓰고, 드론은 가상 시각에 맞춘 값을 쓴다. */
+let mapNight = false;
+const LT = (o => { for (const k in o) o[k] = new THREE.Color(o[k]); return o; })({ sunN:0x8899cc, sunD:0xfff3e0, sunW:0xffa25e, hemN:0x34446e, hemD:0xdfe9f5, gN:0x121418, gD:0x7a7458, topN:0x050916, topD:0x6e9fcf, botN:0x18203a, botD:0xdfe6e4, botW:0xf0a066, win:0xffcf88, lamp:0xffe2a8 });
+const smoothL = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+const SUN_HOME = sun.position.clone();
+function applyLight(L, W = 0) {
+  sun.intensity = .12 + .83 * L; sun.color.copy(LT.sunN).lerp(LT.sunD, L).lerp(LT.sunW, W * .65);
+  hemi.intensity = .28 + .34 * L; hemi.color.copy(LT.hemN).lerp(LT.hemD, L); hemi.groundColor.copy(LT.gN).lerp(LT.gD, L);
+  skyU.top.value.copy(LT.topN).lerp(LT.topD, L); skyU.bottom.value.copy(LT.botN).lerp(LT.botD, L).lerp(LT.botW, W * .6);
   scene.fog.color.copy(skyU.bottom.value);
-  BUILDINGS.forEach(b => { if (b.wallMat) b.wallMat.emissive.set(n ? 0xffcf88 : 0x000000); });
-  MAT.lampHead.emissive.set(n ? 0xffe2a8 : 0x000000);
-  stars.material.opacity = n ? .9 : 0;
-  nightLights.forEach(l => { l.intensity = n ? 1.6 : 0; });
+  const k = 1 - smoothL(.25, .75, L);                                   // 창문 · 가로등이 켜진 정도
+  BUILDINGS.forEach(b => { if (b.wallMat) b.wallMat.emissive.copy(LT.win).multiplyScalar(k); });
+  MAT.lampHead.emissive.copy(LT.lamp).multiplyScalar(k);
+  stars.material.opacity = .9 * (1 - smoothL(0, .35, L));
+  nightLights.forEach(l => { l.intensity = 1.6 * k; });
 }
+/* 시각(0~24) → 조명 + 해 위치. 11월 기준 일출 07:00 · 일몰 17:30, 해 진 뒤 약 30분이면 어두워짐 */
+function lightAtHour(h) {
+  const R = 7, S = 17.5, t = (h - R) / (S - R);
+  const e = t >= 0 && t <= 1 ? Math.sin(Math.PI * t) : -Math.min(1, (t < 0 ? -t : t - 1) * (S - R) / 2.5);   // 해 높이 -1 ~ 1
+  const L = smoothL(-.25, .2, e), W = Math.max(0, 1 - Math.abs(e - .02) / .3);
+  applyLight(L, W);
+  const az = Math.PI * Math.min(1, Math.max(0, t));                     // 동(x+) → 남(z+) → 서(x-)
+  sun.position.set(Math.cos(az) * 320, 40 + Math.max(0, e) * 300, 120 + Math.sin(az) * 160);
+  return { L, W };
+}
+function setNight(n) { mapNight = !!n; if (!DR.on) applyLight(n ? 0 : 1); }
 
 // 건물 클릭
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -950,6 +970,12 @@ const DR_ALT = 26, DR_VMAX = 14, DR_ACC = 3.5, DR_CLIMB = 4;   // 순항 고도 
 const smooth = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
 /* 진행 방향 앞쪽 아래를 보는 시선 (짐벌을 살짝 숙인 상태) */
 function drAhead(out) { return out.set(camera.position.x + DR.head.x * 60, camera.position.y - 20, camera.position.z + DR.head.z * 60); }
+function drLight() {
+  const d = new Date(vNow()), { L, W } = lightAtHour(d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600);
+  const nv = L < .2; document.body.classList.toggle('nvg', nv);
+  $('drMode').textContent = nv ? 'IR · 야간투시' : (L < .75 || W > .4) ? 'EO · 저조도' : 'EO · 주간';
+  DR.lt = 1;
+}
 function drPhase(p) {
   DR.phase = p; DR.k = 0;
   const fl = p === 'link' || p === 'takeoff' || p === 'cruise';
@@ -1013,7 +1039,7 @@ function droneStart(id, backLabel) {
   if (DR.head.lengthSq() < 4) DR.head.set(0, 0, 1);
   DR.head.normalize(); DR.L = Math.max(.1, drP0.distanceTo(drP1)); DR.d = 0; DR.v = 0; DR.rot = 0;
   fly = null; controls.enabled = false; controls.autoRotate = false;
-  document.body.classList.add('drone'); document.body.classList.toggle('nvg', $('btnNight').getAttribute('aria-pressed') === 'true');
+  document.body.classList.add('drone'); drLight();
   drEl.hidden = false; $('drStamp').hidden = true; $('drOrbit').setAttribute('aria-pressed', 'false');
   $('drTgt').textContent = `${b.code} ${b.name}`; $('drTgt').classList.toggle('hot', alerts.has(b.bid) || !!(c && c.state === 'hit'));
   DR.homeY = hq.box.max.y + 1.2;
@@ -1055,6 +1081,7 @@ function droneExit() {
   const sv = DR.save, b = DR.b, result = DR.result;
   controls.enabled = true; controls.autoRotate = false; controls.minDistance = sv.min; controls.maxDistance = sv.max;
   drPadShow(false);
+  sun.position.copy(SUN_HOME); applyLight(mapNight ? 0 : 1);           // 3D 배치도는 원래 조명으로
   document.body.classList.remove('drone', 'nvg'); drEl.hidden = true; drNoise.hidden = true; drLink.hidden = true;
   drPost('return', { result });
   DR.on = false;
@@ -1063,6 +1090,7 @@ function droneExit() {
 }
 function droneStep(dt) {
   const ph = DR.phase; DR.k += dt; DR.now += dt;
+  if ((DR.lt -= dt) <= 0) drLight();                       // 가상 시각이 흐르면 빛도 따라 바뀜
   if (ph === 'orbit') drJoyStep(dt);
   if (ph === 'link') {
     controls.target.copy(drAhead(drLook));
@@ -1110,7 +1138,7 @@ function droneStep(dt) {
   DR.spd += (v - DR.spd) * Math.min(1, dt * 4); DR.bat = Math.max(20, DR.bat - dt * .12);
   DR.hud -= dt;
   if (DR.hud <= 0) {
-    DR.hud = .2; const d = new Date(), p2 = n => String(n).padStart(2, '0');
+    DR.hud = .2; const d = new Date(vNow()), p2 = n => String(n).padStart(2, '0');
     $('drClock').textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
     $('drAlt').textContent = `${camera.position.y.toFixed(0)} m`; $('drSpd').textContent = `${(DR.spd * 3.6).toFixed(0)} km/h`;
     $('drDist').textContent = `${Math.hypot(camera.position.x - DR.tgt.x, camera.position.z - DR.tgt.z).toFixed(0)} m`;
@@ -1157,6 +1185,7 @@ window.addEventListener('message', e => {
   else if (m.type === 'cam-focus') selectCamera(m.id, true);
   else if (m.type === 'cams') BaseMap.setCams(m.on);
   else if (m.type === 'drone') { if (m.exit) droneExit(); else droneStart(m.cam || m.id, m.back); }
+  else if (m.type === 'clock') { VC.v = +m.v; VC.at = performance.now(); VC.speed = +m.speed || 1; if (DR.on) drLight(); }
   else if (m.type === 'drone-cmd') {                       // 바깥 화면의 버튼으로 조작
     if (m.cmd === 'skip') $('drSkip').click(); else if (m.cmd === 'orbit') $('drOrbit').click();
     else if (m.cmd === 'ok') droneReport(true); else if (m.cmd === 'bad') droneReport(false); else if (m.cmd === 'joy') drJoy(m.dir, m.hold); else if (m.cmd === 'return') droneReturn(); else if (m.cmd === 'exit') droneExit();
