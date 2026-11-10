@@ -486,14 +486,14 @@ body{padding-block:0 84px}
 .seg .vbtn[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
 .seg .vcount,.seg .vbtn[aria-pressed="true"] .vcount{background:none;padding:0;color:inherit;font:inherit}
 .appbar .status{margin-left:auto;display:flex;align-items:center;gap:16px}
-.who{color:var(--muted);font-size:14.5px;white-space:nowrap}
+.appbar .who{color:var(--muted);font-size:14.5px;white-space:nowrap}
 .appbar .clock{font-size:19px;font-weight:700}
 .appbar .phase{border:0;background:rgba(75,196,143,.13);color:var(--ok);padding:9px 16px;font-size:14.5px}
 .appbar .phase[data-p="alert"]{background:rgba(255,90,82,.15);color:var(--sev1)}
 .appbar .phase[data-p="send"]{background:var(--accent-soft);color:var(--accent)}
 .gear{width:46px;height:46px;border-radius:11px;border:1px solid var(--line-2);background:var(--panel);display:grid;place-items:center;color:var(--fg)}
 .gear:hover{border-color:var(--muted)}
-@media (max-width:1100px){.who{display:none}}
+@media (max-width:1100px){.appbar .who{display:none}}
 @media (max-width:760px){.appbar .status{margin-left:0;width:100%;justify-content:flex-end}.seg{order:3;width:100%}.seg .vbtn{flex:1;justify-content:center;padding:9px 8px}.appbar h1{font-size:18px}}
 
 .stepper{display:flex;align-items:center;justify-content:center;gap:14px;margin:22px 0 0;flex-wrap:nowrap}
@@ -555,6 +555,12 @@ button.recip{background:var(--panel)}
 .rg-h{display:flex;align-items:baseline;gap:8px;padding:10px 2px 2px;font-size:13px;color:var(--muted)}
 .rg-h:first-child{padding-top:0}
 .rg-h b{color:var(--fg);font-weight:700}
+.recip.pick{cursor:pointer}
+.recip.pick:hover{border-color:var(--line-2)}
+.ro-act{align-items:center}
+.ps-tpl{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.ps-tpl button{border:1px solid var(--line-2);background:transparent;color:var(--muted);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600}
+.ps-tpl button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(240,164,58,.08)}
 .btn.end{border-color:var(--sev1);color:var(--sev1);background:transparent}
 .btn.end:hover{background:var(--sev1);color:#fff}
 .end-card{margin-top:18px;padding:16px 18px;border-radius:12px;border:1px solid var(--line-2);background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
@@ -3755,6 +3761,63 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#endOv").
 const _endSetPhase = setPhase; setPhase = function(p){ if (p === "idle" || p === "intake") S.end = null; _endSetPhase(p); endUI(); };
 const _endRenderRecips = renderRecips; renderRecips = function(){ _endRenderRecips(); endUI(); };
 const _endJournal = buildJournal; buildJournal = function(){ let t = _endJournal(); if (S.end) t += `\n\n■ 상황 종료 (${hms(new Date(S.end.t))})\n  - 결과 : ${S.end.result}\n  - 인명 · 장비 피해 : ${S.end.damage || "기재 없음"}\n  - 후속 조치 : ${S.end.follow.split("\n").join(" / ")}${S.end.notify ? "\n  - 보고 대상 전원에게 상황 종료 보고 발송" : ""}`; return t; };
+/* ===== 평시 문자: 연락망에서 사람을 눌러 정기 보고 · 업무 연락을 보낸다 (시연용 · 발송 시뮬레이션) ===== */
+const PS = { sel:null, st:{}, tpl:0 };
+const psGreet = r => kindOf(r) === "down" ? `${r}, ${ME}이다.` : (isUp(r) ? "충성. " : "") + `${honor(r)}, ○○대대 ${ME}입니다.`;
+const PS_TPL = [
+  ["정기 보고", r => `[정기 보고]\n${psGreet(r)}\n${hm(new Date())} 현재 인원 · 시설 · 경계 이상 없습니다.\n특이사항 발생 시 즉시 보고드리겠습니다.`],
+  ["순찰 결과", r => `[순찰 결과 보고]\n${psGreet(r)}\n순찰 결과 탄약고 · 위병소 · 취사장 이상 없습니다.\n다음 순찰 후 다시 보고드리겠습니다.`],
+  ["점호 결과", r => `[일석점호 결과 보고]\n${psGreet(r)}\n22:00 일석점호 결과 인원 이상 없습니다.`],
+  ["업무 연락", r => `[업무 연락]\n${psGreet(r)}\n야간 당직 근무 중입니다. 확인이 필요한 사항이 있어 연락드립니다.\n(내용을 여기에 적어 주세요)`],
+  ["직접 작성", r => ""],
+];
+const psText = (r, i) => (kindOf(r) === "down" && i < 4) ? `[당직 지시]\n${psGreet(r)}\n대기 태세를 유지하고 특이사항은 즉시 보고하라.` : PS_TPL[i][1](r);
+function psCompose(role){
+  if (S.result || !ROSTER[role]) return;
+  if (PS.sel !== role) PS.tpl = kindOf(role) === "req" ? 3 : 0;
+  PS.sel = role; RO.edit = null;
+  const k = kindOf(role);
+  $("#phone").innerHTML = `<div class="ph-top"><span>받는 사람 · <b style="color:var(--fg)">${esc(role)}</b> ${esc(ROSTER[role].name)}</span><span class="mono">${esc(ROSTER[role].tel)}</span></div>
+    <div class="ps-tpl" id="psTpl">${PS_TPL.map((t, i) => `<button type="button" data-i="${i}" aria-pressed="${i === PS.tpl}">${t[0]}</button>`).join("")}</div>
+    <textarea class="bubble" id="psTa" rows="7" aria-label="보낼 문자" placeholder="보낼 내용을 적어 주세요"></textarea>
+    <div class="row"><button class="btn primary sm" id="psSend">문자 ${VERB[k]} 보내기</button><button class="btn sm" id="psCancel">닫기</button></div>
+    <span class="hint">평시 문자 · 시연용이라 실제로 보내지지 않고, 수신 · 확인 표시는 시뮬레이션입니다.</span>`;
+  $("#psTa").value = psText(role, PS.tpl);
+  $("#psTpl").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; PS.tpl = +b.dataset.i; $("#psTpl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("#psTa").value = psText(role, PS.tpl); $("#psTa").focus(); });
+  $("#psSend").addEventListener("click", psSend);
+  $("#psCancel").addEventListener("click", () => { emptySMS(); renderRoster(); });
+  renderRoster();
+}
+function psSend(){
+  const role = PS.sel, text = ($("#psTa")?.value || "").trim();
+  if (!role || S.result) return;
+  if (!text){ toast("보낼 내용을 적어 주세요."); $("#psTa").focus(); return; }
+  const st = PS.st[role] = { s:"sent", at:new Date() };
+  log(`평시 문자 ${VERB[kindOf(role)]} → ${role} (${ROSTER[role]?.name || ""}) · ${PS_TPL[PS.tpl][0]}`, "send");
+  toast(`${role}에게 문자를 보냈습니다. (시연)`);
+  renderRoster();
+  setTimeout(() => { if (PS.st[role] === st){ st.s = "recv"; if (!S.result) renderRoster(); } }, 900);
+  setTimeout(() => { if (PS.st[role] === st){ st.s = "ack"; st.at = new Date(); log(`${role} 확인 (평시 문자)`, "ack"); if (!S.result) renderRoster(); } }, 2600);
+}
+const _psRoster = renderRoster;
+renderRoster = function(){
+  _psRoster();
+  if (S.result) return;
+  if (RO.edit) PS.sel = null;
+  $("#recips").querySelectorAll("li.recip").forEach(li => {
+    const role = li.querySelector("[data-ed]")?.dataset.ed; if (!role) return;
+    li.dataset.role = role; li.classList.add("pick"); li.tabIndex = 0; li.setAttribute("role", "button");
+    if (PS.sel === role) li.classList.add("sel");
+    const st = PS.st[role];
+    if (st) li.querySelector(".ro-act").insertAdjacentHTML("afterbegin", `<span class="st" data-s="${st.s}">${st.s === "ack" ? "확인 " + hm(st.at) : ST_TXT[st.s]}</span>`);
+  });
+  $("#sendHint").textContent = `평시 보고 체계 · 연락망 ${ROLES.length}곳 · 사람을 누르면 평시에도 문자를 보낼 수 있습니다`;
+};
+$("#recips").addEventListener("click", e => { if (S.result || e.target.closest("button")) return; const li = e.target.closest("li.recip[data-role]"); if (li) psCompose(li.dataset.role); });
+$("#recips").addEventListener("keydown", e => { if (S.result || e.target.tagName === "BUTTON" || (e.key !== "Enter" && e.key !== " ")) return; const li = e.target.closest("li.recip[data-role]"); if (li){ e.preventDefault(); psCompose(li.dataset.role); } });
+const _psEmpty = emptySMS;
+emptySMS = function(){ _psEmpty(); PS.sel = null; if (!S.result) $("#phone").insertAdjacentHTML("beforeend", '<span class="hint" style="display:block;margin-top:8px">평시에는 왼쪽에서 사람을 누르면 정기 보고 · 업무 연락 문자를 보낼 수 있습니다.</span>'); };
+if (!S.result){ emptySMS(); }
 if (!S.result) renderRoster();
 renderFeat(); goStep(1);
 
