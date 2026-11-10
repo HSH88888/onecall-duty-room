@@ -871,6 +871,23 @@ button.recip{background:var(--panel)}
   .m3-wrap #m3{min-height:0;height:100%}
   .m3-wrap .m3-side{min-height:0;overflow:auto}
 }
+
+/* ===== AI 판단 과정 요약 (상황 카드 옆) ===== */
+.ai-steps{list-style:none;margin:0;padding:8px 14px 8px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line-2);font-size:12.5px;color:var(--muted);min-width:0}
+.ai-steps .hd{font-size:11.5px;font-weight:700;color:var(--ok);letter-spacing:.02em;margin-bottom:1px}
+.ai-steps .hd b{font-family:var(--mono);font-weight:700}
+.ai-steps li{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ai-steps li .done-dot{width:15px;height:15px;font-size:10px}
+.ai-steps li b{color:var(--fg);font-weight:700}
+@media (min-width:1000px){ #stage2 #vBox .ai-steps{flex:0 0 auto} }
+@media (max-width:999px){ .ai-steps{border-left:0;padding:10px 2px 0} .ai-steps li{white-space:normal} }
+
+/* ===== 넓은 화면: 일괄 보고 버튼을 위쪽 상황 버튼 줄로 올린다 ===== */
+@media (min-width:1000px){
+  #stage2 > .act-dock{display:flex;align-items:center;gap:12px}
+  #stage2 > .act-dock #sendBtn{height:66px;padding:0 20px;font-size:15px;font-weight:800;border-radius:14px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+  #stage2:has(#actDock #sendBtn) > #pane-ai{padding-right:calc(240px + var(--sbw, 190px))}
+}
 </style>
 
 <div class="wrap">
@@ -4570,6 +4587,40 @@ function droneAutoReport(m, where){
     log(`드론 영상 판독 · ${loc} 조치 필요 → 자동 상황 접수`, "alert");
     showView("ops"); startClock(); setPhase("intake"); analyze();
   }, 1200);
+}
+/* AI 판단 과정(판단 중에 보이던 4단계)을 결과와 함께 상황 카드 옆에 남긴다 */
+{ const _ps = setPhase;
+  setPhase = function(p){ if (p === "analyzing") { S.aiT0 = Date.now(); S.aiMs = null; } else if (p === "review" && S.aiT0 && S.aiMs == null) S.aiMs = Date.now() - S.aiT0; else if (p === "idle") { S.aiT0 = null; S.aiMs = null; } _ps(p); };
+  const _rv = renderVerdict;
+  renderVerdict = function(){
+    _rv();
+    const r = S.result, v = $("#vBox"); if (!r || !v) return;
+    if (S.aiMs == null && S.aiT0) S.aiMs = Date.now() - S.aiT0;
+    const man = getMan(r), sec = (man.sec.match(/제\d+장\s*\d+-\d+/) || [man.sec.split(" ")[0]])[0];
+    const nRec = (S.recips && S.recips.length) || (r.recipients || []).length;
+    const t = S.aiMs != null ? ` · <b>${(S.aiMs/1000).toFixed(1)}초</b>` : "";
+    const html = `<ol class="ai-steps" aria-label="AI 판단 과정"><li class="hd">AI 판단 완료${t}</li>
+      <li><span class="done-dot">✓</span>유형 · 등급 판단 <b>${esc(r.cat || r.type.split(" ")[0])} · ${r.severity}급</b></li>
+      <li><span class="done-dot">✓</span>지침서 ${MANUAL.total}쪽 → <b>${esc(sec)}</b></li>
+      <li><span class="done-dot">✓</span>지금 할 일 <b>${r.todo.length}개</b> 순서 정리</li>
+      <li><span class="done-dot">✓</span>보고 대상 <b>${nRec}명</b> · 보고서 작성</li></ol>`;
+    const vd = v.querySelector(".verdict"); if (vd) vd.insertAdjacentHTML("afterend", html);
+  };
+}
+/* 일괄 보고 버튼: 넓은 화면에서는 상황 버튼 줄(#actDock) 맨 앞으로, 좁은 화면에서는 원래 자리(#sendSlot) */
+{ const wide = matchMedia("(min-width:1000px)");
+  const placeSB = () => {
+    const sb = $("#sendBtn"), dock = $("#actDock"); if (!sb || !dock) return;
+    if (wide.matches){ if (sb.parentElement !== dock) dock.insertBefore(sb, dock.firstChild); $("#stage2").style.setProperty("--sbw", (sb.offsetWidth + 12) + "px"); }
+    else if (sb.parentElement !== $("#sendSlot")) $("#sendSlot").appendChild(sb);
+  };
+  const _ra = renderAI;
+  renderAI = function(){ $("#actDock")?.querySelectorAll("#sendBtn").forEach(x => x.remove()); _ra.apply(this, arguments); placeSB(); };
+  const _rr = renderRecips;
+  renderRecips = function(){ _rr.apply(this, arguments); placeSB(); };
+  const _sp = setPhase;
+  setPhase = function(p){ _sp(p); if (!S.result) $("#actDock")?.querySelectorAll("#sendBtn").forEach(x => x.remove()); };
+  (wide.addEventListener ? wide.addEventListener("change", placeSB) : wide.addListener(placeSB));
 }
 if (!S.result) renderRoster();
 renderFeat(); goStep(1);
