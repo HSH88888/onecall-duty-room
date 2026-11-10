@@ -193,6 +193,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     <p>건물이나 카메라 핀을 누르면 정보가 나와요.</p>
   </div>
   <div class="tools panel" role="group" aria-label="보기 설정">
+    <button id="btnHome">부대 전경</button>
     <button id="btnNight" aria-pressed="false">야간</button>
     <button id="btnLabels" aria-pressed="true">이름표</button>
     <button id="btnCams" aria-pressed="true">CCTV</button>
@@ -890,6 +891,7 @@ function updateBanner() {
 
 function toggle(btn, fn) { btn.addEventListener('click', () => { const on = btn.getAttribute('aria-pressed') !== 'true'; btn.setAttribute('aria-pressed', String(on)); fn(on); }); }
 toggle($('btnLabels'), on => { labelsEl.style.display = on ? '' : 'none'; });
+$('btnHome').addEventListener('click', () => { selectBuilding(null); flyTo(HOME.cam, HOME.tgt); if (window.parent !== window) { try { window.parent.postMessage({ type: 'building-select', id: null, name: null }, '*'); } catch (e) {} } });   // 처음의 부대 전체 시점으로
 toggle($('btnNight'), on => setNight(on));
 toggle($('btnCams'), on => setCams(on));
 function setCams(on) { camsOn = on; document.body.classList.toggle('nocam', !on); CAMERAS.forEach(c => { c.group.visible = on; refreshCone(c); }); if (!on && selectedCam) selectBuilding(null); }

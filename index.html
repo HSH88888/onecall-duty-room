@@ -825,11 +825,12 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110k" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110l" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
         <h3>건물</h3>
+        <button type="button" class="btn sm" id="m3Home">부대 전경</button>
         <ul class="m3-list" id="m3List"></ul>
         <h3>CCTV<small>25대</small></h3>
         <div class="m3-cams" id="m3Cams"></div>
@@ -4312,7 +4313,7 @@ function ccDrone(camId){
   if (CC.sel !== i) selectCam(i);
   Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false, pad:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110k"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110l"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
@@ -4390,6 +4391,7 @@ function m3Start(){
 }
 setInterval(() => { const inc = m3Incident(), ci = m3CamInc(); $("#m3Dot").hidden = !(inc || (ci && ci.state === "hit")); m3Sync(); if (!$("#view-3d").hidden) m3List(); }, 1000);
 $("#m3List").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M3.sel = b.dataset.id; M3.selCam = null; m3Post({ type:"focus", id:b.dataset.id }); m3List(); });
+$("#m3Home").addEventListener("click", () => { M3.sel = null; M3.selCam = null; m3Post({ type:"overview" }); m3List(); });
 $("#m3Cams").addEventListener("click", e => { const b = e.target.closest("button"); if (b) m3FocusCam(b.dataset.id); });
 $("#ccDrone").addEventListener("click", () => { if (CCD.on) ccDroneEnd(CCD.phase === "return"); else ccDrone(CAMS[CC.sel].id); });
 $("#ccTo3d").addEventListener("click", () => { const id = CAMS[CC.sel].id; showView("map3d"); m3FocusCam(id); });
