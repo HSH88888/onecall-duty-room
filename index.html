@@ -323,6 +323,12 @@ textarea.bubble[readonly]{color:var(--muted)}
 .cc-drone-ctl .btn.okb{border-color:var(--ok);color:var(--ok)}
 .cc-drone-ctl .btn.badb{border-color:var(--sev1);color:var(--sev1)}
 .cc-drone-ctl.max{position:fixed;left:50%;bottom:5vh;transform:translateX(-50%);z-index:71;margin:0;justify-content:center;width:max-content;max-width:92vw}
+.cc-drone-pad{flex-basis:100%;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;touch-action:none;-webkit-user-select:none;user-select:none}
+.cc-drone-pad[hidden]{display:none}
+.cc-drone-pad .btn{padding-left:4px;padding-right:4px;white-space:nowrap;touch-action:none}
+.cc-drone-pad .btn.on{background:var(--accent);border-color:var(--accent);color:#1C1305}
+.cc-drone-ctl.max .cc-drone-pad{min-width:min(520px,88vw)}
+@media (max-width:480px){.cc-drone-pad{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .cc-drone-note{margin-top:8px;font-size:13px}
 .cc-drone-note[hidden]{display:none}
 .cc-drone-note.ok{color:var(--ok)}.cc-drone-note.bad{color:var(--sev1)}
@@ -774,7 +780,13 @@ button.recip{background:var(--panel)}
             <button class="btn sm" data-c="orbit" type="button" aria-pressed="false" hidden>자동 선회</button>
             <button class="btn sm okb" data-c="ok" type="button" hidden>이상 없음</button>
             <button class="btn sm badb" data-c="bad" type="button" hidden>조치 필요</button>
+            <button class="btn sm" data-c="pad" type="button" aria-pressed="false" hidden>드론 조종</button>
             <button class="btn sm" data-c="max" type="button" aria-pressed="false">크게 보기</button>
+            <div class="cc-drone-pad" id="ccDronePad" role="group" aria-label="드론 조종" hidden>
+              <button class="btn sm" data-j="up" type="button">▲ 위</button><button class="btn sm" data-j="down" type="button">▼ 아래</button>
+              <button class="btn sm" data-j="left" type="button">◀ 왼쪽</button><button class="btn sm" data-j="right" type="button">오른쪽 ▶</button>
+              <button class="btn sm" data-j="near" type="button">가까이 ＋</button><button class="btn sm" data-j="far" type="button">멀리 －</button>
+            </div>
           </div>
           <p class="cc-drone-note" id="ccDroneNote" hidden></p>
           <div id="liveCtl" class="live-ctl" hidden>
@@ -813,7 +825,7 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110j" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110k" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
@@ -4283,7 +4295,7 @@ function m3Sync(){
 /* ===== CCTV 화면에서 드론 보내기 =====
    오른쪽 큰 화면 자리에 드론 영상(basemap3d.html?feed=1)을 띄운다. 영상과 HUD는 iframe이, 조작 버튼과 기록은 이 화면이 맡는다.
    실제 적용 때는 이 iframe 자리에 드론 실시간 영상 스트림을 넣으면 된다. */
-const CCD = { on:false, ready:false, cam:null, phase:null, result:null, auto:false };
+const CCD = { pad:false, on:false, ready:false, cam:null, phase:null, result:null, auto:false };
 const ccdWin = () => CCD.ready ? $("#ccDroneFrame").contentWindow : null;
 const ccdPost = m => { const w = ccdWin(); if (w) w.postMessage(m, location.origin); };
 function ccdLaunch(){
@@ -4298,9 +4310,9 @@ function ccDrone(camId){
   const i = CAMS.findIndex(c => c.id === camId); if (i < 0) return;
   if (CCD.on){ if (CCD.cam === camId) return; ccDroneEnd("quiet"); }
   if (CC.sel !== i) selectCam(i);
-  Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false });
+  Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false, pad:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110j"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110k"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
@@ -4321,6 +4333,7 @@ function ccDroneUI(){
   const on = CCD.on, ctl = $("#ccDroneCtl"), cam = CAMS[CC.sel], arrived = CCD.phase === "orbit", back = CCD.phase === "return";
   ctl.hidden = !on; $("#ccDrone").textContent = !on ? "드론 보내기" : back ? "복귀 중 · 바로 끄기" : "드론 복귀"; $("#ccDrone").classList.toggle("primary", !on);
   const q = c => ctl.querySelector(`[data-c="${c}"]`);
+  q("pad").hidden = !arrived; q("pad").setAttribute("aria-pressed", String(CCD.pad)); $("#ccDronePad").hidden = !(arrived && CCD.pad);
   q("skip").hidden = arrived || back; q("orbit").hidden = q("ok").hidden = q("bad").hidden = !arrived;
   q("orbit").setAttribute("aria-pressed", String(CCD.auto));
   const mx = $("#ccBigWrap").classList.contains("max"); q("max").textContent = mx ? "작게 보기" : "크게 보기"; q("max").setAttribute("aria-pressed", String(mx));
@@ -4330,10 +4343,21 @@ function ccDroneUI(){
   note.textContent = back ? "드론이 대대본부로 복귀하는 중입니다. 착륙하면 화면이 꺼지고 CCTV 화면으로 돌아옵니다." : CCD.result ? `확인 결과 '${CCD.result}' 기록됨 · 드론 복귀를 누르면 드론이 돌아온 뒤 화면이 꺼집니다.` : "영상을 끌어서 직접 살펴볼 수 있습니다. 확인 결과를 눌러 기록하세요.";
 }
 $("#ccDroneCtl").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b || !CCD.on) return;
+  const b = e.target.closest("button"); if (!b || !CCD.on || b.dataset.j) return;
+  if (b.dataset.c === "pad"){ CCD.pad = !CCD.pad; ccDroneUI(); return; }
   if (b.dataset.c !== "max" && !CCD.ready){ toast("드론 영상을 연결하는 중입니다. 잠시 뒤 다시 눌러 주세요."); return; }
   if (b.dataset.c === "max"){ const mx = $("#ccBigWrap").classList.toggle("max"); $("#ccDroneCtl").classList.toggle("max", mx); ccDroneUI(); }
   else ccdPost({ type:"drone-cmd", cmd:b.dataset.c });
+});
+/* 드론 조종 버튼: 누르고 있는 동안 0.15초마다 명령을 보내고, 떼면 드론이 부드럽게 멈춘다 */
+$("#ccDronePad").querySelectorAll("button").forEach(b => {
+  let tm = null;
+  const send = () => ccdPost({ type:"drone-cmd", cmd:"joy", dir:b.dataset.j, hold:.4 });
+  const stop = () => { clearInterval(tm); tm = null; b.classList.remove("on"); };
+  b.addEventListener("pointerdown", e => { e.preventDefault(); if (tm || !CCD.on) return; b.classList.add("on"); send(); tm = setInterval(send, 150); try { b.setPointerCapture(e.pointerId); } catch(x) {} });
+  ["pointerup","pointercancel","lostpointercapture"].forEach(n => b.addEventListener(n, stop));
+  b.addEventListener("click", e => { if (e.detail === 0 && CCD.on) ccdPost({ type:"drone-cmd", cmd:"joy", dir:b.dataset.j, hold:.5 }); });
+  b.addEventListener("contextmenu", e => e.preventDefault());
 });
 window.addEventListener("keydown", e => { if (e.key === "Escape" && $("#ccBigWrap").classList.contains("max")){ $("#ccBigWrap").classList.remove("max"); $("#ccDroneCtl").classList.remove("max"); ccDroneUI(); } });
 /* 드론이 떠 있는 동안 다른 카메라를 고르면 드론은 복귀 */

@@ -146,6 +146,15 @@ body.drone.nvg canvas#c{filter:grayscale(1) sepia(1) hue-rotate(62deg) saturate(
 #drone .bar .ok{border-color:#4bc48f;color:#bff5db}#drone .bar .bad{border-color:#ff5a52;color:#ffc2bd}
 #drone .bar .back{background:#ece7d4;color:#1f281f;border-color:#ece7d4}
 #drone .bar button[aria-pressed="true"]{background:#eafff3;color:#0e1612}
+#drPad{position:absolute;right:26px;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);display:grid;grid-template-columns:repeat(3,68px) 10px 80px;grid-template-rows:repeat(3,42px);gap:5px;pointer-events:auto;text-shadow:none;touch-action:none;-webkit-user-select:none;user-select:none}
+#drPad[hidden]{display:none}
+#drPad button{white-space:nowrap;padding:0;font:500 12.5px "IBM Plex Sans KR",sans-serif;border-radius:9px;background:rgba(14,22,18,.82);color:#eafff3;border:1px solid rgba(234,255,243,.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);touch-action:none}
+#drPad button:active,#drPad button.on{background:#eafff3;color:#0e1612}
+#drPad [data-j="up"]{grid-area:1/2}#drPad [data-j="left"]{grid-area:2/1}#drPad [data-j="right"]{grid-area:2/3}#drPad [data-j="down"]{grid-area:3/2}
+#drPad [data-j="near"]{grid-area:1/5}#drPad [data-j="far"]{grid-area:3/5}
+#drPad i{grid-area:2/2;display:grid;place-items:center;font:500 10px "IBM Plex Mono",monospace;font-style:normal;color:rgba(234,255,243,.7);text-shadow:0 1px 3px rgba(0,0,0,.85)}
+body.feed #drPad{display:none}
+@media (max-width:600px){#drPad{right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);grid-template-columns:repeat(3,60px) 6px 70px;grid-template-rows:repeat(3,40px)}#drPad button{font-size:12px}}
 #droneNoise{position:fixed;inset:0;width:100%;height:100%;z-index:9;image-rendering:pixelated;pointer-events:none;transition:opacity .35s}
 #droneNoise[hidden]{display:none}
 #droneLink{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;font:500 14px "IBM Plex Mono",monospace;color:#eafff3;background:rgba(0,0,0,.6);padding:10px 16px;border-radius:8px;letter-spacing:.04em;pointer-events:none;white-space:nowrap}
@@ -222,11 +231,16 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
   <div class="tr"><div>BAT <b id="drBat">96</b>%</div><div>SIG ▮▮▮▮▯ · GPS 14</div><div class="src" id="drSrc">영상 소스: 3D 시뮬레이션 (실제 적용 시 드론 실시간 영상)</div></div>
   <div class="tele"><span>ALT</span><b id="drAlt">0 m</b><span>SPD</span><b id="drSpd">0 km/h</b><span>DIST</span><b id="drDist">0 m</b></div>
   <div class="stamp" id="drStamp" hidden></div>
+  <div id="drPad" role="group" aria-label="드론 조종" hidden>
+    <button data-j="up" aria-label="위로">▲ 위</button><button data-j="left" aria-label="왼쪽으로">◀ 왼쪽</button><i>조종</i><button data-j="right" aria-label="오른쪽으로">오른쪽 ▶</button><button data-j="down" aria-label="아래로">▼ 아래</button>
+    <button data-j="near" aria-label="가까이">가까이 ＋</button><button data-j="far" aria-label="멀리">멀리 －</button>
+  </div>
   <div class="bar">
     <button id="drSkip">건너뛰기</button>
     <button id="drOrbit" aria-pressed="false" hidden>자동 선회</button>
     <button class="ok" id="drOk" hidden>이상 없음</button>
     <button class="bad" id="drBad" hidden>조치 필요</button>
+    <button id="drCtl" aria-pressed="false" hidden>드론 조종</button>
     <button class="back" id="drHome">드론 복귀</button>
     <button id="drBack">드론 화면 종료</button>
   </div>
@@ -269,7 +283,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     BaseMap.droneExit()
     postMessage({ type:'drone', id:'ammo' })
     // 부모로 { type:'drone', event:'launch'|'arrive'|'report'|'return', id, name, result } 가 전달돼요.
-    // 주소에 ?feed=1 을 붙이면 조작 버튼 없이 영상 + HUD만 나와요. 조작은 postMessage({ type:'drone-cmd', cmd:'skip'|'orbit'|'ok'|'bad'|'return'(날아서 복귀 후 종료)|'exit'(바로 종료) })
+    // 주소에 ?feed=1 을 붙이면 조작 버튼 없이 영상 + HUD만 나와요. 조작은 postMessage({ type:'drone-cmd', cmd:'skip'|'orbit'|'ok'|'bad'|'joy'(dir:'up'|'down'|'left'|'right'|'near'|'far', 누르는 동안 0.15초마다 반복)|'return'(날아서 복귀 후 종료)|'exit'(바로 종료) })
     // 지금은 영상 소스가 이 3D 화면이고, 실제 적용 때는 같은 HUD 아래에 드론 실시간 영상을 넣으면 돼요.
 
   주소 끝에 ?ui=minimal 을 붙이면 제목 카드와 하단 버튼을 숨겨요.
@@ -937,11 +951,43 @@ function drAhead(out) { return out.set(camera.position.x + DR.head.x * 60, camer
 function drPhase(p) {
   DR.phase = p; DR.k = 0;
   const fl = p === 'link' || p === 'takeoff' || p === 'cruise';
+  $('drCtl').hidden = p !== 'orbit'; if (p !== 'orbit') drPadShow(false);
   $('drSkip').hidden = !fl; $('drHome').hidden = DR_BACK.includes(p); $('drOrbit').hidden = $('drOk').hidden = $('drBad').hidden = p !== 'orbit';
   $('drPhase').textContent = { link: '영상 연결 중', takeoff: '이륙 중 · 대대본부 옥상', cruise: '목표로 비행 중', orbit: DR.auto ? '현장 도착 · 선회 촬영' : '현장 도착 · 제자리 비행', return: '복귀 비행 중', land: '착륙 중 · 대대본부 옥상', off: '착륙 완료 · 영상 종료' }[p] || '';
   $('drMsg').textContent = DR_BACK.includes(p) ? '현장확인 종료 · 기지 복귀' : p === 'orbit' ? '끌어서 직접 살펴볼 수 있어요. 확인 결과를 눌러 기록하세요.' : DR.b.note ? DR.b.note : alerts.has(DR.b.bid) ? `위기상황: ${alerts.get(DR.b.bid).message}` : '현장확인 출동';
 }
 /* id: 건물 id · 이름, 또는 CCTV 카메라 id (카메라면 그 카메라가 비추는 지점으로 간다) */
+/* ---------- 드론 조종: 위 · 아래 · 왼쪽 · 오른쪽 · 가까이 · 멀리 (현장 도착 후) ----------
+   목표 지점을 화면 가운데 둔 채 드론이 그 둘레를 움직인다. 버튼을 누르고 있는 동안 움직이고, 떼면 부드럽게 멈춘다. */
+const drHeld = new Set(), drSph = new THREE.Spherical(), drOff = new THREE.Vector3();
+function drPadShow(on) { $('drPad').hidden = !on; $('drCtl').setAttribute('aria-pressed', String(!!on)); if (!on) drHeld.clear(); }
+function drJoy(dir, hold) {                       // hold: 유지 시간(초). 바깥 화면은 누르는 동안 계속 다시 보낸다
+  if (!DR.on || DR.phase !== 'orbit' || !['up', 'down', 'left', 'right', 'near', 'far'].includes(dir)) return;
+  if (DR.auto) $('drOrbit').click();              // 직접 조종하면 자동 선회는 끔
+  DR.joy[dir] = DR.now + (hold || .45);
+}
+function drJoyStep(dt) {
+  for (const d of drHeld) DR.joy[d] = DR.now + .12;
+  const J = d => (DR.joy[d] || 0) > DR.now ? 1 : 0, want = [J('right') - J('left'), J('up') - J('down'), J('far') - J('near')];
+  let moving = false;
+  for (let i = 0; i < 3; i++) { DR.jv[i] += (want[i] - DR.jv[i]) * Math.min(1, dt * 4.5); if (Math.abs(DR.jv[i]) > .002) moving = true; }
+  if (!moving) return;
+  drSph.setFromVector3(drOff.copy(camera.position).sub(controls.target));
+  drSph.theta += DR.jv[0] * .55 * dt;
+  drSph.phi = Math.min(controls.maxPolarAngle - .03, Math.max(.22, drSph.phi - DR.jv[1] * .45 * dt));
+  drSph.radius = Math.min(controls.maxDistance, Math.max(controls.minDistance, drSph.radius * Math.exp(DR.jv[2] * .75 * dt)));
+  camera.position.copy(controls.target).add(drOff.setFromSpherical(drSph));
+}
+$('drCtl').addEventListener('click', () => { if (DR.on && DR.phase === 'orbit') drPadShow($('drPad').hidden); });
+$('drPad').querySelectorAll('button').forEach(b => {
+  const d = b.dataset.j, off = () => { drHeld.delete(d); b.classList.remove('on'); };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); if (DR.auto) $('drOrbit').click(); drHeld.add(d); b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) {} });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => b.addEventListener(n, off));
+  b.addEventListener('click', e => { if (e.detail === 0) drJoy(d, .5); });        // 키보드(Enter · Space)로 누르면 조금씩 이동
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+{ const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', '+': 'near', '=': 'near', '-': 'far' };   // 조종판이 열려 있으면 방향키 · + − 로도 조종
+  addEventListener('keydown', e => { const d = KEYS[e.key]; if (d && DR.on && DR.phase === 'orbit' && !$('drPad').hidden) { e.preventDefault(); drJoy(d, .25); } }); }
 function droneStart(id, backLabel) {
   if (DR.on) return false;
   const c = findCam(id), bld = c ? (c.bid ? find(c.bid) : null) : find(id);
@@ -951,7 +997,7 @@ function droneStart(id, backLabel) {
   selectBuilding(null);
   const b = c ? { id: c.id, cam: c.id, name: c.loc, code: c.id, bid: bld ? bld.id : null, note: c.state === 'hit' ? `CCTV 화재 감지: ${c.msg || '확인 필요'}` : c.state === 'warn' ? `CCTV 의심 감지: ${c.msg || '분석 중'}` : `${c.id} 화면 확인 요청` }
               : { id: bld.id, name: bld.name, code: bld.code, bid: bld.id };
-  Object.assign(DR, { on: true, b, bat: 96, spd: 0, hud: 0, auto: false, result: null });
+  Object.assign(DR, { on: true, b, bat: 96, spd: 0, hud: 0, auto: false, result: null, now: 0, joy: {}, jv: [0, 0, 0] });
   // 벽에 달린 카메라: 그 벽면을 정면에서 본다 · 기둥 카메라: 카메라 뒤쪽에서 같은 방향을 본다
   if (c) { DR.tgt = c.pole ? new THREE.Vector3(c.at[0], 2, c.at[2]) : new THREE.Vector3(c.p[0], Math.max(2, c.p[1] * .7), c.p[2]); DR.R = c.pole ? 34 : 30; DR.H = c.pole ? 20 : 16; }
   else { DR.tgt = new THREE.Vector3(bld.center.x, Math.max(2, bld.box.max.y * .5), bld.center.z); DR.R = bld.size * .75 + 24; DR.H = Math.max(20, bld.box.max.y + 13); }
@@ -1006,6 +1052,7 @@ function droneExit() {
   if (!DR.on) return;
   const sv = DR.save, b = DR.b, result = DR.result;
   controls.enabled = true; controls.autoRotate = false; controls.minDistance = sv.min; controls.maxDistance = sv.max;
+  drPadShow(false);
   document.body.classList.remove('drone', 'nvg'); drEl.hidden = true; drNoise.hidden = true; drLink.hidden = true;
   drPost('return', { result });
   DR.on = false;
@@ -1013,7 +1060,8 @@ function droneExit() {
   flyTo(sv.cam, sv.tgt, true);
 }
 function droneStep(dt) {
-  const ph = DR.phase; DR.k += dt;
+  const ph = DR.phase; DR.k += dt; DR.now += dt;
+  if (ph === 'orbit') drJoyStep(dt);
   if (ph === 'link') {
     controls.target.copy(drAhead(drLook));
     if (DR.k > .9) drNoise.style.opacity = Math.max(0, 1 - (DR.k - .9) / .4);
@@ -1109,7 +1157,7 @@ window.addEventListener('message', e => {
   else if (m.type === 'drone') { if (m.exit) droneExit(); else droneStart(m.cam || m.id, m.back); }
   else if (m.type === 'drone-cmd') {                       // 바깥 화면의 버튼으로 조작
     if (m.cmd === 'skip') $('drSkip').click(); else if (m.cmd === 'orbit') $('drOrbit').click();
-    else if (m.cmd === 'ok') droneReport(true); else if (m.cmd === 'bad') droneReport(false); else if (m.cmd === 'return') droneReturn(); else if (m.cmd === 'exit') droneExit();
+    else if (m.cmd === 'ok') droneReport(true); else if (m.cmd === 'bad') droneReport(false); else if (m.cmd === 'joy') drJoy(m.dir, m.hold); else if (m.cmd === 'return') droneReturn(); else if (m.cmd === 'exit') droneExit();
   }
   else if (m.type === 'clear') clearAlert(m.id);
   else if (m.type === 'focus') BaseMap.focus(m.id);
