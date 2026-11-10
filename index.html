@@ -474,19 +474,26 @@ textarea.bubble[readonly]{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.bot-fab.walk .djb .dj-leg,.bot-fab.walk .djb .dj-top,.bot-fab.dragging .djb .dj-leg,.djb .dj-eyes,.dj-say{animation:none!important}}
 /* ===== 3D 부대 ===== */
 .m3-wrap{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px;margin-top:14px}
-.m3-stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0e120e;min-width:0}
-#m3{display:block;width:100%;height:620px;border:0}
+.m3-stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0e120e;min-width:0;display:flex}
+#m3{display:block;width:100%;height:auto;min-height:620px;flex:1;border:0}
 .m3-status{padding:9px 12px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line-2);font-size:13.5px;font-weight:600;line-height:1.45}
 .m3-status.alert{border-color:var(--sev1);color:var(--sev1)}
 .m3-side{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .m3-side h3{font-size:15px}
-.m3-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;max-height:470px;overflow:auto}
-.m3-list button{width:100%;text-align:left;border:1px solid transparent;background:var(--panel-2);color:var(--fg);border-radius:8px;padding:8px 10px;font-size:13.5px;display:flex;justify-content:space-between;gap:8px}
+.m3-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.m3-side h3 small{color:var(--muted);font-weight:500;margin-left:4px}
+.m3-cams{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.m3-cams button{border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg);border-radius:7px;padding:6px 0;font-size:12.5px;font-family:var(--mono,ui-monospace,monospace)}
+.m3-cams button:hover{border-color:var(--muted)}
+.m3-cams button.on{border-color:var(--accent);color:var(--accent)}
+.m3-cams button.warn{background:var(--accent);border-color:var(--accent);color:#1C1305}
+.m3-cams button.hit{background:var(--sev1);border-color:var(--sev1);color:#fff}
+.m3-list button{width:100%;height:100%;text-align:left;border:1px solid transparent;background:var(--panel-2);color:var(--fg);border-radius:8px;padding:8px 9px;font-size:13px;display:flex;flex-direction:column;gap:2px}
 .m3-list button:hover{border-color:var(--line-2)}
 .m3-list button.on{border-color:var(--accent)}
 .m3-list button.inc{border-color:var(--sev1);color:var(--sev1)}
-.m3-list small{color:var(--muted)}
-@media (max-width:900px){.m3-wrap{grid-template-columns:minmax(0,1fr)}#m3{height:460px}.m3-list{max-height:none;flex-direction:row;flex-wrap:wrap}.m3-list li{flex:1 1 140px}}
+.m3-list small{color:inherit;font-size:11.5px}
+@media (max-width:900px){.m3-wrap{grid-template-columns:minmax(0,1fr)}#m3{min-height:460px}.m3-list{grid-template-columns:repeat(3,minmax(0,1fr))}.m3-cams{grid-template-columns:repeat(9,minmax(0,1fr))}}
 @media (max-width:560px){.seg .vbtn{font-size:13px;padding:9px 4px}}
 /* ===== UX v2: 단계형 상황실 ===== */
 body{padding-block:0 84px}
@@ -691,7 +698,7 @@ button.recip{background:var(--panel)}
       <div class="cc-grid" id="ccGrid"></div>
       <aside class="cc-side">
         <div class="pane cc-focus">
-          <div class="pane-h"><h2 style="font-size:15px" id="ccFocusT">CAM-07 · 2중대 보일러실</h2><span class="hint mono" id="ccFocusS">AI 정상</span></div>
+          <div class="pane-h"><h2 style="font-size:15px" id="ccFocusT">CAM-07 · 2중대 보일러실</h2><span class="hint mono" id="ccFocusS">AI 정상</span><button class="btn sm" id="ccTo3d" type="button" style="margin-left:auto">3D 위치</button></div>
           <div class="cc-big"><canvas id="ccBig" width="640" height="360"></canvas><div class="cc-box" id="ccBigBox" hidden><span></span></div></div>
           <div id="liveCtl" class="live-ctl" hidden>
             <div class="row"><button class="btn primary sm" id="liveOn">웹캠 연결</button><button class="btn sm" id="liveOff" disabled>연결 해제</button>
@@ -725,7 +732,7 @@ button.recip{background:var(--panel)}
   </div>
   <div id="view-3d" hidden>
     <section class="cc-head">
-      <div class="cc-title"><span class="live-dot"></span><div><h2>3D 부대 · 영내 배치도</h2><p class="hint">끌면 돌아가고 휠이나 두 손가락으로 확대합니다. 건물을 누르면 정보가 나오고, 접수된 상황은 해당 건물에 자동으로 표시됩니다. (시연용 가상 부대)</p></div></div>
+      <div class="cc-title"><span class="live-dot"></span><div><h2>3D 부대 · 영내 배치도</h2><p class="hint">끌면 돌아가고 휠이나 두 손가락으로 확대합니다. 건물이나 카메라 핀을 누르면 정보가 나오고, 접수된 상황과 CCTV 감지는 그 위치에 자동으로 표시됩니다. (시연용 가상 부대)</p></div></div>
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
@@ -735,7 +742,9 @@ button.recip{background:var(--panel)}
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
         <h3>건물</h3>
         <ul class="m3-list" id="m3List"></ul>
-        <p class="hint">이름을 누르면 그 건물로 다가갑니다.</p>
+        <h3>CCTV<small>25대</small></h3>
+        <div class="m3-cams" id="m3Cams"></div>
+        <p class="hint">이름이나 번호를 누르면 그 위치로 다가갑니다.</p>
       </aside>
     </div>
   </div>
@@ -4049,66 +4058,100 @@ setTimeout(djTick, 6000);
 /* 장소 낱말이 여러 개 겹치면 가장 긴(구체적인) 낱말의 정류장을 고른다: "2중대 행정반 옆 보일러실" → 2생활관 */
 affectedStop = function(text){ let best = null, bl = 0; for (const st of BUS_STOPS) for (const k of st.kw) if (k.length > bl && text.includes(k)){ bl = k.length; best = st; } return best; };
 
-/* ===== 3D 부대: basemap3d.html(three.js 배치도)을 iframe으로 띄우고 접수된 상황을 건물에 표시 ===== */
-const M3 = { on:false, ready:false, sent:null, sel:null, listHtml:"" };
+/* ===== 3D 부대: basemap3d.html(three.js 배치도)을 iframe으로 띄우고 접수된 상황 · CCTV 감지를 그 위치에 표시 ===== */
+const M3 = { on:false, ready:false, sent:null, camSent:null, sel:null, selCam:null, pendingCam:null, cams:[], listHtml:"", camHtml:"" };
 /* [건물 id, 이름, 상황 문장에서 찾을 낱말] — 긴(구체적인) 낱말이 먼저 이긴다 */
 const M3_B = [
-  ["gate","위병소",["위병소","정문","후문","초소","울타리","면회"]],
+  ["gate","위병소",["위병소","정문","면회"]],
   ["hq","대대본부",["대대본부","본부","당직실","지휘통제실","행정반","통신실","서버","총기 보관실"]],
   ["barracks1","생활관 1동",["생활관 1동","1생활관","1중대","생활관"]],
   ["barracks2","생활관 2동",["생활관 2동","2생활관","2중대","3생활관","3중대","보일러실","세탁실","PX","휴게실"]],
   ["mess","취사장",["취사장","식당","급양","조리"]],
   ["medical","의무대",["의무대","의무실"]],
-  ["motorpool","차량정비고",["차량정비고","정비고","유류고","유류","주유","주차장","펌프실"]],
+  ["motorpool","차량정비고",["차량정비고","정비고","수송부"]],
   ["ammo","탄약고",["탄약고","탄약","무기고"]],
+  ["gym","체력단련실",["체력단련실","체단실"]],
+  ["pump","급수 펌프실",["펌프실","급수"]],
+  ["fuel","유류고",["유류고","유류","주유"]],
+  ["heli","헬기장",["헬기장","헬기"]],
 ];
-const M3_STOP = { gate:"gate", hq:"hq", b1:"barracks1", b2:"barracks2", px:"barracks2", mess:"mess", med:"medical", gym:"hq", motor:"motorpool" };
+const M3_STOP = { gate:"gate", hq:"hq", b1:"barracks1", b2:"barracks2", px:"barracks2", mess:"mess", med:"medical", gym:"gym", motor:"motorpool" };
 function m3Incident(){
   if (!S.result || ["idle","closed"].includes(S.phase)) return null;
+  const msg = S.result.headline || S.result.type || "상황 발생";
+  if (S.cctv && M3.cams.length){ const c = M3.cams.find(x => x.id === S.cctv.cam.id); if (c) return { id:c.bid, name:c.bname || c.loc, msg, cam:c.id }; }
   const text = [S.result.report?.where, S.result.headline, S.result.type].join(" ");
   let best = null, bl = 0;
   for (const b of M3_B) for (const k of b[2]) if (k.length > bl && text.includes(k)){ bl = k.length; best = b; }
   if (!best && typeof affectedStop === "function"){ const st = affectedStop(text); if (st) best = M3_B.find(b => b[0] === M3_STOP[st.id]); }
   best = best || M3_B[1];
-  return { id:best[0], name:best[1], msg:S.result.headline || S.result.type || "상황 발생" };
+  return { id:best[0], name:best[1], msg };
+}
+/* CCTV 화면의 감지 단계 → 지도 카메라 핀 상태 */
+function m3CamInc(){
+  const inc = typeof CC !== "undefined" ? CC.inc : null;
+  if (!inc || inc.cleared || !inc.stage) return null;
+  if (inc.kind === "fp") return inc.stage === 1 ? { id:inc.cam.id, state:"warn", msg:inc.label } : null;
+  return { id:inc.cam.id, state:inc.stage >= 2 ? "hit" : "warn", msg:inc.label };
 }
 const m3Win = () => { const f = $("#m3"); return M3.ready && f.contentWindow ? f.contentWindow : null; };
 function m3Post(m){ const w = m3Win(); if (w) w.postMessage(m, location.origin); }
-/* 접수된 상황이 바뀌면 이전 표시는 지우고 새 건물에 표시 (지도 안에서 직접 켠 표시는 건드리지 않음) */
+/* 상태가 바뀌면 이전 표시는 지우고 새 위치에 표시 (지도 안에서 직접 켠 표시는 건드리지 않음) */
 function m3Sync(){
-  const inc = m3Incident(), key = inc ? inc.id + "|" + inc.msg : null;
-  if (!m3Win() || key === M3.sent) return;
-  const prev = M3.sent && M3.sent.split("|")[0];
-  if (prev) m3Post({ type:"clear", id:prev });
-  if (inc) m3Post({ type:"alert", id:inc.id, message:inc.msg, focus:!$("#view-3d").hidden });
-  M3.sent = key;
+  if (!m3Win()) return;
+  const shown = !$("#view-3d").hidden;
+  const inc = m3Incident(), key = inc ? (inc.id || "") + "|" + inc.msg : null;
+  if (key !== M3.sent){
+    const prev = M3.sent && M3.sent.split("|")[0];
+    if (prev) m3Post({ type:"clear", id:prev });
+    if (inc && inc.id) m3Post({ type:"alert", id:inc.id, message:inc.msg, focus:shown && !inc.cam });
+    if (inc && inc.cam && shown) m3Post({ type:"cam-focus", id:inc.cam });
+    M3.sent = key;
+  }
+  const ci = m3CamInc(), ck = ci ? ci.id + "|" + ci.state : null;
+  if (ck !== M3.camSent){
+    const prev = M3.camSent && M3.camSent.split("|")[0];
+    if (prev && (!ci || prev !== ci.id)) m3Post({ type:"cam-state", id:prev, state:"normal" });
+    if (ci){ m3Post({ type:"cam-state", id:ci.id, state:ci.state, message:ci.msg }); if (shown && ci.state === "hit") m3Post({ type:"cam-focus", id:ci.id }); }
+    M3.camSent = ck;
+  }
 }
+function m3FocusCam(id){ M3.selCam = id; M3.sel = null; if (m3Win()) m3Post({ type:"cam-focus", id }); else M3.pendingCam = id; m3List(); }
 function m3List(){
-  const inc = m3Incident();
-  const html = M3_B.map(b => `<li><button type="button" data-id="${b[0]}" class="${inc && inc.id === b[0] ? "inc" : M3.sel === b[0] ? "on" : ""}"><span>${b[1]}</span><small>${inc && inc.id === b[0] ? "상황 발생" : "건물"}</small></button></li>`).join("");
+  const inc = m3Incident(), ci = m3CamInc();
+  const html = M3_B.map(b => `<li><button type="button" data-id="${b[0]}" class="${inc && inc.id === b[0] ? "inc" : M3.sel === b[0] ? "on" : ""}"><span>${b[1]}</span>${inc && inc.id === b[0] ? "<small>상황 발생</small>" : ""}</button></li>`).join("");
   if (html !== M3.listHtml){ $("#m3List").innerHTML = html; M3.listHtml = html; }
-  const st = $("#m3Status"); st.classList.toggle("alert", !!inc);
-  st.textContent = inc ? `상황 발생 · ${inc.name} · ${inc.msg}` : "평시 · 이상 없음";
-  $("#m3Dot").hidden = !inc;
+  const ch = CAMS.map(c => `<button type="button" data-id="${c.id}" title="${c.id} ${esc(c.loc)}" aria-label="${c.id} ${esc(c.loc)}" class="${ci && ci.id === c.id ? ci.state : M3.selCam === c.id ? "on" : ""}">${c.id.slice(4)}</button>`).join("");
+  if (ch !== M3.camHtml){ $("#m3Cams").innerHTML = ch; M3.camHtml = ch; }
+  const st = $("#m3Status"), hot = inc || (ci && ci.state === "hit"); st.classList.toggle("alert", !!hot);
+  st.textContent = inc ? `상황 발생 · ${inc.name} · ${inc.msg}` : ci ? `CCTV ${ci.state === "hit" ? "화재 감지" : "의심 감지"} · ${ci.id} ${CAMS.find(c => c.id === ci.id).loc}` : "평시 · 이상 없음 · CCTV 25대 정상";
+  $("#m3Dot").hidden = !hot;
 }
 function m3Start(){
   const f = $("#m3");
   if (!M3.on){
     M3.on = true;
     f.addEventListener("load", () => {
-      try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {}
-      M3.ready = true; M3.sent = null; m3Sync();
-      const inc = m3Incident(); if (inc) m3Post({ type:"focus", id:inc.id });
+      try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); M3.cams = f.contentWindow.BaseMap.cameras(); } catch(e) {}
+      M3.ready = true; M3.sent = null; M3.camSent = null; m3Sync();
+      if (M3.pendingCam){ m3Post({ type:"cam-focus", id:M3.pendingCam }); M3.pendingCam = null; }
+      else { const inc = m3Incident(), ci = m3CamInc(); if (inc && inc.cam) m3Post({ type:"cam-focus", id:inc.cam }); else if (inc) m3Post({ type:"focus", id:inc.id }); else if (ci) m3Post({ type:"cam-focus", id:ci.id }); }
+      m3List();
     });
     f.src = f.dataset.src;
   }
   m3List(); m3Sync();
 }
-setInterval(() => { const inc = m3Incident(); $("#m3Dot").hidden = !inc; m3Sync(); if (!$("#view-3d").hidden) m3List(); }, 1000);
-$("#m3List").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M3.sel = b.dataset.id; m3Post({ type:"focus", id:b.dataset.id }); m3List(); });
+setInterval(() => { const inc = m3Incident(), ci = m3CamInc(); $("#m3Dot").hidden = !(inc || (ci && ci.state === "hit")); m3Sync(); if (!$("#view-3d").hidden) m3List(); }, 1000);
+$("#m3List").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M3.sel = b.dataset.id; M3.selCam = null; m3Post({ type:"focus", id:b.dataset.id }); m3List(); });
+$("#m3Cams").addEventListener("click", e => { const b = e.target.closest("button"); if (b) m3FocusCam(b.dataset.id); });
+$("#ccTo3d").addEventListener("click", () => { const id = CAMS[CC.sel].id; showView("map3d"); m3FocusCam(id); });
 window.addEventListener("message", e => {
   const f = $("#m3"); if (!f.contentWindow || e.source !== f.contentWindow) return;
-  const m = e.data; if (m && m.type === "building-select"){ M3.sel = m.id; m3List(); }
+  const m = e.data; if (!m) return;
+  if (m.type === "building-select"){ M3.sel = m.id; M3.selCam = null; m3List(); }
+  else if (m.type === "camera-select"){ M3.selCam = m.id; M3.sel = null; m3List(); }
+  else if (m.type === "camera-open"){ const i = CAMS.findIndex(c => c.id === m.id); if (i >= 0){ showView("cctv"); selectCam(i); } }
 });
 if (location.hash === "#map3d") showView("map3d");
 </script>

@@ -94,24 +94,39 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .chip[aria-current="true"]{background:var(--amber);color:#1f281f}
 .chip.alert{box-shadow:inset 0 0 0 2px var(--alert)}
 body.minimal .title, body.minimal .chips{display:none}
+.cpin{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border:1.5px solid #6fc3e8;background:rgba(14,22,28,.88);color:#cfeaf6;
+  font:500 10.5px/1 "IBM Plex Mono",monospace;padding:4px 5px 4px 4px;border-radius:999px;display:flex;align-items:center;gap:3px;white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);transition:opacity .2s}
+.cpin svg{width:11px;height:11px;flex:none}
+.cpin.live{border-color:#4bc48f;color:#c9f2de}
+.cpin.sel{outline:2px solid var(--amber);outline-offset:1px}
+.cpin.warn{background:var(--amber);border-color:var(--amber);color:#1f281f}
+.cpin.hit{background:var(--alert);border-color:#fff;color:#fff}
+.cpin.hit::before{content:"";position:absolute;inset:-4px;border-radius:999px;border:2px solid var(--alert);animation:ping 1.4s ease-out infinite}
+.cpin:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+body.nocam .cpin{display:none}
+#info .btn-open{background:#6fc3e8;color:#0e161c;font-size:13.5px;font-weight:500;padding:8px 14px;border-radius:8px}
+#info .btn-open[hidden],#info .btn-alert[hidden]{display:none}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;z-index:9;background:var(--bg);color:var(--ink)}
 @media (max-width:600px){ .title h1{font-size:17px} .title p{display:none} #banner{top:calc(env(safe-area-inset-top,0px) + 70px)} }
-@media (prefers-reduced-motion: reduce){ .lbl.alert::before{animation:none} }
+@media (prefers-reduced-motion: reduce){ .lbl.alert::before,.cpin.hit::before{animation:none} }
 </style>
 </head>
 <body>
 <canvas id="c" tabindex="0" aria-label="가상 부대 3D 배치도"></canvas>
 <div id="labels"></div>
+<div id="camPins" style="position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden"></div>
 
 <header class="top">
   <div class="title panel">
     <div class="code">DUTY MAP · 가상 부대</div>
     <h1>부대 3D 배치도</h1>
-    <p>건물을 누르면 정보와 위기상황 표시 버튼이 나와요.</p>
+    <p>건물이나 카메라 핀을 누르면 정보가 나와요.</p>
   </div>
   <div class="tools panel" role="group" aria-label="보기 설정">
     <button id="btnNight" aria-pressed="false">야간</button>
     <button id="btnLabels" aria-pressed="true">이름표</button>
+    <button id="btnCams" aria-pressed="true">CCTV</button>
   </div>
 </header>
 <div id="banner" role="alert" hidden>
@@ -129,6 +144,7 @@ body.minimal .title, body.minimal .chips{display:none}
     <p class="desc" id="infoDesc"></p>
     <p class="status" id="infoStatus" hidden></p>
     <div class="actions">
+      <button class="btn-open" id="btnOpen" hidden>영상 보기</button>
       <button class="btn-alert" id="btnAlert">위기상황 표시</button>
       <button class="btn-ghost" id="btnFocus">가까이 보기</button>
     </div>
@@ -155,6 +171,15 @@ body.minimal .title, body.minimal .chips{display:none}
     frame.contentWindow.postMessage({ type: 'clear' }, '*')
     frame.contentWindow.postMessage({ type: 'focus', id: 'ammo' }, '*')
     // 건물을 누르면 부모로 { type: 'building-select', id, name } 이 전달돼요.
+
+  CCTV:
+    BaseMap.cameras()                     // [{id, loc, bid, bname, live}, ...]
+    BaseMap.camState('CAM-07', 'hit', '연기 · 불꽃 91%')   // 'warn' | 'hit' | 'normal'
+    BaseMap.focusCam('CAM-07')
+    postMessage({ type:'cam-state', id:'CAM-07', state:'hit', message:'...' })
+    postMessage({ type:'cam-focus', id:'CAM-07' })
+    postMessage({ type:'alert', cam:'CAM-07', message:'...' })   // 카메라가 있는 건물에 표시
+    // 카메라 핀을 누르면 부모로 { type:'camera-select', id, loc }, '영상 보기'를 누르면 { type:'camera-open', id }
 
   주소 끝에 ?ui=minimal 을 붙이면 제목 카드와 하단 버튼을 숨겨요.
 */
@@ -265,6 +290,11 @@ const flagTex = canvasTex(300, 200, g => {
   tri(Math.PI + th, [1, 1, 1]); tri(th, [0, 0, 0]); tri(-th, [0, 1, 0]); tri(Math.PI - th, [1, 0, 1]);
 });
 
+const padTex = canvasTex(256, 256, (g, w, h) => {
+  g.clearRect(0, 0, w, h); g.fillStyle = '#5f6466'; g.beginPath(); g.arc(128, 128, 126, 0, 7); g.fill();
+  g.strokeStyle = '#f2efe4'; g.lineWidth = 9; g.beginPath(); g.arc(128, 128, 96, 0, 7); g.stroke();
+  g.fillStyle = '#f2efe4'; g.fillRect(84, 70, 22, 116); g.fillRect(150, 70, 22, 116); g.fillRect(106, 117, 44, 22);
+});
 /* ---------- 재질 ---------- */
 const MAT = {
   concrete: Lm({ color: 0xb9b6ad }),
@@ -286,6 +316,10 @@ const MAT = {
   flag: Lm({ map: flagTex, side: THREE.DoubleSide }),
   lampHead: Lm({ color: 0xdddddd, emissive: 0x000000 }),
   tire: Lm({ color: 0x1f2123 }),
+  tank: Lm({ color: 0xd9dcd6 }),
+  pad: Lm({ map: padTex, transparent: true }),
+  camBody: Lm({ color: 0xe9ece8 }),
+  camLens: Lm({ color: 0x1b2328 }),
 };
 
 /* ---------- 하늘 · 빛 ---------- */
@@ -392,6 +426,14 @@ const BUILDINGS = [
     facts: '1층 · 유류 보관', desc: '군용 차량을 정비하고 보관해요. 유류와 공구가 있어요.' },
   { id: 'ammo', code: 'B-08', name: '탄약고', x: -92, z: -72, type: 'bunker',
     facts: '지하식 · 이중 울타리', desc: '탄약을 보관하는 저장고예요. 별도 울타리로 둘러싸 출입을 따로 통제해요.' },
+  { id: 'gym', code: 'B-09', name: '체력단련실', x: -76, z: 62, w: 30, d: 14, floors: 1, color: 0xd6d0bf, roof: 'gable', roofColor: 0x56636c,
+    facts: '1층 · 운동기구', desc: '병사들이 운동하는 실내 체육시설이에요.' },
+  { id: 'pump', code: 'B-10', name: '급수 펌프실', x: 104, z: 40, w: 9, d: 7, floors: 1, color: 0xcfd3cf, roof: 'flat',
+    facts: '1층 · 급수 설비', desc: '부대에 물을 보내는 펌프와 전기 설비가 있어요.' },
+  { id: 'fuel', code: 'B-11', name: '유류고', x: 114, z: -74, type: 'tanks',
+    facts: '탱크 2기 · 화기 엄금', desc: '차량용 경유와 휘발유를 저장해요. 방유턱으로 둘러싸여 있어요.' },
+  { id: 'heli', code: 'B-12', name: '헬기장', x: 0, z: -82, type: 'pad',
+    facts: 'H 표시 · 야간 유도등', desc: '환자 후송이나 지휘관 방문 때 헬기가 내리는 곳이에요.' },
 ];
 
 function gableRoof(w, d, rh, color, y, parent) {
@@ -433,10 +475,27 @@ function makeBunker(b, g) {
   }
   return 7.5;
 }
+function makeTanks(b, g) {
+  for (const [w, d, x, z] of [[16, .5, 0, -12.5], [16, .5, 0, 12.5], [.5, 25, -8, 0], [.5, 25, 8, 0]]) box(w, .9, d, MAT.concrete, x, 0, z, g);
+  box(16, .08, 25, MAT.concrete, 0, 0, 0, g);
+  for (const z of [-6, 6]) {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 6.5, 28), MAT.tank);
+    t.position.set(0, 3.35, z); t.castShadow = t.receiveShadow = true; g.add(t);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, .3, 28), MAT.steel); cap.position.set(0, 6.7, z); g.add(cap);
+    box(.25, 6.6, .25, MAT.steel, 4.3, .1, z, g);
+  }
+  return 7;
+}
+function makePad(b, g) {
+  const d = new THREE.Mesh(new THREE.CylinderGeometry(10, 10.4, .3, 40), MAT.concrete); d.position.y = .15; d.receiveShadow = true; g.add(d);
+  const top = new THREE.Mesh(new THREE.CircleGeometry(9.6, 48), MAT.pad); top.rotation.x = -Math.PI / 2; top.position.y = .32; top.receiveShadow = true; g.add(top);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; box(.35, .3, .35, MAT.lampHead, Math.cos(a) * 10.6, 0, Math.sin(a) * 10.6, g); }
+  return .6;
+}
 const buildingMeshes = [];
 BUILDINGS.forEach(b => {
   const g = new THREE.Group(); g.position.set(b.x, 0, b.z); scene.add(g);
-  b.top = b.type === 'hangar' ? makeHangar(b, g) : b.type === 'bunker' ? makeBunker(b, g) : makeOffice(b, g);
+  b.top = b.type === 'hangar' ? makeHangar(b, g) : b.type === 'bunker' ? makeBunker(b, g) : b.type === 'tanks' ? makeTanks(b, g) : b.type === 'pad' ? makePad(b, g) : makeOffice(b, g);
   g.traverse(o => { if (o.isMesh) { o.userData.bid = b.id; buildingMeshes.push(o); } });
   b.group = g;
   const bb = new THREE.Box3().setFromObject(g); b.box = bb;
@@ -501,6 +560,54 @@ instBoxes(lampPos.map(([x, z]) => [x, 6.9, z, .9, .25, .5]), MAT.lampHead);
 const nightLights = [[0, 6, 70], [-75, 6, 18], [0, 6, 20], [75, 6, 18], [54, 6, -48], [-54, 6, -60], [16, 6, 96], [-92, 6, -72]].map(([x, y, z]) => {
   const l = new THREE.PointLight(0xffc27a, 0, 70, 2); l.position.set(x, y, z); scene.add(l); return l;
 });
+/* ---------- CCTV ---------- */
+/* p: 카메라 위치, at: 비추는 곳(바닥), pole: 기둥 설치, bid: 소속 건물 */
+const CAMERAS = [
+  { id: 'CAM-01', loc: '정문 위병소', p: [-6, 4.6, 86], at: [0, 0, 103], pole: true, bid: 'gate' },
+  { id: 'CAM-02', loc: '후문 3초소', p: [121.6, 7.9, -96.6], at: [96, 0, -104], bid: null, note: '북동쪽 3초소 위에 달린 카메라로 정했어요.' },
+  { id: 'CAM-03', loc: '탄약고 입구', p: [-70, 4.2, -64], at: [-86, 0, -72], pole: true, bid: 'ammo' },
+  { id: 'CAM-04', loc: '탄약고 외곽 울타리', p: [-62, 4.2, -102], at: [-118, 0, -100], pole: true, bid: 'ammo' },
+  { id: 'CAM-05', loc: '1생활관 복도', p: [-76, 3.4, 37.7], at: [-76, 0, 47], bid: 'barracks1' },
+  { id: 'CAM-06', loc: '2생활관 복도', p: [-76, 3.4, -14.3], at: [-76, 0, -5], bid: 'barracks2' },
+  { id: 'CAM-07', loc: '2중대 보일러실', p: [-88, 2.6, -29.7], at: [-88, 0, -38], bid: 'barracks2', note: '보일러실은 생활관 2동 뒤편으로 정했어요.' },
+  { id: 'CAM-08', loc: '취사장', p: [62, 3.4, 44.7], at: [66, 0, 54], bid: 'mess' },
+  { id: 'CAM-09', loc: '연병장', p: [-38, 6, -6], at: [0, 0, -34], pole: true, bid: null },
+  { id: 'CAM-10', loc: '간부 주차장', p: [30, 5, 74], at: [41, 0, 60], pole: true, bid: null },
+  { id: 'CAM-11', loc: '정비고', p: [58, 5, -44], at: [80, 0, -58], pole: true, bid: 'motorpool' },
+  { id: 'CAM-12', loc: '유류고', p: [102, 4.5, -56], at: [114, 0, -74], pole: true, bid: 'fuel' },
+  { id: 'CAM-13', loc: '대대 행정반', p: [-12, 3.4, 42.7], at: [-12, 0, 52], bid: 'hq' },
+  { id: 'CAM-14', loc: '총기 보관실', p: [12, 2.6, 27.3], at: [12, 0, 19], bid: 'hq', note: '총기 보관실은 대대본부 뒤편으로 정했어요.' },
+  { id: 'CAM-15', loc: '체력단련실', p: [-66, 3, 69.7], at: [-66, 0, 78], bid: 'gym' },
+  { id: 'CAM-16', loc: '의무실 앞 복도', p: [64, 3.4, -7.3], at: [64, 0, 2], bid: 'medical' },
+  { id: 'CAM-17', loc: '북쪽 울타리', p: [64, 5, -102], at: [4, 0, -104], pole: true, bid: null },
+  { id: 'CAM-18', loc: 'PX 앞', p: [-54.3, 3.4, -18], at: [-44, 0, -18], bid: 'barracks2', note: 'PX는 생활관 2동 동쪽 1층으로 정했어요.' },
+  { id: 'CAM-19', loc: '통신실', p: [20.7, 3.4, 38], at: [30, 0, 38], bid: 'hq', note: '통신실은 대대본부 동쪽 끝으로 정했어요.' },
+  { id: 'CAM-20', loc: '헬기장', p: [16, 5, -90], at: [0, 0, -82], pole: true, bid: 'heli' },
+  { id: 'CAM-21', loc: '3생활관 휴게실', p: [-97.7, 3.4, -25], at: [-108, 0, -25], bid: 'barracks2', note: '3생활관 휴게실은 생활관 2동 서쪽 끝으로 정했어요.' },
+  { id: 'CAM-22', loc: '급수 펌프실', p: [104, 2.6, 43.7], at: [104, 0, 52], bid: 'pump' },
+  { id: 'CAM-23', loc: '위병소 면회실', p: [21.7, 2.6, 88], at: [30, 0, 88], bid: 'gate' },
+  { id: 'CAM-24', loc: '남문 탄약 수송로', p: [-44, 5, -60], at: [-58, 0, -72], pole: true, bid: null, note: '탄약고로 들어가는 진입로를 비추는 카메라로 정했어요.' },
+  { id: 'CAM-25', loc: '당직실 실시간 웹캠', p: [4, 2.8, 42.7], at: [4, 0, 50], bid: 'hq', live: true, note: '대대본부 1층 당직실에 있는 실제 웹캠이에요.' },
+];
+const camMeshes = [], camPoles = [];
+const camGeo = new THREE.BoxGeometry(.55, .45, 1.1), lensGeo = new THREE.CylinderGeometry(.17, .17, .12, 12); lensGeo.rotateX(Math.PI / 2);
+CAMERAS.forEach(c => {
+  const [x, y, z] = c.p, at = new THREE.Vector3(...c.at), pos = new THREE.Vector3(x, y, z);
+  const g = new THREE.Group(); g.position.copy(pos); scene.add(g); g.lookAt(at);
+  const body = new THREE.Mesh(camGeo, MAT.camBody); body.castShadow = true; g.add(body);
+  const lens = new THREE.Mesh(lensGeo, MAT.camLens); lens.position.z = .58; g.add(lens);
+  if (c.pole) camPoles.push([x, 0, z, .12, y - .1]);
+  const L = Math.min(34, Math.max(9, pos.distanceTo(at) * 1.05)), R = L * Math.tan(THREE.MathUtils.degToRad(28));
+  const cg = new THREE.ConeGeometry(R, L, 28, 1, true); cg.translate(0, -L / 2, 0); cg.rotateX(-Math.PI / 2);
+  const cone = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({ color: 0x6fc3e8, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide }));
+  cone.visible = false; g.add(cone);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 10), new THREE.MeshBasicMaterial({ color: 0xff3a24, transparent: true, opacity: .5, depthWrite: false }));
+  glow.visible = false; g.add(glow);
+  [body, lens].forEach(m => { m.userData.cid = c.id; camMeshes.push(m); });
+  c.group = g; c.cone = cone; c.glow = glow; c.state = 'normal'; c.msg = '';
+  c.anchor = pos.clone().add(new THREE.Vector3(0, 1.8, 0));
+});
+instCyl(camPoles, MAT.steel);
 // 울타리 일괄 생성
 instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
 
@@ -513,7 +620,7 @@ instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
     if (NO.some(([a, b, c, d]) => x > a && x < c && z > b && z < d)) continue;
     const h = heightAt(x, z); list.push([x, Math.max(0, h), z, 1 + rnd() * 1.4]);
   }
-  for (const [x, z] of [[-110, 60], [-112, 75], [-95, 82], [110, 75], [100, 85], [112, 60], [-30, 80], [-40, 72], [-22, 88], [110, -20], [112, -5], [-112, -20], [-112, 0], [30, -95], [-20, -95], [0, -95]])
+  for (const [x, z] of [[-110, 60], [-112, 75], [-95, 82], [110, 75], [100, 85], [112, 60], [-30, 80], [-40, 72], [-22, 88], [110, -20], [112, -5], [-112, -20], [-112, 0], [30, -97], [-24, -97]])
     list.push([x + rnd() * 3, 0, z + rnd() * 3, .8 + rnd() * .4]);
   const trunkGeo = new THREE.CylinderGeometry(.2, .35, 3, 5); trunkGeo.translate(0, 1.5, 0);
   const trunks = new THREE.InstancedMesh(trunkGeo, Lm({ color: 0x5b4030 }), list.length);
@@ -566,8 +673,49 @@ BUILDINGS.forEach(b => {
   labelsEl.appendChild(el); b.label = el;
   b.anchor = new THREE.Vector3(b.center.x, b.box.max.y + 2.5, b.center.z);
 });
+/* CCTV 핀 */
+const pinsEl = $('camPins');
+let selectedCam = null, camsOn = true;
+const CAM_ICON = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 5.2c0-.7.5-1.2 1.2-1.2h7.1c.7 0 1.2.5 1.2 1.2v1.2l3.6-1.9c.4-.2.9.1.9.6v5.8c0 .5-.5.8-.9.6l-3.6-1.9v1.2c0 .7-.5 1.2-1.2 1.2H2.2c-.7 0-1.2-.5-1.2-1.2z"/></svg>';
+CAMERAS.forEach(c => {
+  const el = document.createElement('button'); el.className = 'cpin' + (c.live ? ' live' : '');
+  el.innerHTML = CAM_ICON + c.id.slice(4);
+  el.title = `${c.id} ${c.loc}`; el.setAttribute('aria-label', `${c.id} ${c.loc} 선택`);
+  el.addEventListener('click', () => selectCamera(c.id, true));
+  pinsEl.appendChild(el); c.pin = el;
+});
+function findCam(id) { if (!id) return null; const k = String(id).trim(); return CAMERAS.find(c => c.id === k || c.loc === k) || null; }
+function refreshCone(c) {
+  const hot = c.state !== 'normal';
+  c.cone.visible = camsOn && (c === selectedCam || hot);
+  c.cone.material.color.set(c.state === 'hit' ? 0xff3a24 : c.state === 'warn' ? 0xe2a43b : 0x6fc3e8);
+  c.cone.material.opacity = hot ? .3 : .18;
+  c.glow.visible = camsOn && c.state === 'hit';
+}
+function setCamSel(c) { selectedCam = c; CAMERAS.forEach(x => { x.pin.classList.toggle('sel', x === c); refreshCone(x); }); }
+function viewOfCam(c) {
+  const at = new THREE.Vector3(...c.at), tgt = new THREE.Vector3(c.p[0], 0, c.p[2]).lerp(at, .5); tgt.y = 2;
+  const dir = new THREE.Vector3(c.p[0] - at.x, 0, c.p[2] - at.z).normalize().multiplyScalar(.75).add(new THREE.Vector3(.45, .7, .35)).normalize();
+  return [tgt.clone().add(dir.multiplyScalar(58)), tgt];
+}
+function selectCamera(id, move) {
+  const c = findCam(id); if (!c) return false;
+  selectBuilding(null); setCamSel(c); renderInfo(); info.hidden = false;
+  if (move) { const [cam, t] = viewOfCam(c); flyTo(cam, t); }
+  const detail = { id: c.id, loc: c.loc };
+  window.dispatchEvent(new CustomEvent('basemap:camera', { detail }));
+  if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'camera-select' }, detail), '*'); } catch (e) {} }
+  return true;
+}
+function setCamState(id, state, message) {
+  const c = findCam(id); if (!c) return false;
+  c.state = state === 'hit' || state === 'warn' ? state : 'normal'; c.msg = c.state === 'normal' ? '' : (message || '');
+  c.pin.classList.toggle('hit', c.state === 'hit'); c.pin.classList.toggle('warn', c.state === 'warn');
+  refreshCone(c); renderInfo(); return true;
+}
 function find(idOrName) { if (!idOrName) return null; const k = String(idOrName).trim(); return BUILDINGS.find(b => b.id === k || b.name === k || b.name.replace(/\s/g, '') === k.replace(/\s/g, '')) || null; }
 function selectBuilding(id, move) {
+  setCamSel(null);
   const b = find(id); selected = b;
   BUILDINGS.forEach(x => x.label.classList.toggle('sel', x === b));
   Object.entries(chipBtns).forEach(([k, c]) => c.setAttribute('aria-current', String(b ? k === b.id : k === 'all')));
@@ -581,15 +729,32 @@ function selectBuilding(id, move) {
   if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'building-select' }, detail), '*'); } catch (e) {} }
 }
 function renderInfo() {
+  const c = selectedCam;
+  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c;
+  if (c) {
+    const home = c.bid ? find(c.bid) : null;
+    $('infoCode').textContent = c.id + (c.live ? ' · LIVE' : ''); $('infoName').textContent = c.loc;
+    $('infoFacts').textContent = (home ? `${home.code} ${home.name}` : '실외') + (c.pole ? ' · 기둥 설치' : ' · 벽면 설치');
+    $('infoDesc').textContent = c.note || '하늘색 부채꼴이 이 카메라가 비추는 범위예요.';
+    $('infoStatus').hidden = c.state === 'normal';
+    $('infoStatus').textContent = c.state === 'hit' ? `화재 감지: ${c.msg || '확인 필요'}` : c.state === 'warn' ? `의심 감지: ${c.msg || '분석 중'}` : '';
+    return;
+  }
   const b = selected; if (!b) return;
+  const nCam = CAMERAS.filter(x => x.bid === b.id).length;
   $('infoCode').textContent = b.code; $('infoName').textContent = b.name;
-  $('infoFacts').textContent = b.facts; $('infoDesc').textContent = b.desc;
+  $('infoFacts').textContent = b.facts + (nCam ? ` · CCTV ${nCam}대` : ''); $('infoDesc').textContent = b.desc;
   const a = alerts.get(b.id);
   $('infoStatus').hidden = !a; $('infoStatus').textContent = a ? `위기상황: ${a.message}` : '';
   $('btnAlert').textContent = a ? '위기상황 해제' : '위기상황 표시';
 }
 $('btnAlert').addEventListener('click', () => { if (!selected) return; if (alerts.has(selected.id)) clearAlert(selected.id); else setAlert(selected.id, '상황 확인 중'); });
-$('btnFocus').addEventListener('click', () => { if (selected) { const [c, t] = viewOf(selected); flyTo(c, t); } });
+$('btnFocus').addEventListener('click', () => { const v = selectedCam ? viewOfCam(selectedCam) : selected ? viewOf(selected) : null; if (v) flyTo(v[0], v[1]); });
+$('btnOpen').addEventListener('click', () => {
+  if (!selectedCam) return; const detail = { id: selectedCam.id, loc: selectedCam.loc };
+  window.dispatchEvent(new CustomEvent('basemap:camera-open', { detail }));
+  if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'camera-open' }, detail), '*'); } catch (e) {} }
+});
 info.querySelector('.close').addEventListener('click', () => selectBuilding(null));
 $('btnClearAll').addEventListener('click', () => clearAlert());
 
@@ -614,6 +779,8 @@ function updateBanner() {
 function toggle(btn, fn) { btn.addEventListener('click', () => { const on = btn.getAttribute('aria-pressed') !== 'true'; btn.setAttribute('aria-pressed', String(on)); fn(on); }); }
 toggle($('btnLabels'), on => { labelsEl.style.display = on ? '' : 'none'; });
 toggle($('btnNight'), on => setNight(on));
+toggle($('btnCams'), on => setCams(on));
+function setCams(on) { camsOn = on; document.body.classList.toggle('nocam', !on); CAMERAS.forEach(c => { c.group.visible = on; refreshCone(c); }); if (!on && selectedCam) selectBuilding(null); }
 function setNight(n) {
   sun.intensity = n ? .12 : .95; sun.color.set(n ? 0x8899cc : 0xfff3e0);
   hemi.intensity = n ? .28 : .62; hemi.color.set(n ? 0x34446e : 0xdfe9f5); hemi.groundColor.set(n ? 0x121418 : 0x7a7458);
@@ -635,6 +802,8 @@ canvas.addEventListener('pointerup', e => {
   const r = canvas.getBoundingClientRect();
   ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
+  const ch = camsOn && ray.intersectObjects(camMeshes, false)[0];
+  if (ch) { selectCamera(ch.object.userData.cid, false); return; }
   const hit = ray.intersectObjects(buildingMeshes, false)[0];
   if (hit) selectBuilding(hit.object.userData.bid, false);
 });
@@ -659,11 +828,18 @@ window.BaseMap = {
   select: id => selectBuilding(id, false),
   overview: () => { selectBuilding(null); flyTo(HOME.cam, HOME.tgt); },
   setNight: on => { $('btnNight').setAttribute('aria-pressed', String(!!on)); setNight(!!on); },
+  cameras: () => CAMERAS.map(c => { const b = c.bid ? find(c.bid) : null; return { id: c.id, loc: c.loc, bid: c.bid, bname: b ? b.name : null, live: !!c.live, state: c.state }; }),
+  camState: (id, state, message) => setCamState(id, state, message),
+  focusCam: id => selectCamera(id, true),
+  setCams: on => { $('btnCams').setAttribute('aria-pressed', String(!!on)); setCams(!!on); },
   active: () => [...alerts.entries()].map(([id, a]) => ({ id, name: find(id).name, message: a.message, since: a.since })),
 };
 window.addEventListener('message', e => {
   const m = e.data; if (!m || typeof m !== 'object') return;
-  if (m.type === 'alert') { setAlert(m.id, m.message); if (m.focus !== false) BaseMap.focus(m.id); }
+  if (m.type === 'alert') { const id = m.id || (findCam(m.cam) || {}).bid; setAlert(id, m.message); if (m.focus !== false) BaseMap.focus(id); }
+  else if (m.type === 'cam-state') setCamState(m.id, m.state, m.message);
+  else if (m.type === 'cam-focus') selectCamera(m.id, true);
+  else if (m.type === 'cams') BaseMap.setCams(m.on);
   else if (m.type === 'clear') clearAlert(m.id);
   else if (m.type === 'focus') BaseMap.focus(m.id);
   else if (m.type === 'overview') BaseMap.overview();
@@ -671,7 +847,7 @@ window.addEventListener('message', e => {
 });
 
 /* ---------- 렌더 ---------- */
-function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function resize() { const w = innerWidth, h = innerHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 { const c = HOME.cam.clone(); if (camera.aspect < .8) c.sub(HOME.tgt).multiplyScalar(1.5).add(HOME.tgt); camera.position.copy(c); controls.target.copy(HOME.tgt); controls.update(); chipBtns.all.setAttribute('aria-current', 'true'); }
 
@@ -690,11 +866,28 @@ function updateLabels() {
     el.style.zIndex = String(alerts.has(b.id) ? 20000 : 10000 - Math.round(dist));
   }
 }
+function updateCamPins() {
+  if (!camsOn) return;
+  const W = innerWidth, H = innerHeight, camDist = camera.position.distanceTo(controls.target);
+  for (const c of CAMERAS) {
+    const el = c.pin;
+    v.copy(c.anchor).project(camera);
+    if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) { el.style.opacity = 0; el.style.pointerEvents = 'none'; continue; }
+    const dist = camera.position.distanceTo(c.anchor), hot = c.state !== 'normal' || c === selectedCam;
+    const op = hot ? 1 : Math.max(0, Math.min(1, 1.7 - dist / Math.max(250, camDist * 1.5)));
+    el.style.opacity = op; el.style.pointerEvents = op > .2 ? 'auto' : 'none';
+    el.style.transform = `translate(-50%,-100%) translate(${((v.x * .5 + .5) * W).toFixed(1)}px,${((-v.y * .5 + .5) * H).toFixed(1)}px)`;
+    el.style.zIndex = String(hot ? 20000 : 10000 - Math.round(dist));
+  }
+}
+let onScreen = true;
+if ('IntersectionObserver' in window) new IntersectionObserver(es => { onScreen = es[es.length - 1].isIntersecting; }).observe(canvas);
 const clock = new THREE.Clock();
 let t = 0;
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), .05); t += dt;
+  if (!onScreen || !innerWidth || !innerHeight) return;   // 화면에 안 보이는 동안(다른 탭 · 스크롤 밖)은 그리지 않음
   if (fly) {
     fly.k = Math.min(1, fly.k + dt / 1.5); const e = ease(fly.k);
     camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e);
@@ -711,9 +904,10 @@ function loop() {
       fx.ring.scale.setScalar(R * (.7 + k * .6)); fx.ring.material.opacity = .9 * (1 - k);
     }
   }
+  for (const c of CAMERAS) if (c.state === 'hit') { const p = (Math.sin(t * 6) + 1) / 2; c.glow.scale.setScalar(.8 + p * .9); c.glow.material.opacity = .25 + p * .4; }
   sky.position.copy(camera.position); stars.position.copy(camera.position);
   renderer.render(scene, camera);
-  updateLabels();
+  updateLabels(); updateCamPins();
 }
 loop();
 })();
