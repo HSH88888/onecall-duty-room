@@ -4626,6 +4626,34 @@ $("#rptCopy").addEventListener("click", async () => { try { await navigator.clip
    판독 근거: 그 카메라에서 CCTV AI가 감지한 내용(종류 · 신뢰도). 감지가 없으면 위치만 넣어 일반 이상 징후로 접수한다.
    이미 진행 중인 상황이 있으면 새로 접수하지 않고 드론 확인 결과를 추가 보고(다음 보)로 반영한다. */
 let DAUTO_T = null;
+/* 드론 '조치 필요' → 장소마다 준비된 사례로 상황 접수 (숫자 = 시연 사례 번호, "fire" = 그 장소의 화재 사례) */
+const DRONE_CASE = { "CAM-01":27, "CAM-02":22, "CAM-03":8, "CAM-04":7, "CAM-05":10, "CAM-06":0, "CAM-07":"fire", "CAM-08":11, "CAM-09":23, "CAM-10":"fire", "CAM-11":28, "CAM-12":24,
+  "CAM-13":"fire", "CAM-14":"fire", "CAM-15":20, "CAM-16":9, "CAM-17":29, "CAM-18":"fire", "CAM-19":"fire", "CAM-20":4, "CAM-21":"fire", "CAM-22":25, "CAM-23":"fire", "CAM-24":5, "CAM-25":"fire" };
+const DRONE_BLD = { gate:"CAM-01", hq:"CAM-13", barracks1:"CAM-05", barracks2:"CAM-07", mess:"CAM-08", medical:"CAM-16", motorpool:"CAM-11", ammo:"CAM-03", gym:"CAM-15", pump:"CAM-22", fuel:"CAM-12", heli:"CAM-20" };
+function startFromDrone(cam){
+  resetAll(true);
+  const k = DRONE_CASE[cam.id], f = cam.fire, fire = k === "fire" || k == null || !SCENARIOS[k];
+  const scn = fire ? (f.ref !== undefined ? SCENARIOS[f.ref] : f.scn) : SCENARIOS[k];
+  S.preset = null; S.cctv = { cam, conf:0, scn, ref: fire ? f.ref : k, drone:true, fire }; renderChips();
+  S.t0 = Date.now(); S.tDone = null;
+  setPhase("intake");
+  const what = fire ? f.name : scn.k;
+  log(`드론 영상 판독 · ${cam.id} ${cam.loc} 조치 필요 → 자동 상황 접수 (${what})`, "alert");
+  ccLog("r", `${cam.id} · 드론 영상 판독: ${what} → 자동 상황 접수`);
+  $("#transcript").value = `[드론 현장확인] ${cam.id} ${cam.loc} 상공 드론 영상에서 ${what} 정황을 확인했습니다. 당직사관이 영상으로 확인한 결과 조치가 필요합니다.`;
+  showView("ops"); analyze();
+}
+{ const _ca = cctvAdapt;
+  cctvAdapt = function(result, at){
+    if (!S.cctv || !S.cctv.drone) return _ca(result, at);
+    const { cam, fire } = S.cctv, f = cam.fire;
+    result.report.when = `${ymd(at)} ${hm(at)}경 (드론 확인 시각)`;
+    result.report.where = fire && f.over && f.over.where ? f.over.where : cam.loc;
+    { const ty = String(result.type).split(" (")[0]; result.headline = `${ty.includes(cam.loc) ? ty : cam.loc + " " + ty} (드론 현장확인)`; }
+    result.report.how = `${result.report.how} · 드론 영상으로 현장 확인`;
+    result.basis = [`드론 현장확인: ${cam.id} ${cam.loc} 상공 영상에서 이상 확인`, "당직사관이 드론 영상을 보고 '조치 필요'로 판정", ...(result.basis || []).slice(0, 1)];
+  };
+}
 function droneAutoReport(m, where){
   clearTimeout(DAUTO_T);
   const cam = CAMS.find(c => c.id === m.cam) || CAMS.find(c => m.name && c.loc && (c.loc.includes(m.name) || m.name.includes(c.loc)));
@@ -4648,6 +4676,7 @@ function droneAutoReport(m, where){
       return;
     }
     if (S.result || S.phase !== "idle") resetAll(true);
+    { const dc = cam || CAMS.find(c => c.id === DRONE_BLD[m.id]); if (dc){ startFromDrone(dc); return; } }
     const loc = cam ? `${cam.id} ${cam.loc}` : where;
     $("#transcript").value = `[드론 현장확인] ${loc} 상공에서 드론 영상으로 이상 징후를 확인했습니다. 조치가 필요합니다. 인원 피해와 원인은 확인 중입니다.`;
     log(`드론 영상 판독 · ${loc} 조치 필요 → 자동 상황 접수`, "alert");
