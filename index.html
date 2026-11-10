@@ -437,8 +437,10 @@ textarea.bubble[readonly]{color:var(--muted)}
 .bm-act button:hover{background:var(--accent);color:var(--accent-ink)}
 .bm .dots{display:inline-flex;gap:4px}.bm .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:djDot 1s infinite}.bm .dots i:nth-child(2){animation-delay:.15s}.bm .dots i:nth-child(3){animation-delay:.3s}
 @keyframes djDot{0%,60%,100%{opacity:.3}30%{opacity:1}}
-.bot-chips{display:flex;flex-wrap:wrap;gap:6px;padding:2px 12px 10px;flex:none}
-.bot-chips button.more{border-style:dashed;color:var(--muted)}
+.bot-chips{display:flex;gap:6px;padding:2px 12px 10px;flex:none;overflow-x:auto;scrollbar-width:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent)}
+.bot-chips::-webkit-scrollbar{display:none}
+.bot-chips.drag{cursor:grabbing}
+.bot-chips.drag button{pointer-events:none}
 .bot-chips button{flex:none;border:1px solid var(--line-2);background:transparent;color:var(--fg);border-radius:999px;padding:6px 11px;font-size:12.5px;white-space:nowrap}
 .bot-chips button:hover{border-color:var(--accent)}
 .bot-in{display:flex;gap:8px;padding:0 12px}
@@ -3830,13 +3832,21 @@ function botToggle(on){
   $("#bot").hidden = !BOT.open; $("#botFab").hidden = BOT.open; $("#botFab").setAttribute("aria-expanded", String(BOT.open));
   if (BOT.open){ $("#botBadge").hidden = true; if (!BOT.greeted){ BOT.greeted = true; botSay("충성! 귀요미 당직사관 '당직이'예요 🫡\n궁금한 걸 물어보거나 아래 버튼을 눌러 보세요!"); } $("#botInput").focus(); }
 }
-function botChipsRender(first){
-  const pool = BOT_CHIPS.concat(BOT_QA.map(x => x[0]).filter(q => q.length <= 13)), pick = first ? BOT_CHIPS.slice(0, 5) : [];
-  while (pick.length < 5){ const q = pool[Math.floor(Math.random() * pool.length)]; if (!pick.includes(q)) pick.push(q); }
-  $("#botChips").innerHTML = pick.map(c => `<button type="button">${esc(c)}</button>`).join("") + '<button type="button" class="more" data-more="1">🔄 다른 질문</button>';
+/* 추천 질문: 한 줄로 두고 마우스로 끌면 예상 질문 200가지가 계속 이어진다 */
+const botShuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function botChipsFill(first){
+  const qs = (first ? BOT_CHIPS.slice(0, 5) : []).concat(botShuffle(BOT_QA.map(x => x[0])));
+  $("#botChips").insertAdjacentHTML("beforeend", qs.map(c => `<button type="button">${esc(c)}</button>`).join(""));
 }
-botChipsRender(true);
-$("#botChips").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.more) return botChipsRender(); botAsk(b.textContent); botChipsRender(); });
+botChipsFill(true);
+{ const box = $("#botChips"); let d = null, moved = false;
+  box.addEventListener("scroll", () => { if (box.scrollLeft + box.clientWidth > box.scrollWidth - 600 && box.childElementCount < 2100) botChipsFill(); });
+  box.addEventListener("pointerdown", e => { if (e.pointerType === "touch" || e.button) return; d = { x:e.clientX, s:box.scrollLeft }; moved = false; });
+  addEventListener("pointermove", e => { if (!d) return; const dx = e.clientX - d.x; if (!moved && Math.abs(dx) < 5) return; moved = true; box.classList.add("drag"); box.scrollLeft = d.s - dx; });
+  addEventListener("pointerup", () => { if (!d) return; d = null; box.classList.remove("drag"); setTimeout(() => { moved = false; }, 0); });
+  box.addEventListener("wheel", e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)){ box.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive:false });
+  box.addEventListener("click", e => { if (moved) return; const b = e.target.closest("button"); if (b) botAsk(b.textContent); });
+}
 $("#botFab").addEventListener("click", () => botToggle(true));
 $("#botClose").addEventListener("click", () => botToggle(false));
 $("#botForm").addEventListener("submit", e => { e.preventDefault(); const i = $("#botInput"); botAsk(i.value); i.value = ""; });
