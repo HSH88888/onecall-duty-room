@@ -411,6 +411,40 @@ textarea.bubble[readonly]{color:var(--muted)}
 .alert-edge.go{animation:alertEdge 1s ease-in-out 3}
 @keyframes alertEdge{0%,100%{opacity:0}45%,55%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.alert-edge.go{animation:none}}
+/* ===== 당직이 챗봇 (시연용 · 키워드 응답) ===== */
+.dj{width:100%;height:100%;display:block}
+.dj-eyes{transform-box:fill-box;transform-origin:center;animation:djBlink 4.2s infinite}
+@keyframes djBlink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.1)}}
+.bot-fab{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:44;width:66px;height:66px;border-radius:50%;border:2px solid var(--accent);background:#20262b;padding:0;overflow:visible;box-shadow:0 8px 22px rgba(0,0,0,.45);transition:transform .15s}
+.bot-fab .dj{border-radius:50%;overflow:hidden}
+.bot-fab:hover{transform:translateY(-3px) rotate(-4deg)}
+.bot-badge{position:absolute;right:-3px;top:-3px;min-width:20px;height:20px;border-radius:10px;background:var(--sev1);color:#fff;font-size:11.5px;font-weight:800;display:grid;place-items:center}
+.bot-badge[hidden]{display:none}
+.bot{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:44;width:min(380px,calc(100vw - 24px));height:min(560px,calc(100vh - 150px));display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line-2);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
+.bot[hidden]{display:none}
+.bot-h{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.bot-h > div{flex:1;min-width:0;display:flex;flex-direction:column}
+.bot-h b{font-size:15.5px}.bot-h small{color:var(--muted);font-size:12px}
+.bot-av{width:44px;height:44px;border-radius:50%;overflow:hidden;background:#20262b;border:2px solid var(--accent);flex:none}
+.bot-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.bm{display:flex;gap:8px;align-items:flex-end;max-width:100%}
+.bm .bot-av{width:30px;height:30px;border-width:1.5px}
+.bm p{margin:0;padding:9px 12px;border-radius:14px 14px 14px 4px;background:var(--panel-2);font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;max-width:calc(100% - 46px)}
+.bm.me{justify-content:flex-end}
+.bm.me p{background:var(--accent);color:var(--accent-ink);border-radius:14px 14px 4px 14px;font-weight:600;max-width:82%}
+.bm-act{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 0 38px}
+.bm-act button{border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:700}
+.bm-act button:hover{background:var(--accent);color:var(--accent-ink)}
+.bm .dots{display:inline-flex;gap:4px}.bm .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:djDot 1s infinite}.bm .dots i:nth-child(2){animation-delay:.15s}.bm .dots i:nth-child(3){animation-delay:.3s}
+@keyframes djDot{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.bot-chips{display:flex;gap:6px;padding:0 12px 8px;overflow-x:auto;flex:none}
+.bot-chips button{flex:none;border:1px solid var(--line-2);background:transparent;color:var(--fg);border-radius:999px;padding:6px 11px;font-size:12.5px;white-space:nowrap}
+.bot-chips button:hover{border-color:var(--accent)}
+.bot-in{display:flex;gap:8px;padding:0 12px}
+.bot-in input{flex:1;min-width:0;background:var(--panel-2);color:var(--fg);border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;font:inherit;font-size:14.5px}
+.bot-in input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.bot-note{padding:7px 12px 10px;color:var(--faint);font-size:11.5px}
+@media (prefers-reduced-motion:reduce){.dj-eyes,.bm .dots i{animation:none}}
 /* ===== UX v2: 단계형 상황실 ===== */
 body{padding-block:0 84px}
 .wrap{gap:0}
@@ -676,6 +710,34 @@ button.recip{background:var(--panel)}
 
 <div class="alert-band" id="alertBand" hidden></div>
 <div class="alert-edge" id="alertEdge" aria-hidden="true"></div>
+<button class="bot-fab" id="botFab" aria-label="귀요미 당직사관 당직이와 대화" aria-expanded="false"><svg class="dj" viewBox="0 0 100 100" aria-hidden="true">
+  <path d="M18 100c0-16 14-24 32-24s32 8 32 24z" fill="#5d6f49"/>
+  <rect x="20" y="86" width="15" height="9" rx="2" fill="#F0A43A"/><text x="27.5" y="93" text-anchor="middle" font-size="6.2" font-weight="800" fill="#1C1305">당직</text>
+  <circle cx="50" cy="54" r="29" fill="#FFE1C4"/>
+  <circle cx="31" cy="62" r="6" fill="#FFB5A8" opacity=".75"/><circle cx="69" cy="62" r="6" fill="#FFB5A8" opacity=".75"/>
+  <g class="dj-eyes"><ellipse cx="39" cy="54" rx="4.2" ry="5.4" fill="#2a2320"/><ellipse cx="61" cy="54" rx="4.2" ry="5.4" fill="#2a2320"/><circle cx="40.6" cy="51.8" r="1.5" fill="#fff"/><circle cx="62.6" cy="51.8" r="1.5" fill="#fff"/></g>
+  <path class="dj-mouth" d="M43 65q7 7 14 0" fill="none" stroke="#2a2320" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M20 44c0-20 13-31 30-31s30 11 30 31c-9-5-19-7-30-7s-21 2-30 7z" fill="#4b5a3c"/>
+  <path d="M16 46c10-7 22-10 34-10s24 3 34 10c1 3-1 5-4 4-9-4-19-6-30-6s-21 2-30 6c-3 1-5-1-4-4z" fill="#37432c"/>
+  <circle cx="50" cy="25" r="5.5" fill="#F0A43A"/><path d="M50 21.4l1.2 2.5 2.7.3-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.3z" fill="#1C1305"/>
+</svg><span class="bot-badge" id="botBadge">1</span></button>
+<section class="bot" id="bot" hidden aria-label="당직이 챗봇">
+  <header class="bot-h"><span class="bot-av"><svg class="dj" viewBox="0 0 100 100" aria-hidden="true">
+  <path d="M18 100c0-16 14-24 32-24s32 8 32 24z" fill="#5d6f49"/>
+  <rect x="20" y="86" width="15" height="9" rx="2" fill="#F0A43A"/><text x="27.5" y="93" text-anchor="middle" font-size="6.2" font-weight="800" fill="#1C1305">당직</text>
+  <circle cx="50" cy="54" r="29" fill="#FFE1C4"/>
+  <circle cx="31" cy="62" r="6" fill="#FFB5A8" opacity=".75"/><circle cx="69" cy="62" r="6" fill="#FFB5A8" opacity=".75"/>
+  <g class="dj-eyes"><ellipse cx="39" cy="54" rx="4.2" ry="5.4" fill="#2a2320"/><ellipse cx="61" cy="54" rx="4.2" ry="5.4" fill="#2a2320"/><circle cx="40.6" cy="51.8" r="1.5" fill="#fff"/><circle cx="62.6" cy="51.8" r="1.5" fill="#fff"/></g>
+  <path class="dj-mouth" d="M43 65q7 7 14 0" fill="none" stroke="#2a2320" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M20 44c0-20 13-31 30-31s30 11 30 31c-9-5-19-7-30-7s-21 2-30 7z" fill="#4b5a3c"/>
+  <path d="M16 46c10-7 22-10 34-10s24 3 34 10c1 3-1 5-4 4-9-4-19-6-30-6s-21 2-30 6c-3 1-5-1-4-4z" fill="#37432c"/>
+  <circle cx="50" cy="25" r="5.5" fill="#F0A43A"/><path d="M50 21.4l1.2 2.5 2.7.3-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.3z" fill="#1C1305"/>
+</svg></span><div><b>당직이</b><small>귀요미 당직사관 · 시연용 챗봇</small></div><button class="btn sm" id="botClose" aria-label="닫기">닫기</button></header>
+  <div class="bot-log" id="botLog" aria-live="polite"></div>
+  <div class="bot-chips" id="botChips"></div>
+  <form class="bot-in" id="botForm"><input id="botInput" autocomplete="off" maxlength="80" placeholder="예) 불이 나면 어떻게 해?" aria-label="당직이에게 물어보기"><button class="btn primary sm" type="submit">보내기</button></form>
+  <span class="bot-note">AI 연결 없이, 정해 둔 낱말에만 답하는 시연용입니다.</span>
+</section>
 <footer class="dutybar" id="dutyBar">
   <b>오늘 당직일지</b><span class="hint" id="dbCount">자동 기록 0건</span><span class="mono" id="dbTime"></span><span id="dbText"></span>
   <button class="link" id="dbOpen">일지 전체 보기 →</button>
@@ -3682,6 +3744,68 @@ function uxAlert(){
 $("#alertEdge").addEventListener("animationend", () => $("#alertEdge").classList.remove("go"));
 const _alSetPhase = setPhase; setPhase = function(p){ _alSetPhase(p); uxAlert(); };
 const _alRenderAI = renderAI; renderAI = function(){ _alRenderAI(); uxAlert(); };
+
+/* ===== 당직이 챗봇: API 없이 낱말에 반응하는 시연용 ===== */
+const BOT = { open:false, greeted:false, busy:false };
+const BOT_FACE = $("#botFab .dj").outerHTML;
+const botGo = v => { const b = document.querySelector(`.vbtn[data-v="${v}"]`); if (b) b.click(); };
+function botScenario(i){
+  if (S.result || ["analyzing","send","intake"].includes(S.phase)) return botSay("앗, 지금 진행 중인 상황이 있어요! 위쪽 '새 상황'을 누른 다음 다시 불러 주세요 🙇");
+  botToggle(false); botGo("ops"); dictate(i);
+}
+const BOT_RULES = [
+  { kw:["현재 상황","지금 상황","상황 어때","상황은"], a:() => S.result ? `지금은 [${SEV[S.result.severity].name}] ${S.result.headline} 상황이에요!\n할 일 ${S.result.todo.filter((x,i)=>S.todoDone[i]).length}/${S.result.todo.length}건 완료, 보고 ${S.recips.filter(r=>r.sentNo>0).length}/${S.recips.length}명 발송했어요.` : "지금은 평시예요. 이상 없습니다, 충성! ✌️", act:() => S.result ? [["지금 할 일 보기", () => { botGo("ops"); goStep(2); }]] : [] },
+  { kw:["불","화재","연기","타는 냄새"], a:"불이야?! 침착하게 이 순서예요 🔥\n1) 화재 경보 울리고 인원 대피\n2) 119 신고 + 위병소에 소방차 진입로 개방\n3) 닫힌 문은 함부로 열지 않기\n(지침서 제4장 4-1, p.41–43)\n\n말로만 해도 제가 다 정리해 드려요!", act:[["화재 시연 시작", () => botScenario(1)], ["CCTV 보기", () => botGo("cctv")]] },
+  { kw:["응급","환자","쓰러","의식","심정지","다쳤","부상"], a:"환자 발생이면 1초가 급해요 🚑\n1) 옆으로 눕히고 기도 확보\n2) 군의관 호출, 숨이 멎으면 바로 심폐소생술\n3) 접수 후 10분 안에 후송 결정\n(지침서 제3장 3-1, p.34–36)", act:[["응급환자 시연 시작", () => botScenario(0)]] },
+  { kw:["탄약","경보","침입","거수자"], a:"탄약고 경보는 오작동 같아도 '실제 침입'으로 보고 움직여요 🚨\n5분대기조 출동 → 울타리 · 출입문 · 자물쇠 확인 → CCTV 녹화 확인!\n(지침서 제7장 7-4)", act:[["탄약고 경보 시연 시작", () => botScenario(8)]] },
+  { kw:["음주","술","만취"], a:"음주 복귀자는 다그치지 말고 안전부터 확인해요 🍶\n인계받아 상태 확인 → 취침 조치 → 다음 날 중대장이 경위 확인!", act:[["음주 복귀 시연 시작", () => botScenario(18)]] },
+  { kw:["탈영","이탈","미복귀","없어졌"], a:"인원이 안 보이면 초기 30분이 골든타임이에요 ⏱️\n영내 수색 → 마지막 목격 시각 · 장소 확인 → 당직사령 · 중대장 보고!\n'전체 20개'에서 '인원 이탈' 시연을 눌러 보세요." },
+  { kw:["종료","일지","보고서","한글","hwp"], a:"보고를 보낸 뒤 '상황 종료'를 누르면 종료 보고서 초안을 제가 써 드려요 📝\n한글(HWP) 파일로 저장도 되고, 당직일지에도 자동으로 남아요!" },
+  { kw:["보고","누구한테","누구에게","연락망","연락처","대상"], a:"보고는 아래에서 위로! 📞\n당직사령 → 대대장 → 상급부대 상황실 순서로 올리고, 지원 부서에는 협조 요청을 보내요.\n상황마다 누구에게 보낼지는 제가 골라 드리고, 사관님이 추가 · 제외할 수 있어요.", act:[["보고 체계 보기", () => { botGo("ops"); goStep(3); }]] },
+  { kw:["지침서","매뉴얼","112쪽","책자","규정"], a:"당직근무 지침서가 112쪽이나 돼요 📚\n급할 때 그걸 넘길 시간은 없으니까, 상황을 말하면 제가 해당 쪽만 찾아서 '지금 할 일'로 보여 드려요!\n(지침서 내용은 시연용 가상 문서예요.)" },
+  { kw:["버스","셔틀","정류장"], a:() => { let t = "부대 버스는 3대가 영내를 돌고, 정류장마다 4초씩 정차해요 🚌"; try { const e = BUSES.map(b => ({ b, t:etaFor(b, 0) })).filter(x => x.t !== null).sort((a,b) => a.t - b.t)[0]; if (e) t += `\n지금 정문 위병소에는 ${e.b.no}호차가 ${e.t <= 0 ? "정차 중" : e.t < 20 ? "곧 도착" : "약 " + fmtEta(e.t) + " 뒤 도착"}이에요.`; } catch(e2) {} return t + "\n상황이 나면 해당 정류장은 자동으로 우회해요!"; }, act:[["부대 버스 보기", () => botGo("bus")]] },
+  { kw:["cctv","씨씨","카메라","캠","감시"], a:"카메라 25대를 제가 같이 보고 있어요 👀\n연기나 불꽃이 보이면 바로 알려 드리고, CAM-25는 진짜 웹캠이에요!", act:[["CCTV 보기", () => botGo("cctv")]] },
+  { kw:["등급","1급","2급","3급","4급"], a:"긴급 등급은 네 단계예요!\n🔴 1급 긴급: 즉시 보고 (인명 · 화재 · 총기 등)\n🟠 2급 중대: 신속 보고\n🟡 3급 주의: 지휘 보고\n🔵 4급 참고: 일지 기록" },
+  { kw:["점호","순찰","인수인계"], a:"오늘 일석점호는 22:00에 이상 없이 끝났고, 순찰 1회차도 탄약고 · 위병소 이상 없었어요 ✅\n아래 '오늘 당직일지'에서 전체 기록을 볼 수 있어요!" },
+  { kw:["몇 시","몇시","시간","시계"], a:() => `지금은 ${hm(new Date())}이에요! ⏰` },
+  { kw:["사용법","도움","기능","뭐 할 수","뭐할수","어떻게 써","뭘 할"], a:"저는 이런 걸 도와드려요!\n① 상황을 말하면 '지금 할 일'만 정리\n② 보고 문자 · AI 음성 전화\n③ 한글 보고서 · 당직일지\n④ CCTV 화재 감지\n⑤ 부대 버스 우회 · 비상 수송\n\n'화재', '응급', '버스', '보고'처럼 물어보세요!" },
+  { kw:["누구","이름","소개","정체"], a:"충성! 귀요미 당직사관 '당직이'입니다 🫡\n밤새 사관님 옆에서 지침서를 대신 읽어 드리는 게 제 임무예요.\n(시연용이라 정해 둔 낱말에만 답할 수 있어요.)" },
+  { kw:["졸려","피곤","힘들","지쳤","잠 와","잠와"], a:"사관님 조금만 더 힘내요…! 💪\n제가 옆에서 같이 지키고 있을게요. 물 한 잔 마시고 스트레칭 한 번 어때요?" },
+  { kw:["배고","야식","밥","라면","간식"], a:"야식은 못 드려서 죄송해요… 🍜\n대신 보고서는 제가 다 써 드릴게요! 그게 제일 든든하잖아요, 헤헤." },
+  { kw:["고마","감사","땡큐","수고","잘했","최고","귀여","귀엽"], a:"헤헤, 칭찬받았다! 🥰\n사관님 근무 끝날 때까지 제가 딱 붙어 있을게요. 충성!" },
+  { kw:["안녕","하이","반가","충성","ㅎㅇ","hello","hi"], a:"충성! 🫡 좋은 밤이에요, 사관님.\n무슨 일이 생기면 저한테 말만 하세요!" },
+];
+const BOT_CHIPS = ["불이 나면?", "환자가 쓰러졌어", "누구한테 보고해?", "버스 언제 와?", "뭐 할 수 있어?", "졸려…"];
+function botAdd(text, me, acts){
+  const logEl = $("#botLog"), d = document.createElement("div"); d.className = "bm" + (me ? " me" : "");
+  d.innerHTML = (me ? "" : `<span class="bot-av">${BOT_FACE}</span>`) + "<p></p>"; d.querySelector("p").textContent = text; logEl.appendChild(d);
+  if (acts && acts.length){ const a = document.createElement("div"); a.className = "bm-act"; acts.forEach(([label, fn]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.addEventListener("click", fn); a.appendChild(b); }); logEl.appendChild(a); }
+  logEl.scrollTop = logEl.scrollHeight; return d;
+}
+function botSay(text, acts){ botAdd(text, false, acts); }
+function botAnswer(q){
+  const s = q.toLowerCase().replace(/\s+/g, " ");
+  const r = BOT_RULES.find(x => x.kw.some(k => s.includes(k)));
+  if (!r) return { a:"앗, 그건 아직 배우는 중이에요… 😅\n저는 시연용이라 정해 둔 낱말만 알아들어요.\n'화재', '응급', '보고', '버스', 'CCTV', '종료'처럼 물어봐 주세요!", act:[] };
+  return { a: typeof r.a === "function" ? r.a() : r.a, act: typeof r.act === "function" ? r.act() : (r.act || []) };
+}
+function botAsk(q){
+  q = String(q || "").trim(); if (!q || BOT.busy) return;
+  botAdd(q, true); BOT.busy = true;
+  const wait = document.createElement("div"); wait.className = "bm"; wait.innerHTML = `<span class="bot-av">${BOT_FACE}</span><p><span class="dots"><i></i><i></i><i></i></span></p>`; $("#botLog").appendChild(wait); $("#botLog").scrollTop = $("#botLog").scrollHeight;
+  setTimeout(() => { wait.remove(); const r = botAnswer(q); botSay(r.a, r.act); BOT.busy = false; }, 550);
+}
+function botToggle(on){
+  BOT.open = on === undefined ? !BOT.open : on;
+  $("#bot").hidden = !BOT.open; $("#botFab").hidden = BOT.open; $("#botFab").setAttribute("aria-expanded", String(BOT.open));
+  if (BOT.open){ $("#botBadge").hidden = true; if (!BOT.greeted){ BOT.greeted = true; botSay("충성! 귀요미 당직사관 '당직이'예요 🫡\n궁금한 걸 물어보거나 아래 버튼을 눌러 보세요!"); } $("#botInput").focus(); }
+}
+$("#botChips").innerHTML = BOT_CHIPS.map(c => `<button type="button">${esc(c)}</button>`).join("");
+$("#botChips").addEventListener("click", e => { const b = e.target.closest("button"); if (b) botAsk(b.textContent); });
+$("#botFab").addEventListener("click", () => botToggle(true));
+$("#botClose").addEventListener("click", () => botToggle(false));
+$("#botForm").addEventListener("submit", e => { e.preventDefault(); const i = $("#botInput"); botAsk(i.value); i.value = ""; });
+$("#botInput").addEventListener("keydown", e => { if (e.key === "Escape") botToggle(false); });
 </script>
 
 </body></html>
