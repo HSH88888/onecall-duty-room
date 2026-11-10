@@ -4969,7 +4969,7 @@ setInterval(() => {
 }, 700);
 /* 끌어서 옮기기 (살짝 누르면 대화창) */
 DJ.el.addEventListener("pointerdown", e => {
-  if (e.button) return;
+  if (e.button || (e.target.closest && e.target.closest("#djDog"))) return;     /* 충성이를 누른 것은 끌기가 아니라 '멍멍' */
   djStopWalk(); DJ.drag = { dx:e.clientX - DJ.x, dy:e.clientY - DJ.y, sx:e.clientX, sy:e.clientY }; DJ.moved = false;
   try { DJ.el.setPointerCapture(e.pointerId); } catch(e2) {}
 });
