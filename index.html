@@ -659,6 +659,8 @@ body{padding-block:0 84px}
 #w6Slot details.more > summary{font-size:13px}
 #nowList{margin:0}
 #nowMore{align-self:flex-start}
+#nowMore[hidden]{display:none}
+@media (min-width:1000px){#stage2 #nowList{gap:5px}#stage2 #nowList label{padding-block:8px}}
 .rep-h .rep-chain{font-size:12.5px;color:var(--muted);flex:1;min-width:0}
 .rep-h #sendSlot{margin-left:auto}
 @media (max-width:560px){.st-x{display:none}}
@@ -4058,10 +4060,10 @@ function todoRef(r, task){
 const refTag = (r, task) => { const f = todoRef(r, task); return `<small class="ref" title="${esc(f.title)}">지침서 ${f.no}</small>`; };
 function renderNow(){
   const r = S.result, ul = $("#nowList"); if (!r || !ul) return;
-  const ix = nowIdx(), done = ix.filter(i => S.todoDone[i]).length;
+  const ix = r.todo.map((x, i) => i), done = ix.filter(i => S.todoDone[i]).length;   // 할 일은 모두 보여 준다
   ul.innerHTML = ix.map(i => { const x = r.todo[i]; return `<li><label for="nw-${i}"><input type="checkbox" id="nw-${i}" data-i="${i}" ${S.todoDone[i]?"checked":""}><span class="when ${whenClass(x.when)}">${esc(x.when)}</span><span class="task">${esc(x.task)}${refTag(r, x.task)}</span></label></li>`; }).join("");
   $("#nowCnt").textContent = `${done} / ${ix.length} 완료`;
-  $("#nowMore").textContent = `전체 할 일 ${r.todo.length}개 보기 →`;
+  $("#nowMore").hidden = true;
 }
 $("#nowList").addEventListener("change", e => {
   const cb = e.target.closest("input[data-i]"); if (!cb || !S.result) return;
