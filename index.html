@@ -3882,7 +3882,7 @@ DJ.el.querySelector(".dj").outerHTML = djSvg("djb", "0 0 120 156");
 BOT_FACE = djSvg("dj", "20 6 82 82"); document.querySelector(".bot-h .bot-av").innerHTML = BOT_FACE;
 DJ.el.insertAdjacentHTML("beforeend", '<span class="dj-say" id="djSay" hidden></span>');
 try { const v = localStorage.getItem("onecall_dj_roam"); DJ.roam = v === null ? !matchMedia("(prefers-reduced-motion: reduce)").matches : v === "1"; } catch(e) {}
-const DJ_IDLE = ["안녕! 👋", "아 심심하다…", "순찰 중~ 이상 무!", "하암… 졸리다", "사관님 파이팅! 💪", "충성! 🫡", "오늘 밤도 무사히~", "저 눌러 보세요!", "라면 먹고 싶다… 🍜", "지침서 112쪽 다 외웠지롱", "뚜벅뚜벅…", "무슨 일 생기면 말만 하세요!"];
+const DJ_IDLE = ["안녕! 👋","아 심심하다…","순찰 중~ 이상 무!","하암… 졸리다","사관님 파이팅! 💪","충성! 🫡","오늘 밤도 무사히~","저 눌러 보세요!","라면 먹고 싶다… 🍜","지침서 112쪽 다 외웠지롱","뚜벅뚜벅…","무슨 일 생기면 말만 하세요!","여기도 이상 없음! ✅","탄약고 쪽 한 번 볼까~","CCTV 25대 다 보는 중 👀","버스 잘 다니나 보자 🚌","오늘은 조용하네…","조용한 게 최고야 ✨","커피 한 잔 하고 싶다 ☕","다리 아파… 좀 쉴까","아무 일 없어라, 얍! 🙏","점호는 잘 끝났고~","일지는 제가 쓰는 중! 📒","보고서? 저한테 맡겨요 📝","헬멧이 좀 무거워… 🪖","별이 예쁘다 ⭐","야식 시간 아닌가…? 🤤","심심한데 말 걸어 줘요","저 끌어서 옮겨도 돼요!","어디 보자, 이상 무… 🔦","사관님 물 한 잔 드세요 💧","스트레칭 한 번 하고~ 🙆","졸면 안 돼, 정신 차려! 😤","오늘 근무도 화이팅 🔥","무전 이상 없음! 📻","정문도 잘 잠겼고~ 🔒","불씨는 없겠지…? 🧯","말 한마디면 다 해 드려요!","질문 200개도 준비했어요 🤓","헤헤, 나 귀엽지? 🥰","새벽 공기 좋다~ 🌙","집에 가고 싶… 아니에요!","이따가 교대하면 꿀잠 😴","걷다 보니 살 빠지겠네","이쪽은 내가 지킨다! 🛡️","사관님, 저 여기 있어요~","랄랄라~ 순찰 순찰 🎵","발표 잘 되게 해 주세요 🙏","해커톤 1등 가 보자고! 🏆","오늘도 무사고 기원! 🍀"];
 const DJ_DRAG = ["으앗, 어디 가요~?", "꺄, 날아간다!", "살살요…!"], DJ_DROP = ["여기 있을게요!", "여기서 근무할게요 🫡", "휴, 어지러워…"];
 const djPick = a => { let s; do { s = a[Math.floor(Math.random() * a.length)]; } while (a.length > 1 && s === DJ.last); DJ.last = s; return s; };
 const djBounds = () => ({ minX:8, maxX:Math.max(8, innerWidth - 84), minY:78, maxY:Math.max(78, innerHeight - 102 - 62) });
