@@ -1196,6 +1196,131 @@ window.addEventListener('message', e => {
   else if (m.type === 'night') BaseMap.setNight(m.on);
 });
 
+/* ---------- 영내 사람 · 차량 (드론 영상일 때만 움직임) ----------
+   낮(밝을 때): 병사 30명(구보 소대 10 · 근무자 3 · 이동 17) + 차량 3대 · 밤(야간투시): 근무자 · 순찰자 2명 + 순찰 차량 1대
+   상황이 접수된 건물 근처 병사는 연병장으로 대피하고, 근처 차량은 멈춘다. */
+const LIFE = { on: false, night: null, items: [], chk: 0 };
+const LM = {
+  uni: Lm({ color: 0x5d6b3c }), uni2: Lm({ color: 0x4a5631 }), skin: Lm({ color: 0xe0b089 }), helm: Lm({ color: 0x3e4829 }),
+  refl: new THREE.MeshBasicMaterial({ color: 0xc8f05a }), body: Lm({ color: 0x55603a }), top: Lm({ color: 0x6f7350 }),
+  glass: Lm({ color: 0x1f2a28 }), wheel: Lm({ color: 0x1b1b1b }), head: new THREE.MeshBasicMaterial({ color: 0xfff1b8 }), tail: new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
+  beam: new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: .13, depthWrite: false, blending: THREE.AdditiveBlending })
+};
+const LG = (() => {
+  const leg = new THREE.BoxGeometry(.22, .85, .24); leg.translate(0, -.42, 0);
+  const arm = new THREE.BoxGeometry(.16, .66, .18); arm.translate(0, -.3, 0);
+  const beam = new THREE.ConeGeometry(3.2, 14, 14, 1, true); beam.translate(0, -7, 0); beam.rotateX(-Math.PI / 2);
+  return { leg, arm, torso: new THREE.BoxGeometry(.56, .72, .32), head: new THREE.SphereGeometry(.19, 10, 8), helm: new THREE.SphereGeometry(.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), band: new THREE.BoxGeometry(.6, .08, .35), wheel: new THREE.CylinderGeometry(.5, .5, .4, 12).rotateZ(Math.PI / 2), beam };
+})();
+function lifePerson() {
+  const g = new THREE.Group(), M = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  const lA = M(LG.leg, LM.uni2, -.14, .9, 0), lB = M(LG.leg, LM.uni2, .14, .9, 0);
+  M(LG.torso, LM.uni, 0, 1.26, 0).castShadow = true;
+  const aA = M(LG.arm, LM.uni, -.37, 1.58, 0), aB = M(LG.arm, LM.uni, .37, 1.58, 0);
+  M(LG.head, LM.skin, 0, 1.8, 0); M(LG.helm, LM.helm, 0, 1.84, 0); M(LG.band, LM.refl, 0, 1.42, 0);
+  g.scale.setScalar(1.3); g.userData.limbs = [lA, lB, aA, aB]; return g;
+}
+function lifeCar(kind, night) {
+  const g = new THREE.Group(), B = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const truck = kind === 'truck', L = truck ? 7 : 4.2, W = truck ? 2.5 : 1.9;
+  if (truck) { B(W, 1.0, L, LM.body, 0, 1.0, 0); B(W, 1.5, 2.1, LM.body, 0, 2.2, L / 2 - 1.05); B(W - .2, .7, .1, LM.glass, 0, 2.55, L / 2 - .02); B(W, 1.7, 4.5, LM.top, 0, 2.35, -1.1); }
+  else { B(W, .9, L, LM.body, 0, .95, 0); B(W - .1, .8, 2, LM.top, 0, 1.8, -.4); B(W - .3, .6, .08, LM.glass, 0, 1.75, .62); }
+  const wz = truck ? [L / 2 - 1.3, -L / 2 + 1.3, -L / 2 + 2.5] : [L / 2 - .9, -L / 2 + .9];
+  wz.forEach(z => [-W / 2, W / 2].forEach(x => { const w = new THREE.Mesh(LG.wheel, LM.wheel); w.position.set(x, .5, z); g.add(w); }));
+  [-W / 2 + .35, W / 2 - .35].forEach(x => { B(.35, .22, .06, LM.head, x, truck ? 1.3 : 1.15, L / 2 + .02); B(.3, .18, .06, LM.tail, x, 1.1, -L / 2 - .02); });
+  if (night) { const bm = new THREE.Mesh(LG.beam, LM.beam); bm.position.set(0, 1.2, L / 2 + .2); g.add(bm); }
+  return g;
+}
+/* 길(가로 · 세로 도로 옆 보도와 차로) — [x, z] 꺾은선 */
+const LR = {
+  loopWalk: [[-55, 6.4], [55, 6.4], [55, -90.8], [-55, -90.8], [-55, 6.4]],
+  mess: [[-76, 21], [-76, 17.6], [60, 17.6], [62, 24]],
+  med: [[-70, -13], [-55.2, -13], [-55.2, 6.4], [55.2, 6.4], [55.2, -6], [64, -6]],
+  gate: [[5.2, 44], [5.2, 82], [10, 84]],
+  gym: [[-76, 53], [-52, 53], [-52, 40], [-62, 39]],
+  north: [[-46, -90.8], [46, -90.8]],
+  motor: [[55.2, -60], [70, -58]],
+  run: [[-28, -14], [28, -14], [28, -54], [-28, -54], [-28, -14]],
+  carLoop: [[-48, 10], [48, 10], [48, -94], [-48, -94], [-48, 10]],
+  carGate: [[-2, 130], [-2, 14], [-40, 14]],
+  carMotor: [[80, -58], [52, -58], [52, 14], [-90, 14]]
+};
+function lifePath(pts, loop) {
+  const seg = []; let tot = 0;
+  for (let i = 0; i < pts.length - 1; i++) { const [x1, z1] = pts[i], [x2, z2] = pts[i + 1], l = Math.hypot(x2 - x1, z2 - z1); seg.push({ x1, z1, dx: (x2 - x1) / l, dz: (z2 - z1) / l, l, s0: tot }); tot += l; }
+  return { seg, tot, loop };
+}
+function lifeAt(P, s) {
+  let u = s, back = false;
+  if (P.loop) u = ((s % P.tot) + P.tot) % P.tot;
+  else { u = ((s % (2 * P.tot)) + 2 * P.tot) % (2 * P.tot); if (u > P.tot) { u = 2 * P.tot - u; back = true; } }
+  let k = P.seg.length - 1; for (let i = 0; i < P.seg.length; i++) if (u <= P.seg[i].s0 + P.seg[i].l) { k = i; break; }
+  const g = P.seg[k], d = u - g.s0;
+  return { x: g.x1 + g.dx * d, z: g.z1 + g.dz * d, h: Math.atan2(back ? -g.dx : g.dx, back ? -g.dz : g.dz) };
+}
+const LIFE_PATHS = {}; Object.keys(LR).forEach(k => { LIFE_PATHS[k] = lifePath(LR[k], LR[k].length > 2 && LR[k][0][0] === LR[k][LR[k].length - 1][0] && LR[k][0][1] === LR[k][LR[k].length - 1][1]); });
+function lifeAdd(o) { o.obj.position.set(o.x || 0, .05, o.z || 0); scene.add(o.obj); LIFE.items.push(Object.assign({ ph: Math.random() * 6, vx: 0 }, o)); }
+function lifeBuild(night) {
+  lifeClear(); LIFE.night = night;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const walker = (path, spd) => lifeAdd({ kind: 'p', obj: lifePerson(), path: LIFE_PATHS[path], s: R(0, LIFE_PATHS[path].tot * 2), spd: spd || R(1.1, 1.6), lat: R(-.7, .7) });
+  const guard = (x, z, h) => { const o = lifePerson(); o.rotation.y = h; lifeAdd({ kind: 'g', obj: o, x, z, h }); };
+  if (night) {
+    guard(6, 90, -Math.PI / 2);
+    walker('loopWalk', 1.0);
+    lifeAdd({ kind: 'c', obj: lifeCar('jeep', true), path: LIFE_PATHS.carLoop, s: R(0, 200), spd: 4.5, lat: 0 });
+  } else {
+    for (let i = 0; i < 10; i++) lifeAdd({ kind: 'r', obj: lifePerson(), path: LIFE_PATHS.run, s: -Math.floor(i / 2) * 2.3, spd: 2.9, lat: i % 2 ? .85 : -.85 });
+    guard(6, 91, -Math.PI / 2); guard(6, 85, -Math.PI / 2); guard(-66, -66, Math.PI * .8);
+    [['mess', 4], ['med', 3], ['gate', 3], ['gym', 2], ['north', 2], ['motor', 1], ['loopWalk', 2]].forEach(([p, n]) => { for (let i = 0; i < n; i++) walker(p); });
+    lifeAdd({ kind: 'c', obj: lifeCar('truck', false), path: LIFE_PATHS.carLoop, s: R(0, 200), spd: 6, lat: 0 });
+    lifeAdd({ kind: 'c', obj: lifeCar('jeep', false), path: LIFE_PATHS.carGate, s: R(0, 200), spd: 7, lat: 0 });
+    lifeAdd({ kind: 'c', obj: lifeCar('truck', false), path: LIFE_PATHS.carMotor, s: R(0, 200), spd: 5, lat: 0 });
+  }
+  lifeStep(0.001);
+}
+function lifeClear() { LIFE.items.forEach(o => scene.remove(o.obj)); LIFE.items = []; }
+function lifeNear(x, z, r) { for (const id of alerts.keys()) { const b = find(id); if (b && Math.hypot(b.center.x - x, b.center.z - z) < r) return b; } return null; }
+function lifeStep(dt) {
+  if (!LIFE.on) return;
+  if ((LIFE.chk -= dt) <= 0) { LIFE.chk = 3; const n = document.body.classList.contains('nvg'); if (n !== LIFE.night) lifeBuild(n); }
+  let ev = 0;
+  for (const o of LIFE.items) {
+    const m = o.obj, limbs = m.userData.limbs;
+    if (o.kind === 'g') { if (limbs) { const k = Math.sin(t * .8 + o.ph) * .05; limbs[2].rotation.x = k; limbs[3].rotation.x = -k; } continue; }
+    if (o.kind === 'c') {
+      const p = lifeAt(o.path, o.s), stop = lifeNear(p.x, p.z, 30);
+      if (!stop && !reduceMotion) o.s += o.spd * dt;
+      const q = lifeAt(o.path, o.s); m.position.set(q.x, .05, q.z); m.rotation.y = q.h; continue;
+    }
+    /* 사람: 상황 건물 근처면 연병장으로 대피 */
+    if (!o.evac) { const p = lifeAt(o.path, o.s), b = lifeNear(p.x, p.z, 55); if (b) { const i = ev++; o.evac = { x: -12 + (i % 7) * 4, z: -22 - Math.floor(i / 7) * 3.5, b }; } }
+    else if (!alerts.has(o.evac.b.id)) o.evac = null;
+    let moving = false, spd = o.spd;
+    if (o.evac) {
+      const dx = o.evac.x - m.position.x, dz = o.evac.z - m.position.z, d = Math.hypot(dx, dz);
+      if (d > .4 && !reduceMotion) { spd = 2.6; const k = Math.min(d, spd * dt); m.position.x += dx / d * k; m.position.z += dz / d * k; m.rotation.y = Math.atan2(dx, dz); moving = true; }
+      else m.rotation.y = Math.atan2(o.evac.b.center.x - m.position.x, o.evac.b.center.z - m.position.z);
+    } else {
+      if (!reduceMotion) o.s += o.spd * dt;
+      const q = lifeAt(o.path, o.s), nx = Math.cos(q.h) * o.lat, nz = -Math.sin(q.h) * o.lat;
+      m.position.set(q.x + nx, .05, q.z + nz); m.rotation.y = q.h; moving = !reduceMotion;
+    }
+    if (limbs) {
+      if (moving) o.ph += dt * spd * (o.kind === 'r' ? 3.4 : 4.2);
+      const a = moving ? Math.sin(o.ph) * (o.kind === 'r' || o.evac ? .9 : .55) : 0;
+      limbs[0].rotation.x = a; limbs[1].rotation.x = -a; limbs[2].rotation.x = -a * .8; limbs[3].rotation.x = a * .8;
+      if (o.kind === 'r' || (o.evac && moving)) { limbs[2].rotation.z = .25; limbs[3].rotation.z = -.25; } else { limbs[2].rotation.z = limbs[3].rotation.z = 0; }
+    }
+  }
+}
+{ const _start = droneStart, _exit = droneExit, _step = droneStep;
+  droneStart = function () { const ok = _start.apply(this, arguments); if (DR.on && !LIFE.on) { LIFE.on = true; lifeBuild(document.body.classList.contains('nvg')); } return ok; };
+  droneExit = function () { const was = DR.on; _exit.apply(this, arguments); if (was && !DR.on) { LIFE.on = false; lifeClear(); LIFE.night = null; } };
+  droneStep = function (dt) { _step(dt); lifeStep(dt); };
+}
+window.BaseLife = { count: () => ({ people: LIFE.items.filter(o => o.kind !== 'c').length, cars: LIFE.items.filter(o => o.kind === 'c').length, night: LIFE.night, evac: LIFE.items.filter(o => o.evac).length }) };
+
 /* ---------- 렌더 ---------- */
 function resize() { const w = innerWidth, h = innerHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
