@@ -790,6 +790,19 @@ button.recip{background:var(--panel)}
   #stage2:not([hidden]){grid-template-rows:auto minmax(0,1fr)}
 }
 @media (max-width:999px){ #w6Chips span::after{display:none} }
+
+/* ===== 상단 상태: 상황 발생 후 경과 시간 ===== */
+.appbar .phase{white-space:nowrap}
+.ph-el{display:inline-flex;align-items:baseline;gap:6px;margin-left:8px;padding-left:9px;border-left:1px solid currentColor;font-variant-numeric:tabular-nums}
+.ph-el small{font-size:12px;font-weight:600;opacity:.85;font-family:var(--font)}
+.ph-el b{font-family:var(--mono);font-size:15.5px;font-weight:700;letter-spacing:.02em}
+@media (max-width:420px){.ph-el small{display:none}.ph-el b.el::before{content:"+"}}
+.ph-el[hidden]{display:none}
+.appbar .phase.over{background:var(--sev1);color:#fff}
+.appbar .phase.over i{background:#fff}
+.appbar .phase.over .ph-el b.el{animation:phOver 1s steps(1) infinite}
+@keyframes phOver{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.appbar .phase.over .ph-el b.el{animation:none}}
 </style>
 
 <div class="wrap">
@@ -804,7 +817,7 @@ button.recip{background:var(--panel)}
     <div class="status">
       <span class="who">○○대대 · 당직사관 중위 김○○</span>
       <span id="dateLbl" hidden></span><button type="button" class="clock-btn" id="clockBtn" aria-haspopup="dialog" aria-expanded="false" title="가상 시각 설정 (시연용)"><b class="clock mono" id="clock">--:--</b><span class="vt-tag" id="vtTag" hidden>가상</span></button>
-      <span class="phase" id="phase" data-p="idle"><i></i><span id="phaseTxt">평시</span></span>
+      <span class="phase" id="phase" data-p="idle"><i></i><span id="phaseTxt">평시</span><span class="ph-el mono" id="phaseEl" hidden></span></span>
       <button class="gear" id="gearBtn" aria-label="설정 · AI 연결"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
     </div>
   </header>
@@ -1539,6 +1552,21 @@ function tick(){
   }
 }
 setInterval(tick, 250); tick();
+/* 상단 상태 칸에 '상황 발생 시각 · 발생 후 경과 시간' (상황 종료 전까지) — 헤더 시계와 같은 가상 시각 기준 (×1이면 실제 시간과 같다) */
+function elapsedTick(){
+  const el = $("#phaseEl"), ph = $("#phase"); if (!el) return;
+  const on = !!S.t0 && !["idle","closed"].includes(S.phase);
+  el.hidden = !on;
+  if (!on){ ph.classList.remove("over"); ph.removeAttribute("title"); return; }
+  const ms = Math.max(0, vAt(Date.now()) - vAt(S.t0)), s = Math.floor(ms/1000), h = Math.floor(s/3600);
+  const t0 = hm(vdate(S.t0)), e = (h ? h + ":" + pad(Math.floor(s%3600/60)) : pad(Math.floor(s/60))) + ":" + pad(s%60);
+  if (el.dataset.t0 !== t0){ el.dataset.t0 = t0; el.innerHTML = `<b>${t0}</b><small>발생</small><b class="el"></b><small>경과</small>`; }
+  el.querySelector(".el").textContent = e;
+  const g = S.result && S.result.golden, over = !!g && ms > g.min*60000;
+  ph.classList.toggle("over", over);
+  ph.title = `상황 발생 ${t0} · 경과 ${Math.floor(s/60)}분 ${s%60}초${g ? ` · ${g.label} ${g.min}분${over ? " 초과" : ""}` : ""}`;
+}
+setInterval(elapsedTick, 250); elapsedTick();
 
 /* 가상 시각 설정 창 (헤더 시계를 누르면 열림) */
 function vtLight(h){                        // 드론 화면이 어떻게 보일지 (3D 쪽 조명 기준과 맞춤: 11월 일출 07:00 · 일몰 17:30)
