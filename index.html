@@ -491,6 +491,9 @@ body{padding-block:0 84px}
 .rep-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:860px){.rep-grid{grid-template-columns:minmax(0,1fr)}}
 button.recip{background:var(--panel)}
+.rg-h{display:flex;align-items:baseline;gap:8px;padding:10px 2px 2px;font-size:13px;color:var(--muted)}
+.rg-h:first-child{padding-top:0}
+.rg-h b{color:var(--fg);font-weight:700}
 
 .dutybar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;gap:22px;padding:15px max(22px,env(safe-area-inset-right,0px)) calc(15px + env(safe-area-inset-bottom,0px)) max(22px,env(safe-area-inset-left,0px));background:var(--bg);border-top:1px solid var(--line);font-size:14.5px}
 .dutybar > b{white-space:nowrap}
@@ -520,8 +523,8 @@ button.recip{background:var(--panel)}
   <div id="view-ops">
   <nav class="stepper" aria-label="진행 단계">
     <button class="st-i cur" data-s="1"><b>1</b>말하기</button><i class="st-line"></i>
-    <button class="st-i" data-s="2" disabled><b>2</b>지금 할 일</button><i class="st-line"></i>
-    <button class="st-i" data-s="3" disabled><b>3</b>보고</button>
+    <button class="st-i" data-s="2"><b>2</b>지금 할 일</button><i class="st-line"></i>
+    <button class="st-i" data-s="3"><b>3</b>보고</button>
   </nav>
 
   <div class="kpibar" id="kpibar" hidden>
@@ -3320,11 +3323,11 @@ if (location.hash === "#cctv" || location.hash === "#bus") showView(viewOf(locat
 const UX = { step:1 };
 const FEAT = [0, 1, 8, 18];
 function goStep(n){
-  if (n > 1 && !S.result && S.phase !== "analyzing") n = 1;
+  const live = !!S.result || S.phase === "analyzing";   // 진행 중인 상황이 있는가 (없어도 2 · 3단계는 열어 볼 수 있다)
   UX.step = n;
   [1,2,3].forEach(k => { const el = document.getElementById("stage" + k); if (el) el.hidden = k !== n; });
-  document.querySelectorAll(".st-i").forEach(b => { const k = +b.dataset.s; b.classList.toggle("cur", k === n); b.classList.toggle("done", !!S.result && k < n); b.disabled = k > 1 && !S.result; });
-  $("#kpibar").hidden = n === 1;
+  document.querySelectorAll(".st-i").forEach(b => { const k = +b.dataset.s; b.classList.toggle("cur", k === n); b.classList.toggle("done", !!S.result && k < n); b.disabled = false; });
+  $("#kpibar").hidden = n === 1 || !live;
   $("#toReport").hidden = n !== 2; $("#toTodo").hidden = n !== 3;
 }
 document.querySelectorAll(".st-i").forEach(b => b.addEventListener("click", () => { goStep(+b.dataset.s); window.scrollTo({ top:0 }); }));
@@ -3386,6 +3389,15 @@ $("#setClose").addEventListener("click", () => { $("#setOv").hidden = true; });
 $("#setOv").addEventListener("click", e => { if (e.target.id === "setOv") $("#setOv").hidden = true; });
 $("#keyBtn").addEventListener("click", () => { $("#setOv").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { $("#logOv").hidden = true; $("#setOv").hidden = true; } });
+renderRoster = function(){
+  const g = { up:[], req:[], down:[] };
+  ROLES.forEach(r => g[kindOf(r)].push(r));
+  $("#recips").innerHTML = ["up","down","req"].filter(k => g[k].length).map(k =>
+    `<li class="rg-h"><b>${KIND_TXT[k]}</b><small>${g[k].length}곳</small></li>` + g[k].map(r => `
+    <li class="recip"><div class="who"><b>${esc(r)}</b><span class="kind ${k}">${KIND_TXT[k]}</span><small>${esc(ROSTER[r].name)} · ${esc(ROSTER[r].tel)}</small></div><span class="st">대기</span></li>`).join("")).join("");
+  $("#sendHint").textContent = `평시 보고 체계 · 연락망 ${ROLES.length}곳 · 상황이 접수되면 AI가 이 중에서 보고 대상을 고릅니다`;
+};
+if (!S.result) renderRoster();
 renderFeat(); goStep(1);
 
 /* ===== 상황 발생 경고 (1급 · 2급): 가장자리가 천천히 3번 번쩍인 뒤 상단 빨간 띠만 남는다 ===== */
