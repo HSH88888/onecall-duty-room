@@ -888,6 +888,28 @@ button.recip{background:var(--panel)}
   #stage2 > .act-dock #sendBtn{height:66px;padding:0 20px;font-size:15px;font-weight:800;border-radius:14px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.35)}
   #stage2:has(#actDock #sendBtn) > #pane-ai{padding-right:calc(240px + var(--sbw, 190px))}
 }
+
+/* ===== 당직이의 보조견 충성이 ===== */
+.dj-dog{position:absolute;left:-40px;bottom:7px;width:48px;height:39px;pointer-events:auto;cursor:pointer}
+.dj-dog svg{width:100%;height:100%;display:block;overflow:visible}
+.bot-fab.flip .dj-dog{left:auto;right:-40px}
+.bot-fab.flip .dj-dog svg{transform:scaleX(-1)}
+.dj-dog .dg-tail{transform-box:view-box;transform-origin:13px 25px;animation:dgWag .42s ease-in-out infinite alternate}
+.dj-dog .dg-leg{transform-box:fill-box;transform-origin:50% 0}
+.bot-fab.walk .dj-dog .dg-leg.a,.bot-fab.dragging .dj-dog .dg-leg.a{animation:dgLeg .3s ease-in-out infinite alternate}
+.bot-fab.walk .dj-dog .dg-leg.b,.bot-fab.dragging .dj-dog .dg-leg.b{animation:dgLeg .3s ease-in-out infinite alternate-reverse}
+.bot-fab.walk .dj-dog .dg-top{animation:djBob .3s ease-in-out infinite alternate}
+.dj-dog.hop svg{animation:dgHop .45s ease-out}
+.dj-dog.calm .dg-tail{animation-duration:1.4s}
+.dog-say{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;color:#1b1f23;font-size:12px;font-weight:800;line-height:1.3;padding:4px 9px;border-radius:11px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.35);pointer-events:none}
+.dog-say::after{content:"";position:absolute;top:100%;left:50%;margin-left:-5px;border:5px solid transparent;border-top-color:#fff}
+.dog-say[hidden]{display:none}
+@keyframes dgWag{from{transform:rotate(-14deg)}to{transform:rotate(22deg)}}
+@keyframes dgLeg{from{transform:rotate(-26deg)}to{transform:rotate(26deg)}}
+@keyframes dgHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}}
+.bot-fab.flip .dj-dog.hop svg{animation-name:dgHopF}
+@keyframes dgHopF{0%,100%{transform:scaleX(-1) translateY(0)}40%{transform:scaleX(-1) translateY(-12px)}}
+@media (prefers-reduced-motion:reduce){.dj-dog .dg-tail,.dj-dog .dg-leg,.dj-dog .dg-top,.dj-dog.hop svg{animation:none!important}}
 </style>
 
 <div class="wrap">
@@ -4815,6 +4837,39 @@ djRoamUI();
 { const h = djHome(); djPlace(h.x, h.y, 0); }
 setTimeout(() => { if (!BOT.open) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
 setTimeout(djTick, 6000);
+/* ===== 보조견 충성이: 당직이 뒤를 따라다니고, 가끔 거들고, 누르면 짖는다 ===== */
+{ const C = "#c98a4b", D = "#4a3424", L = "#8a5a2b";
+  DJ.el.insertAdjacentHTML("beforeend", `<span class="dj-dog" id="djDog" role="img" aria-label="보조견 충성이"><span class="dog-say" id="dogSay" hidden></span><svg viewBox="0 0 64 52" aria-hidden="true">
+    <path class="dg-tail" d="M13 25 Q5 20 6 9" fill="none" stroke="${D}" stroke-width="5" stroke-linecap="round"/>
+    <rect class="dg-leg a" x="15" y="31" width="6" height="16" rx="3" fill="${L}"/><rect class="dg-leg b" x="38" y="31" width="6" height="16" rx="3" fill="${L}"/>
+    <g class="dg-top">
+      <rect class="dg-leg b" x="21" y="31" width="6" height="16" rx="3" fill="${C}"/><rect class="dg-leg a" x="44" y="31" width="6" height="16" rx="3" fill="${C}"/>
+      <ellipse cx="31" cy="28" rx="19" ry="11" fill="${C}"/>
+      <ellipse cx="27" cy="21.5" rx="13" ry="6" fill="${D}"/>
+      <rect x="21" y="18" width="20" height="16" rx="5" fill="#55663a"/><rect x="21" y="24" width="20" height="3" fill="#e8c547"/>
+      <path d="M43 22 L46 29" stroke="#c0392b" stroke-width="3.2" stroke-linecap="round"/><circle cx="46.5" cy="31" r="2.2" fill="#f2c94c"/>
+      <path d="M42 11 L44 0 L50 8 Z M49 8 L55 0 L56 11 Z" fill="${D}"/>
+      <circle cx="49" cy="17" r="10" fill="${C}"/>
+      <path d="M40 15 Q45 6 53 8 Q50 12 44 14 Z" fill="${D}" opacity=".85"/>
+      <ellipse cx="57" cy="20.5" rx="6.5" ry="4.6" fill="#e9b882"/>
+      <ellipse cx="62.4" cy="18.8" rx="2.5" ry="2.1" fill="#2a2320"/>
+      <ellipse cx="56.5" cy="26" rx="2.1" ry="2.7" fill="#ff7a8a"/>
+      <g class="dj-eyes"><ellipse cx="51" cy="15" rx="1.9" ry="2.4" fill="#2a2320"/><circle cx="51.6" cy="14.1" r=".7" fill="#fff"/></g>
+      <circle cx="47" cy="21" r="2.2" fill="#ff8f8f" opacity=".45"/>
+    </g></svg></span>`);
+  const dog = $("#djDog"), ds = $("#dogSay");
+  const DOG_IDLE = ["멍! 🐾", "멍멍!", "킁킁… 이상 무!", "왈! (동의)", "꼬리 살랑살랑~", "충성! 멍!", "간식은요…? 🦴", "순찰 같이 가요!"];
+  const DOG_TAP = ["멍멍! 🐾", "왈왈!", "충성이 출동!", "헥헥… 좋아요!", "저도 근무 중이에요!"];
+  let dsT = null, dLast = "";
+  const pick = a => { let s; do { s = a[Math.floor(Math.random() * a.length)]; } while (a.length > 1 && s === dLast); return dLast = s; };
+  const dogSay = (t, ms) => { ds.textContent = t; ds.hidden = false; clearTimeout(dsT); dsT = setTimeout(() => { ds.hidden = true; }, ms || 1800); };
+  const hop = () => { dog.classList.remove("hop"); void dog.offsetWidth; dog.classList.add("hop"); };
+  dog.addEventListener("click", e => { if (DJ.moved) return; e.stopPropagation(); e.preventDefault(); hop(); dogSay(pick(DOG_TAP)); });
+  const _say = djSay;
+  djSay = function(text, ms){ _say(text, ms); if (!djBusy() && !BOT.open && Math.random() < .3) setTimeout(() => { if (!djBusy() && !BOT.open) { hop(); dogSay(pick(DOG_IDLE)); } }, (ms || 3200) * .55); };
+  setInterval(() => dog.classList.toggle("calm", djBusy()), 1000);
+  BOT_QA.push(["충성이는 누구야?", ["충성이", "강아지", "군견", "보조견", "멍멍"], "충성이는 제 보조견이에요 🐕\n같이 순찰 돌고, 꼬리 흔들며 응원해요. 충성이를 누르면 대답해요! 멍!"]);
+}
 
 /* 장소 낱말이 여러 개 겹치면 가장 긴(구체적인) 낱말의 정류장을 고른다: "2중대 행정반 옆 보일러실" → 2생활관 */
 affectedStop = function(text){ let best = null, bl = 0; for (const st of BUS_STOPS) for (const k of st.kw) if (k.length > bl && text.includes(k)){ bl = k.length; best = st; } return best; };
