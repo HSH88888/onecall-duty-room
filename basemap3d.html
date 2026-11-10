@@ -722,10 +722,104 @@ instCyl(camPoles, MAT.steel);
 // 울타리 일괄 생성
 instCyl(fencePosts, MAT.steel); instBoxes(fenceWires, MAT.steel);
 
+/* ---------- 주변 마을 · 농경지 · 하천 (가상 배경) ---------- */
+// Separate seed: scenery changes never move existing buildings or cameras.
+const exteriorWindowMats = [];
+(() => {
+  let seed = 1986;
+  const rand = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const sand = Lm({ color: 0xb8b19a }), verge = Lm({ color: 0xa4a17e });
+  const water = Lm({ color: 0x6b9fa4 }), roofColors = [0x566c78, 0x8e5748, 0x607562, 0x665e57];
+  // Follow the same triangulated surface as the ground, avoiding buried roads.
+  const ground = (x,z) => {
+    const step = 3200 / 140, gx = (x + 1600) / step, gz = (z + 1600) / step;
+    const ix = Math.floor(gx), iz = Math.floor(gz), u = gx-ix, v = gz-iz;
+    const ax = ix*step-1600, az = iz*step-1600;
+    const a=heightAt(ax,az), b=heightAt(ax+step,az), c=heightAt(ax,az+step), d=heightAt(ax+step,az+step);
+    return u+v<=1 ? a+(b-a)*u+(c-a)*v : d+(c-d)*(1-u)+(b-d)*(1-v);
+  };
+  function ribbon(points,width,mat,lift=.14) {
+    const vertices=[], indices=[];
+    points.forEach(([x,z],i)=>{
+      const prev=points[Math.max(0,i-1)],next=points[Math.min(points.length-1,i+1)];
+      const dx=next[0]-prev[0], dz=next[1]-prev[1], len=Math.hypot(dx,dz)||1;
+      for(const side of [-1,1]) { const px=x-dz/len*width/2*side,pz=z+dx/len*width/2*side; vertices.push(px,ground(px,pz)+lift,pz); }
+      if(i) { const k=i*2; indices.push(k-2,k-1,k,k-1,k+1,k); }
+    });
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.setIndex(indices);geo.computeVertexNormals();
+    const mesh=new THREE.Mesh(geo,mat);mesh.receiveShadow=true;scene.add(mesh);return mesh;
+  }
+  const line=(x1,z1,x2,z2)=>Array.from({length:121},(_,i)=>[x1+(x2-x1)*i/120,z1+(z2-z1)*i/120]);
+  const highway=line(-490,183,490,183);
+  ribbon(highway,17,verge); ribbon(highway,12,MAT.roadPlain,.19);
+  ribbon(line(0,139,0,183),11,verge);ribbon(line(0,139,0,183),8,MAT.roadPlain,.2);
+  const yellow=Lm({color:0xe7cc7a}), white=Lm({color:0xe3dfcf});
+  for(let x=-480;x<480;x+=13) if(Math.abs(x)>10) ribbon(line(x,183,x+6,183),.22,yellow,.25);
+  for(const z of [177.5,188.5]) ribbon(line(-490,z,490,z),.16,white,.24);
+  // Small settlement on either side of the approach; all structures outside the fence.
+  const houses=[[-138,150,14,10,1],[-102,151,17,11,2],[-66,150,15,10,1],[-30,153,13,9,1],
+    [36,151,18,12,2],[79,149,15,11,1],[124,150,21,13,1],
+    [-148,225,16,12,1],[-106,224,19,12,2],[-61,225,14,11,1],[-20,225,16,11,1],
+    [31,224,20,13,2],[80,225,15,11,1],[130,226,17,12,1]];
+  for(let i=0;i<houses.length;i++) {
+    const [x,z,w,d,floors]=houses[i],h=3.1*floors;
+    const y=Math.max(...[-1,1].flatMap(a=>[-1,1].map(b=>ground(x+a*(w/2+2),z+b*(d/2+2)))))+.12;
+    const group=new THREE.Group();group.position.set(x,y,z);scene.add(group);
+    const wall=Lm({color:[0xe5ddc9,0xd0c8b7,0xdbd9cb][i%3],map:winTex,emissiveMap:winEm,emissive:0x000000});exteriorWindowMats.push(wall);
+    box(w+3,1.6,d+3,MAT.concrete,0,-1.6,0,group);
+    box(w,h,d,wall,0,0,0,group,[1/(4*N),1/(3.1*N)]);
+    gableRoof(w,d,2.8,roofColors[i%4],h,group);
+    const facing=z<183?1:-1;
+    box(1.7,2.3,.2,MAT.dark,0,0,facing*(d/2+.1),group);
+    box(w*.65,.15,2.2,MAT.olive,0,2.7,facing*(d/2+1),group);
+    ribbon(line(x,z+facing*(d/2+2),x,183-facing*6),3.2,sand,.22);
+  }
+  // Bus shelter, pavement, benches and a small village parking area.
+  ribbon(line(25,171,57,171),5.6,MAT.concrete,.22);
+  const sy=ground(44,170)+.3;
+  box(10,.3,4.5,MAT.roofFlat,44,sy+3.1,170);
+  for(const x of [39.4,48.6]) box(.15,3.1,.15,MAT.steel,x,sy,170);
+  box(8,1.8,.12,MAT.glass,44,sy+1,168.3);
+  box(6,.24,.9,MAT.olive,44,sy+.55,169);
+  const poleList=[],headList=[];
+  for(let x=-180;x<=180;x+=36) { const z=173,y=ground(x,z);poleList.push([x,y,z,.13,7]);headList.push([x,y+6.9,z,1.1,.25,.65]); }
+  instCyl(poleList,MAT.steel);instBoxes(headList,MAT.lampHead);
+  // Farmland uses one procedural texture, with alternating furrow directions.
+  const crop=canvasTex(128,128,(g,w,h)=>{g.fillStyle='#8b945a';g.fillRect(0,0,w,h);for(let k=0;k<128;k+=12){g.fillStyle='#616f3e';g.fillRect(k,0,5,h);g.fillStyle='#b4b27b';g.fillRect(k+6,0,2,h);}});
+  const farmMats=[0xc7c28c,0x9ea96a,0xb7a572].map(color=>Lm({map:crop,color}));
+  const plots=[[-217,18,78,54],[-217,84,78,54],[-217,263,78,55],[-116,292,80,49],[-23,292,80,49],[78,292,80,49],[172,292,65,49]];
+  plots.forEach(([x,z,w,d],i)=>{
+    const geo=new THREE.PlaneGeometry(w,d,18,14);geo.rotateX(-Math.PI/2);const p=geo.attributes.position;
+    for(let k=0;k<p.count;k++)p.setY(k,ground(x+p.getX(k),z+p.getZ(k))+.16);
+    scaleUV(geo,w/18,d/18);geo.computeVertexNormals();const m=new THREE.Mesh(geo,farmMats[i%3]);m.position.set(x,0,z);m.receiveShadow=true;scene.add(m);
+    for(const side of [-1,1])ribbon(line(x-w/2,z+side*d/2,x+w/2,z+side*d/2),1.5,sand,.25);
+    for(const side of [-1,1])ribbon(line(x+side*w/2,z-d/2,x+side*w/2,z+d/2),1.5,sand,.25);
+  });
+  // A winding drainage stream runs beside the eastern hillside.
+  const stream=Array.from({length:221},(_,i)=>{const z=-280+i*3;return[235+Math.sin(z*.012)*13,z];});
+  ribbon(stream,15,sand,.1);ribbon(stream,8,water,.22);
+  // Bridge over the stream at the main road; road remains continuously connected.
+  const bx=235+Math.sin(183*.012)*13,by=ground(bx,183)+.5;
+  box(27,.6,13,MAT.concrete,bx,by,183);
+  box(27,.08,11.5,MAT.roadPlain,bx,by+.6,183);
+  for(const z of [176.5,189.5]) {box(27,.25,.25,MAT.steel,bx,by+1.8,z);for(let x=bx-12;x<=bx+12;x+=3)box(.15,1.4,.15,MAT.steel,x,by+.6,z);}
+  // Clusters along the hills, deliberately sparse beside the main approach.
+  const trunks=[],tops=[],rocks=[];
+  for(let i=0;i<450;i++) {
+    const angle=rand()*Math.PI*2,r=330+rand()*330,x=Math.cos(angle)*r,z=Math.sin(angle)*r;
+    if(z>115&&z<355&&x>-310&&x<290||Math.abs(z-183)<18||Math.abs(x-(235+Math.sin(z*.012)*13))<19)continue;
+    const y=ground(x,z),h=8+rand()*8;trunks.push([x,y,z,.22,h*.55]);tops.push([x,y+h*.52,z,h*.25,h*.8]);
+    if(i%7===0)rocks.push([x+6,y,z+4,2+rand()*3]);
+  }
+  instCyl(trunks,Lm({color:0x65523f}));
+  inst(new THREE.ConeGeometry(1,1,7),tops,Lm({color:0x385944}),([x,y,z,r,h])=>{dummy.position.set(x,y,z);dummy.rotation.set(0,0,0);dummy.scale.set(r,h,r);});
+  inst(new THREE.IcosahedronGeometry(1,0),rocks,Lm({color:0x8b8b7b}),([x,y,z,s])=>{dummy.position.set(x,y+s*.3,z);dummy.rotation.set(.2,rand()*6,.1);dummy.scale.set(s,s*.6,s*.8);});
+})();
+
 /* ---------- 나무 ---------- */
 {
   const list = [];
-  const NO = [[-135, -110, 135, 105], [-12, 95, 12, 400]];
+  const NO = [[-135, -110, 135, 105], [-12, 95, 12, 400], [-305, 120, 215, 335], [-263, -15, -171, 115], [-510, 165, 510, 202], [205, -300, 268, 400]];
   for (let i = 0; i < 9000 && list.length < 900; i++) {
     const x = -700 + rnd() * 1400, z = -650 + rnd() * 1200;
     if (NO.some(([a, b, c, d]) => x > a && x < c && z > b && z < d)) continue;
@@ -912,6 +1006,7 @@ function applyLight(L, W = 0) {
   scene.fog.color.copy(skyU.bottom.value);
   const k = 1 - smoothL(.25, .75, L);                                   // 창문 · 가로등이 켜진 정도
   BUILDINGS.forEach(b => { if (b.wallMat) b.wallMat.emissive.copy(LT.win).multiplyScalar(k); });
+  exteriorWindowMats.forEach(m => m.emissive.copy(LT.win).multiplyScalar(k));
   MAT.lampHead.emissive.copy(LT.lamp).multiplyScalar(k);
   stars.material.opacity = .9 * (1 - smoothL(0, .35, L));
   nightLights.forEach(l => { l.intensity = 1.6 * k; });
