@@ -813,7 +813,7 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110g" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1110h" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
@@ -4296,33 +4296,38 @@ function ccdLaunch(){
 }
 function ccDrone(camId){
   const i = CAMS.findIndex(c => c.id === camId); if (i < 0) return;
-  if (CCD.on){ if (CCD.cam === camId) return; ccDroneEnd(true); }
+  if (CCD.on){ if (CCD.cam === camId) return; ccDroneEnd("quiet"); }
   if (CC.sel !== i) selectCam(i);
   Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110g"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1110h"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
-/* 드론 복귀: 영상 칸을 다시 CCTV 화면으로 */
-function ccDroneEnd(quiet){
+/* 드론 복귀: 드론이 대대본부로 날아가 착륙하면 영상이 꺼지고 CCTV 화면으로 돌아온다.
+   now = true (다른 카메라 선택 · 복귀 중 한 번 더 누름)이면 기다리지 않고 바로 끈다. */
+function ccDroneEnd(now){
   if (!CCD.on) return;
-  ccdPost({ type:"drone-cmd", cmd:"exit" });
+  if (!now && CCD.ready && CCD.phase !== "return"){ CCD.phase = "return"; ccdPost({ type:"drone-cmd", cmd:"return" }); ccDroneUI(); return; }
+  ccdPost({ type:"drone-cmd", cmd:"exit" }); ccDroneOff(now === "quiet");
+}
+function ccDroneOff(quiet){
+  if (!CCD.on) return;
   CCD.on = false; $("#ccDroneFrame").hidden = true;
   $("#ccBigWrap").classList.remove("max"); $("#ccDroneCtl").classList.remove("max");
   ccDroneUI(); if (!quiet) selectCam(CC.sel);
 }
 function ccDroneUI(){
-  const on = CCD.on, ctl = $("#ccDroneCtl"), cam = CAMS[CC.sel], arrived = CCD.phase === "orbit";
-  ctl.hidden = !on; $("#ccDrone").textContent = on ? "드론 복귀" : "드론 보내기"; $("#ccDrone").classList.toggle("primary", !on);
+  const on = CCD.on, ctl = $("#ccDroneCtl"), cam = CAMS[CC.sel], arrived = CCD.phase === "orbit", back = CCD.phase === "return";
+  ctl.hidden = !on; $("#ccDrone").textContent = !on ? "드론 보내기" : back ? "복귀 중 · 바로 끄기" : "드론 복귀"; $("#ccDrone").classList.toggle("primary", !on);
   const q = c => ctl.querySelector(`[data-c="${c}"]`);
-  q("skip").hidden = arrived; q("orbit").hidden = q("ok").hidden = q("bad").hidden = !arrived;
+  q("skip").hidden = arrived || back; q("orbit").hidden = q("ok").hidden = q("bad").hidden = !arrived;
   q("orbit").setAttribute("aria-pressed", String(CCD.auto));
   const mx = $("#ccBigWrap").classList.contains("max"); q("max").textContent = mx ? "작게 보기" : "크게 보기"; q("max").setAttribute("aria-pressed", String(mx));
   if (on) $("#ccFocusT").textContent = `드론 영상 · ${cam.id} ${cam.loc}`;
   const note = $("#ccDroneNote");
-  note.hidden = !(on && (arrived || CCD.result)); note.className = "cc-drone-note" + (CCD.result === "조치 필요" ? " bad" : CCD.result ? " ok" : "");
-  note.textContent = CCD.result ? `확인 결과 '${CCD.result}' 기록됨 · 드론 복귀를 누르면 CCTV 화면으로 돌아갑니다.` : "영상을 끌어서 직접 살펴볼 수 있습니다. 확인 결과를 눌러 기록하세요.";
+  note.hidden = !(on && (arrived || back || CCD.result)); note.className = "cc-drone-note" + (CCD.result === "조치 필요" ? " bad" : CCD.result ? " ok" : "");
+  note.textContent = back ? "드론이 대대본부로 복귀하는 중입니다. 착륙하면 화면이 꺼지고 CCTV 화면으로 돌아옵니다." : CCD.result ? `확인 결과 '${CCD.result}' 기록됨 · 드론 복귀를 누르면 드론이 돌아온 뒤 화면이 꺼집니다.` : "영상을 끌어서 직접 살펴볼 수 있습니다. 확인 결과를 눌러 기록하세요.";
 }
 $("#ccDroneCtl").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || !CCD.on) return;
@@ -4332,7 +4337,7 @@ $("#ccDroneCtl").addEventListener("click", e => {
 });
 window.addEventListener("keydown", e => { if (e.key === "Escape" && $("#ccBigWrap").classList.contains("max")){ $("#ccBigWrap").classList.remove("max"); $("#ccDroneCtl").classList.remove("max"); ccDroneUI(); } });
 /* 드론이 떠 있는 동안 다른 카메라를 고르면 드론은 복귀 */
-{ const _selectCam = selectCam; selectCam = function(i){ if (CCD.on && CAMS[i].id !== CCD.cam) ccDroneEnd(true); _selectCam(i); if (CCD.on) ccDroneUI(); }; }
+{ const _selectCam = selectCam; selectCam = function(i){ if (CCD.on && CAMS[i].id !== CCD.cam) ccDroneEnd("quiet"); _selectCam(i); if (CCD.on) ccDroneUI(); }; }
 function m3FocusCam(id){ M3.selCam = id; M3.sel = null; if (m3Win()) m3Post({ type:"cam-focus", id }); else M3.pendingCam = id; m3List(); }
 function m3List(){
   const inc = m3Incident(), ci = m3CamInc();
@@ -4362,7 +4367,7 @@ function m3Start(){
 setInterval(() => { const inc = m3Incident(), ci = m3CamInc(); $("#m3Dot").hidden = !(inc || (ci && ci.state === "hit")); m3Sync(); if (!$("#view-3d").hidden) m3List(); }, 1000);
 $("#m3List").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; M3.sel = b.dataset.id; M3.selCam = null; m3Post({ type:"focus", id:b.dataset.id }); m3List(); });
 $("#m3Cams").addEventListener("click", e => { const b = e.target.closest("button"); if (b) m3FocusCam(b.dataset.id); });
-$("#ccDrone").addEventListener("click", () => { if (CCD.on) ccDroneEnd(); else ccDrone(CAMS[CC.sel].id); });
+$("#ccDrone").addEventListener("click", () => { if (CCD.on) ccDroneEnd(CCD.phase === "return"); else ccDrone(CAMS[CC.sel].id); });
 $("#ccTo3d").addEventListener("click", () => { const id = CAMS[CC.sel].id; showView("map3d"); m3FocusCam(id); });
 window.addEventListener("message", e => {
   const f = $("#m3"), d = $("#ccDroneFrame"), fromMap = !!f.contentWindow && e.source === f.contentWindow, fromCc = !!d.contentWindow && e.source === d.contentWindow;
@@ -4380,7 +4385,8 @@ window.addEventListener("message", e => {
       if (m.cam) ccLog(m.result === "조치 필요" ? "r" : "g", `${m.cam} · 드론 현장확인: ${m.result}`);
       toast(`${where} 드론 확인 결과 '${m.result}'을(를) 당직일지에 기록했습니다.`);
     }
-    else if (m.event === "return"){ if (fromMap) M3.drone = null; log(`드론 복귀 · ${where} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info"); }
+    else if (m.event === "returning"){ if (fromCc) CCD.phase = "return"; log(`드론 복귀 시작 · ${where} → 대대본부`, "info"); }
+    else if (m.event === "return"){ if (fromMap) M3.drone = null; if (fromCc && m.cam === CCD.cam) ccDroneOff(); log(`드론 복귀 · ${where} 현장확인 종료${m.result ? " (" + m.result + ")" : " (결과 미기록)"}`, "info"); }
     if (fromCc) ccDroneUI(); else m3List();
     return;
   }
