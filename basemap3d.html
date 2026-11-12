@@ -176,6 +176,32 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
 @media (max-width:470px){body.feed #drone .tr .src,body.feed #drone .tgt span{display:none}body.feed #drone .tgt{top:auto;bottom:12px;left:auto;right:16px;transform:none;max-width:60%}}
 @media (max-width:600px){#drone .tele{bottom:112px}#drone .tgt{top:64px;max-width:80%}#drone .cross{width:48px;height:48px;margin:-24px 0 0 -24px}#drone .tr .src{display:none}}
 @media (prefers-reduced-motion: reduce){#drone .rec i{animation:none}}
+/* ===== 건물 내부(1인칭) 모드 ===== */
+#info .btn-enter{background:var(--amber);color:#1f281f;font-size:13.5px;font-weight:500;padding:8px 14px;border-radius:8px}
+#info .btn-enter[hidden]{display:none}
+body.interior #labels,body.interior #camPins,body.interior .top,body.interior .bottom{display:none}
+#inside{position:fixed;inset:0;z-index:6;pointer-events:none}
+#inside[hidden]{display:none}
+#inPois{position:absolute;inset:0;overflow:hidden}
+#inside:not(.ready) #inPois,#inside:not(.ready) #inPad{display:none}
+#inPois .lbl{transition:opacity .2s}
+#inside .in-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;padding:10px 14px 11px;border-radius:12px;pointer-events:auto;max-width:calc(100% - 170px)}
+#inside .in-top .code{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--amber);letter-spacing:.08em}
+#inside .in-top h2{margin:3px 0 0;font-size:17px;font-weight:700}
+#inside .in-top p{margin:4px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.5}
+#inExit{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;pointer-events:auto;background:var(--amber);color:#1f281f;font-size:13.5px;font-weight:700;padding:10px 14px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+#inside .in-dot{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(255,255,255,.75);box-shadow:0 0 0 1.5px rgba(0,0,0,.35)}
+#inInfo{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:min(340px,calc(100% - 24px));padding:14px 16px 15px;border-radius:12px;pointer-events:auto}
+#inInfo[hidden]{display:none}
+#inInfo .code{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--amber);letter-spacing:.08em}
+#inInfo h3{margin:3px 30px 0 0;font-size:17px;font-weight:700}
+#inInfo p{margin:7px 0 0;font-size:13.5px;line-height:1.6}
+#inInfo .close{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;font-size:18px;color:var(--ink-soft)}
+#inPad{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,46px);gap:6px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+#inPad button{font-size:12.5px;border-radius:10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);touch-action:none}
+#inPad button.on,#inPad button:active{background:var(--amber);color:#1f281f}
+#inPad [data-m="f"]{grid-area:1/2}#inPad [data-m="l"]{grid-area:2/1}#inPad [data-m="b"]{grid-area:2/2}#inPad [data-m="r"]{grid-area:2/3}
+@media (max-width:600px){#inInfo{bottom:calc(env(safe-area-inset-bottom,0px) + 124px)}#inside .in-top p{display:none}}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;z-index:9;background:var(--bg);color:var(--ink)}
 @media (max-width:600px){ .title h1{font-size:17px} .title p{display:none} #banner{top:calc(env(safe-area-inset-top,0px) + 70px)} }
 @media (prefers-reduced-motion: reduce){ .lbl.alert::before,.cpin.hit::before{animation:none} }
@@ -215,6 +241,7 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     <p class="status" id="infoStatus" hidden></p>
     <div class="actions">
       <button class="btn-open" id="btnOpen" hidden>영상 보기</button>
+      <button class="btn-enter" id="btnEnter" hidden>안으로 들어가기</button>
       <button class="btn-alert" id="btnAlert">위기상황 표시</button>
       <button class="btn-ghost" id="btnFocus">가까이 보기</button>
       <button class="btn-drone" id="btnDrone">드론 보내기</button>
@@ -245,6 +272,26 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     <button id="drHand" aria-pressed="false" hidden>✋ 손으로 조종</button>
     <button class="back" id="drHome">드론 복귀</button>
     <button id="drBack">드론 화면 종료</button>
+  </div>
+</div>
+<!-- 건물 내부 1인칭 화면 -->
+<div id="inside" hidden>
+  <div id="inPois"></div>
+  <i class="in-dot"></i>
+  <div class="in-top panel">
+    <div class="code" id="inTopCode">B-07 · 내부</div>
+    <h2 id="inTopName">차량정비고 내부</h2>
+    <p id="inHelp">끌어서 둘러보기 · W A S D · 방향키로 걷기 · 바닥을 누르면 그곳으로 이동</p>
+  </div>
+  <button id="inExit">밖으로 나가기</button>
+  <section id="inInfo" class="panel" hidden aria-live="polite">
+    <button class="close" aria-label="설명 닫기">×</button>
+    <div class="code" id="inCode"></div>
+    <h3 id="inName"></h3>
+    <p id="inDesc"></p>
+  </section>
+  <div id="inPad" role="group" aria-label="걷기">
+    <button data-m="f" aria-label="앞으로">▲ 앞</button><button data-m="l" aria-label="왼쪽으로 돌기">◀ 왼쪽</button><button data-m="b" aria-label="뒤로">▼ 뒤</button><button data-m="r" aria-label="오른쪽으로 돌기">오른쪽 ▶</button>
   </div>
 </div>
 <canvas id="droneNoise" width="160" height="90" hidden></canvas>
@@ -288,6 +335,12 @@ body.feed #droneLink{font-size:12px;padding:7px 12px}
     // 부모로 { type:'drone', event:'launch'|'arrive'|'report'|'return', id, name, result } 가 전달돼요.
     // 주소에 ?feed=1 을 붙이면 조작 버튼 없이 영상 + HUD만 나와요. 조작은 postMessage({ type:'drone-cmd', cmd:'skip'|'orbit'|'ok'|'bad'|'joy'(dir:'up'|'down'|'left'|'right'|'near'|'far', 누르는 동안 0.15초마다 반복)|'return'(날아서 복귀 후 종료)|'exit'(바로 종료) })
     // 지금은 영상 소스가 이 3D 화면이고, 실제 적용 때는 같은 HUD 아래에 드론 실시간 영상을 넣으면 돼요.
+
+  건물 내부 (지금은 차량정비고):
+    BaseMap.enter('motorpool')            // 셔터를 열고 걸어 들어가 1인칭으로 둘러보기
+    BaseMap.exitInterior()                // 걸어 나와서 원래 시점으로
+    postMessage({ type:'enter', id:'motorpool' }) · postMessage({ type:'exit-interior' })
+    // 부모로 { type:'interior', event:'enter'|'inside'|'poi'|'exit', id, name, poi } 가 전달돼요.
 
   주소 끝에 ?ui=minimal 을 붙이면 제목 카드와 하단 버튼을 숨겨요.
 */
@@ -567,13 +620,232 @@ function makeOffice(b, g) {
   for (let i = 0; i < Math.max(1, Math.floor(b.w / 14)); i++) box(2.4, 1.4, 2, MAT.steel, -b.w / 2 + 5 + i * 9, top + .35, -b.d / 4 + (i % 2) * 2, g);
   return top + 1.8;
 }
+/* ---------- 차량정비고: 안에 들어갈 수 있도록 벽 · 지붕을 속이 빈 구조로 만들고 내부 설비를 채운다 ----------
+   좌표는 건물 그룹 기준(가운데 0,0), 앞면(셔터) = +z. 내부 텍스처는 따로 둔 난수를 써서 바깥 배치(나무 등)가 바뀌지 않게 한다. */
+let _hs = 4021;
+const hr = () => { _hs = (Math.imul(_hs, 1664525) + 1013904223) >>> 0; return _hs / 4294967296; };
+const KR_FONT = '"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+function flatTex(w, h, draw) { const t = canvasTex(w, h, draw); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; return t; }
+function signMat(lines, bg, fg, w = 512, h = 192, border) {
+  return Lm({ map: flatTex(w, h, g => {
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    if (border) { g.strokeStyle = border; g.lineWidth = h * .06; g.strokeRect(h * .07, h * .07, w - h * .14, h - h * .14); }
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    lines.forEach(([t, s, wt], i) => { g.font = `${wt || 700} ${s}px ${KR_FONT}`; g.fillText(t, w / 2, h * (i + .5) / lines.length); });
+  }) });
+}
+function hazard(g, x, y, w, h, s) {
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.fillStyle = '#e2b52e'; g.fillRect(x, y, w, h); g.fillStyle = '#1d1d1b';
+  for (let k = -h; k < w + h; k += s * 2) { g.beginPath(); g.moveTo(x + k, y); g.lineTo(x + k + s, y); g.lineTo(x + k + s - h, y + h); g.lineTo(x + k - h, y + h); g.fill(); }
+  g.restore();
+}
+const HG = (() => {
+  // 바닥: 40 x 22 m를 1024 x 563 px에 그린다 (위쪽 = 뒷벽, 아래쪽 = 셔터)
+  const floor = flatTex(1024, 563, (g, w, h) => {
+    const k = w / 40, X = x => (x + 20) * k, Z = z => (z + 11) * k;
+    g.fillStyle = '#7f877c'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 16000; i++) { const v = hr() < .5 ? 0 : 255; g.fillStyle = `rgba(${v},${v},${v},${.08 * hr()})`; g.fillRect(hr() * w, hr() * h, 1 + hr() * 2, 1 + hr() * 2); }
+    g.strokeStyle = 'rgba(40,45,40,.28)'; g.lineWidth = 2;
+    for (let x = -15; x < 20; x += 5) { g.beginPath(); g.moveTo(X(x), 0); g.lineTo(X(x), h); g.stroke(); }
+    g.beginPath(); g.moveTo(0, Z(0)); g.lineTo(w, Z(0)); g.stroke();
+    for (let i = 0; i < 34; i++) { g.fillStyle = `rgba(28,28,22,${.07 + hr() * .13})`; g.beginPath(); g.ellipse(X(-18 + hr() * 36), Z(-8 + hr() * 17), (.3 + hr() * 1.1) * k, (.2 + hr() * .7) * k, hr() * 3, 0, 7); g.fill(); }
+    // 정비 구역 1 · 2 · 3
+    g.lineWidth = .14 * k; g.strokeStyle = '#e2b52e';
+    [-12, 0, 12].forEach((bx, i) => {
+      g.strokeRect(X(bx - 4.4), Z(-7.4), 8.8 * k, 16.6 * k);
+      g.fillStyle = 'rgba(226,181,46,.92)'; g.font = `700 ${1.05 * k}px ${KR_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(`정비 ${i + 1}구역`, X(bx), Z(8.1));
+    });
+    // 뒤쪽 보행 통로 (흰 선)
+    g.strokeStyle = 'rgba(240,238,228,.85)'; g.lineWidth = .1 * k; g.setLineDash([.9 * k, .5 * k]);
+    g.beginPath(); g.moveTo(X(-14), Z(-8.3)); g.lineTo(X(12.6), Z(-8.3)); g.stroke(); g.setLineDash([]);
+    // 유류 보관 구역 빗금
+    hazard(g, X(-19.7), Z(-10.7), 5.4 * k, 9.2 * k, .5 * k);
+    g.fillStyle = 'rgba(127,135,124,.88)'; g.fillRect(X(-19.3), Z(-10.3), 4.6 * k, 8.4 * k);
+    // 정비 피트 (구덩이): 노랑 · 검정 테두리 + 어두운 안쪽
+    hazard(g, X(-13.35), Z(-4.85), 2.7 * k, 9.7 * k, .3 * k);
+    const pg = g.createLinearGradient(X(-13), 0, X(-11), 0); pg.addColorStop(0, '#0d0f0e'); pg.addColorStop(.5, '#262a28'); pg.addColorStop(1, '#0d0f0e');
+    g.fillStyle = pg; g.fillRect(X(-13), Z(-4.5), 2 * k, 9 * k);
+    g.strokeStyle = 'rgba(200,200,190,.35)'; g.lineWidth = 2;
+    for (let z = -4; z < 4.5; z += .9) { g.beginPath(); g.moveTo(X(-12.85), Z(z)); g.lineTo(X(-11.15), Z(z)); g.stroke(); }
+  });
+  // 공구 그림자판 (작업대 위 벽)
+  const peg = flatTex(512, 160, (g, w, h) => {
+    g.fillStyle = '#c4ad86'; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(60,45,30,.5)'; for (let y = 6; y < h; y += 11) for (let x = 6; x < w; x += 11) { g.beginPath(); g.arc(x, y, 1.6, 0, 7); g.fill(); }
+    const tool = (x, y, l, wd, a, col) => { g.save(); g.translate(x, y); g.rotate(a); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2; g.strokeRect(-wd / 2 - 2, -l / 2 - 2, wd + 4, l + 4); g.fillStyle = col; g.fillRect(-wd / 2, -l / 2, wd, l); g.restore(); };
+    for (let i = 0; i < 9; i++) tool(30 + i * 14, 70, 44 + i * 5, 6, 0, '#5c6166');               // 스패너
+    for (let i = 0; i < 6; i++) tool(180 + i * 16, 60, 54, 5, 0, ['#c8322a', '#e2a43b', '#2e5a8a'][i % 3]);   // 드라이버
+    tool(300, 55, 70, 10, .25, '#3a3f44'); tool(330, 55, 70, 10, -.25, '#3a3f44');                      // 망치
+    for (let i = 0; i < 4; i++) tool(380 + i * 24, 60, 60, 12, 0, '#4d5a63');                          // 렌치
+    g.fillStyle = '#3a3f44'; g.beginPath(); g.arc(475, 70, 22, 0, 7); g.fill(); g.fillStyle = '#c4ad86'; g.beginPath(); g.arc(475, 70, 12, 0, 7); g.fill();
+    g.fillStyle = '#1f281f'; g.font = `700 15px ${KR_FONT}`; g.textAlign = 'left'; g.fillText('공구는 제자리에 · 반출 시 수불대장 기록', 14, h - 14);
+  });
+  const drawer = flatTex(64, 64, (g, w, h) => { g.fillStyle = '#b52d24'; g.fillRect(0, 0, w, h); for (let y = 4; y < h; y += 12) { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, y + 9, w, 2); g.fillStyle = '#d8dadb'; g.fillRect(18, y + 3, 28, 2.5); } });
+  return {
+    floor: Lm({ map: floor }), peg: Lm({ map: peg }), drawer: Lm({ map: drawer }),
+    roof: (() => { const m = MAT.metal.clone(); m.side = THREE.DoubleSide; return m; })(),
+    wains: Lm({ color: 0x8e998b }), yellow: Lm({ color: 0xe2b52e }), red: Lm({ color: 0xb52d24 }), bench: Lm({ color: 0x4d5a63 }), wood: Lm({ color: 0x9a7b55 }),
+    lamp: Lm({ color: 0xffffff, emissive: 0xfff3d8 }), glass: Lm({ color: 0xa9c7d1, transparent: true, opacity: .28, depthWrite: false, side: THREE.DoubleSide }),
+    white: Lm({ color: 0xe9e6dc }), screen: Lm({ color: 0x0e1418, emissive: 0x2f5f7c }), card: Lm({ color: 0xb08d5e }),
+    drums: [0x2e5a8a, 0x9a2f25, 0x3f6b3a, 0x2e5a8a, 0x5d6166].map(color => Lm({ color })),
+    truck: Lm({ color: 0x55603a }), cover: Lm({ color: 0x6f7350 }), tglass: Lm({ color: 0x1f2a28 }), chassis: Lm({ color: 0x2a2d2b }),
+    head: Lm({ color: 0xfff1b8, emissive: 0x665c3a }), suit: Lm({ color: 0x3f4b35 }), skin: Lm({ color: 0xe0b089 }), cap: Lm({ color: 0x2f3826 }),
+    wheel: new THREE.CylinderGeometry(.5, .5, .4, 16).rotateZ(Math.PI / 2), drum: new THREE.CylinderGeometry(.29, .29, .88, 16),
+    tireFlat: new THREE.TorusGeometry(.4, .17, 8, 18).rotateX(Math.PI / 2), headGeo: new THREE.SphereGeometry(.16, 12, 10),
+    ext: new THREE.CylinderGeometry(.11, .11, .55, 12),
+    sOutside: signMat([['B-07 차량정비고', 72]], '#1f281f', '#ece7d4', 768, 112),
+    sSafety: signMat([['안전제일', 96]], '#2f7a3d', '#ffffff', 512, 192, '#ffffff'),
+    sFire: signMat([['화기엄금', 88], ['유류 보관 구역', 44, 500]], '#c8322a', '#ffffff', 384, 256, '#ffffff'),
+    sOffice: signMat([['정비반 사무실', 64]], '#ece7d4', '#1f281f', 512, 112),
+    sBoard: signMat([['차량 정비 현황', 30], ['1구역 K-511 하부 점검', 24, 500], ['2구역 K-131 브레이크', 24, 500], ['3구역 K-511 타이어 교환', 24, 500]], '#f4f2ea', '#1f281f', 384, 256),
+  };
+})();
+function sign(mat, w, h, x, y, z, ry, parent) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, y, z); m.rotation.y = ry || 0; parent.add(m); return m; }
+function mkWheel(p, x, y, z, s = 1) { const m = new THREE.Mesh(HG.wheel, MAT.tire); m.position.set(x, y, z); m.scale.setScalar(s); m.castShadow = true; p.add(m); return m; }
+function mkTruck(p, x, z, skip) {
+  const t = new THREE.Group(); t.position.set(x, 0, z); p.add(t);
+  box(2.1, .35, 6.8, HG.chassis, 0, .62, 0, t);
+  box(2.4, 1.75, 2.0, HG.truck, 0, .9, 2.35, t);
+  box(2.1, .62, .06, HG.tglass, 0, 1.88, 3.36, t);
+  for (const dx of [-.8, .8]) box(.36, .2, .06, HG.head, dx, 1.12, 3.36, t);
+  box(2.5, .3, 4.6, HG.truck, 0, .97, -1.2, t);
+  box(2.5, 1.65, 4.5, HG.cover, 0, 1.27, -1.25, t);
+  for (const wz of [2.4, -1.5, -2.7]) for (const dx of [-1.1, 1.1]) if (!(skip && skip(dx, wz))) mkWheel(t, dx, .5, wz);
+  return t;
+}
+function mkJeep(p, x, y, z) {
+  const t = new THREE.Group(); t.position.set(x, y, z); p.add(t);
+  box(1.9, .7, 4.2, HG.truck, 0, .42, 0, t); box(1.85, .85, 2.3, HG.cover, 0, 1.12, -.65, t);
+  box(1.6, .5, .06, HG.tglass, 0, 1.25, .53, t);
+  for (const dx of [-.62, .62]) box(.3, .18, .06, HG.head, dx, .8, 2.11, t);
+  for (const wz of [1.35, -1.35]) for (const dx of [-.95, .95]) mkWheel(t, dx, .44, wz, .88);
+  return t;
+}
+function mkWorker(p, x, z, ry, kneel) {
+  const w = new THREE.Group(); w.position.set(x, 0, z); w.rotation.y = ry; p.add(w);
+  const y0 = kneel ? -.42 : 0;
+  if (kneel) box(.46, .44, .62, HG.suit, 0, 0, -.12, w); else box(.46, .86, .26, HG.suit, 0, 0, 0, w);
+  box(.54, .66, .3, HG.suit, 0, y0 + .86, 0, w);
+  for (const s of [-1, 1]) { const a = box(.13, .6, .15, HG.suit, s * .34, y0 + .9, .08, w); a.rotation.x = -.5; }
+  const hd = new THREE.Mesh(HG.headGeo, HG.skin); hd.position.set(0, y0 + 1.7, 0); w.add(hd);
+  box(.34, .1, .34, HG.cap, 0, y0 + 1.8, 0, w); box(.3, .03, .2, HG.cap, 0, y0 + 1.81, .22, w);
+  return w;
+}
 function makeHangar(b, g) {
-  box(b.w, 6.5, b.d, MAT.metal, 0, 0, 0, g, [1 / 4, 1 / 6.5]);
-  const roof = new THREE.Mesh(new THREE.CylinderGeometry(b.d / 2 + .5, b.d / 2 + .5, b.w + 1, 28, 1, false, 0, Math.PI), MAT.metal);
+  const W = b.w, D = b.d, H = 6.5, T = .3, hx = W / 2, hz = D / 2, OW = 9.5, OH = 5.6, BAYS = [-12, 0, 12], wk = [1 / 4, 1 / 6.5];
+  // 벽 (뒤 · 좌 · 우 · 셔터 사이 기둥 · 셔터 위 상인방)
+  box(W, H, T, MAT.metal, 0, 0, -hz + T / 2, g, wk);
+  for (const s of [-1, 1]) box(T, H, D - 2 * T, MAT.metal, s * (hx - T / 2), 0, 0, g, wk);
+  const ed = [-hx, ...BAYS.flatMap(x => [x - OW / 2, x + OW / 2]), hx];
+  for (let i = 0; i < ed.length; i += 2) box(ed[i + 1] - ed[i], OH, T, MAT.metal, (ed[i] + ed[i + 1]) / 2, 0, hz - T / 2, g, wk);
+  box(W, H - OH, T, MAT.metal, 0, OH, hz - T / 2, g, wk);
+  // 안쪽 하단 걸레받이 판
+  box(W - 2 * T - .04, 1.2, .04, HG.wains, 0, 0, -hz + T + .02, g);
+  for (const s of [-1, 1]) box(.04, 1.2, D - 2 * T - .04, HG.wains, s * (hx - T - .02), 0, 0, g);
+  // 반원형 지붕 (안쪽에서도 보이도록 양면)
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(hz + .5, hz + .5, W + 1, 28, 1, false, 0, Math.PI), HG.roof);
   roof.geometry.rotateZ(Math.PI / 2); scaleUV(roof.geometry, 6, 1);
-  roof.scale.set(1, .42, 1); roof.position.y = 6.5; roof.castShadow = roof.receiveShadow = true; g.add(roof);
-  for (const x of [-12, 0, 12]) box(9.5, 5.6, .3, MAT.doorMetal, x, 0, b.d / 2 + .05, g, [1 / 2, 1 / 5.6]);
-  return 6.5 + (b.d / 2 + .5) * .42;
+  roof.scale.set(1, .42, 1); roof.position.y = H; roof.castShadow = roof.receiveShadow = true; g.add(roof);
+  // 바닥
+  const fg = new THREE.PlaneGeometry(W, D); fg.rotateX(-Math.PI / 2);
+  const floor = new THREE.Mesh(fg, HG.floor); floor.position.y = .05; floor.receiveShadow = true; g.add(floor);
+  // 셔터: 위로 말려 올라간다 (scale.y로 줄임)
+  const doors = BAYS.map(x => {
+    const geo = new THREE.BoxGeometry(OW, OH, .12); boxUV(geo, OW, OH, .12, 1 / 2, 1 / 5.6); geo.translate(0, -OH / 2, 0);
+    const m = new THREE.Mesh(geo, MAT.doorMetal); m.position.set(x, OH, hz - .06); m.castShadow = m.receiveShadow = true; g.add(m);
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, OW + .3, 12), MAT.steel); drum.rotation.z = Math.PI / 2; drum.position.set(x, OH + .05, hz - .55); g.add(drum);
+    for (const s of [-1, 1]) { const c = new THREE.Mesh(UNIT_CYL, HG.yellow); c.scale.set(.15, 1.1, .15); c.position.set(x + s * (OW / 2 + .55), .55, hz + .7); c.castShadow = true; g.add(c); }
+    return m;
+  });
+  sign(HG.sOutside, 6.2, .9, 0, 6.05, hz + .02, 0, g);
+  // 천장: 보 · 호이스트 레일 · 조명
+  for (const x of [-15, -5, 5, 15]) box(.18, .18, D - .7, MAT.steel, x, H - .25, 0, g);
+  box(W - 1.2, .32, .22, MAT.steel, 0, 7.4, 0, g);
+  for (const x of [-18, -6, 6, 18]) box(.08, 3.6, .08, MAT.steel, x, 7.7, 0, g);
+  box(.5, .6, .42, HG.yellow, 12, 6.8, 0, g); box(.04, 2.4, .04, MAT.dark, 12, 4.4, 0, g); box(.25, .25, .1, MAT.dark, 12, 4.2, 0, g);
+  for (const x of [-15, -5, 5, 15]) for (const z of [-4.5, 4.5]) { box(2.2, .1, .45, HG.lamp, x, 5.6, z, g); box(.03, 1.2, .03, MAT.dark, x, 5.7, z, g); }
+  const lights = BAYS.map(x => { const l = new THREE.PointLight(0xfff0d6, 0, 30, 1.4); l.position.set(x, 5.2, 0); g.add(l); return l; });
+  // 정비 1구역: 피트 위 트럭
+  mkTruck(g, -12, 0);
+  // 정비 2구역: 2주식 리프트 + 들어 올린 소형 전술차량
+  for (const s of [-1, 1]) {
+    box(.36, 4.2, .36, HG.yellow, s * 2.05, 0, -1, g); box(.8, .06, .8, MAT.steel, s * 2.05, 0, -1, g);
+    for (const dz of [-.55, .55]) { const a = box(1.15, .1, .16, MAT.dark, s * 1.45, 1.52, -1 + dz, g); a.rotation.y = s * dz * .55; }
+  }
+  box(4.46, .25, .3, HG.yellow, 0, 4.2, -1, g);
+  mkJeep(g, 0, 1.62, -1);
+  // 정비 3구역: 앞바퀴 뺀 트럭 · 잭 받침 · 바닥의 타이어 · 정비병
+  mkTruck(g, 12, 0, (dx, wz) => dx > 0 && wz > 2);
+  box(.4, .52, .4, HG.red, 13.05, 0, 2.4, g);
+  const tf = new THREE.Mesh(HG.tireFlat, MAT.tire); tf.position.set(15, .2, 3.6); tf.castShadow = true; g.add(tf);
+  for (const wz of [-1.5, -2.7]) box(.3, .22, .45, HG.yellow, 10.55, 0, wz + .55, g);
+  mkWorker(g, 14.3, 2.3, -Math.PI / 2, true);
+  // 뒷벽: 작업대 · 공구 그림자판 · 공구함 · 안전제일 · 정비 현황판
+  box(12, .86, .75, HG.bench, 0, 0, -hz + T + .42, g); box(12.1, .06, .85, HG.wood, 0, .86, -hz + T + .44, g);
+  sign(HG.peg, 12, 1.75, 0, 1.95, -hz + T + .05, 0, g);
+  box(.5, .25, .3, MAT.dark, -4.6, .92, -10.2, g); box(.6, .14, .35, HG.red, 2.2, .92, -10.3, g); box(.3, .3, .3, MAT.steel, 4.5, .92, -10.2, g);
+  for (const x of [-7.6, 7.6]) { box(1.4, 1.05, .7, HG.drawer, x, 0, -10.25, g); box(1.42, .55, .6, HG.drawer, x, 1.05, -10.28, g); }
+  sign(HG.sSafety, 3.2, 1.2, 0, 3.75, -hz + T + .05, 0, g);
+  sign(HG.sBoard, 2.4, 1.6, -10.5, 2.3, -hz + T + .05, 0, g);
+  box(1.0, .95, .6, Lm({ color: 0x2e5a8a }), 10.0, 0, -10.25, g);                     // 공기 압축기
+  mkWorker(g, -2, -9.25, Math.PI, false);
+  // 정비반 사무실 (오른쪽 뒤 구석, 유리 칸막이)
+  const ox1 = 13.2, oz1 = -5.2, oxr = hx - T, ozr = -hz + T, OHt = 2.8;
+  box(oxr - ox1, .12, oz1 - ozr, HG.white, (ox1 + oxr) / 2, OHt, (oz1 + ozr) / 2, g);
+  const gf = box(oxr - ox1 - 1.1, OHt - .9, .04, HG.glass, (ox1 + 1.1 + oxr) / 2, .9, oz1, g); gf.castShadow = false;
+  const gs = box(.04, OHt - .9, oz1 - ozr, HG.glass, ox1, .9, (oz1 + ozr) / 2, g); gs.castShadow = false;
+  box(oxr - ox1, .9, .1, HG.white, (ox1 + oxr) / 2, 0, oz1, g); box(.1, .9, oz1 - ozr, HG.white, ox1, 0, (oz1 + ozr) / 2, g);
+  box(oxr - ox1 - 1.1, .1, .12, HG.white, (ox1 + 1.1 + oxr) / 2, OHt - .1, oz1, g);
+  for (const [x, z] of [[ox1, oz1], [ox1 + 1.1, oz1], [oxr, oz1], [ox1, ozr]]) box(.1, OHt, .1, MAT.steel, x, 0, z, g);
+  sign(HG.sOffice, 2.6, .55, (ox1 + 1.1 + oxr) / 2, OHt + .4, oz1 + .02, 0, g);
+  box(2.2, .75, .9, HG.wood, 16.8, 0, -9.6, g); box(.6, .4, .06, HG.screen, 16.4, .78, -9.7, g); box(.55, .5, .55, MAT.dark, 16.6, 0, -8.6, g);
+  box(.9, 1.9, .5, MAT.steel, 19.2, 0, -7, g);
+  // 유류 · 윤활유 보관대 (왼쪽 뒤, 방유턱 안)
+  const fx1 = -hx + T, fx2 = -14.6, fz1 = -hz + T, fz2 = -1.8;
+  for (const [w, d, x, z] of [[fx2 - fx1, .15, (fx1 + fx2) / 2, fz2], [.15, fz2 - fz1, fx2, (fz1 + fz2) / 2]]) box(w, .28, d, HG.yellow, x, 0, z, g);
+  let di = 0;
+  for (const z of [-9.9, -9.2, -8.5, -6.4, -5.7]) for (const x of [-19.1, -18.4, -17.7, -17.0, -16.3]) {
+    if (z > -7 && x > -17.5) continue;
+    const m = new THREE.Mesh(HG.drum, HG.drums[di++ % HG.drums.length]); m.position.set(x, .2 + .44, z); m.castShadow = m.receiveShadow = true; g.add(m);
+  }
+  box(3.8, .2, 2.4, HG.wood, -17.7, 0, -9.2, g);
+  box(1.8, .9, .7, HG.yellow, -16.1, 0, -3.0, g);                                       // 흡착포 · 방제 키트
+  sign(HG.sFire, 2.1, 1.4, -hx + T + .03, 2.6, -6.2, Math.PI / 2, g);
+  // 타이어 더미 · 부품 선반
+  for (const [x, z] of [[-18.6, 5.2], [-18.6, 6.6], [-17.2, 5.9]]) for (let i = 0; i < 5; i++) { const t = new THREE.Mesh(HG.tireFlat, MAT.tire); t.position.set(x, .2 + i * .34, z); t.scale.setScalar(1.15); t.castShadow = true; g.add(t); }
+  for (const y of [.1, .9, 1.7, 2.4]) box(.8, .06, 7, MAT.steel, 19.2, y, .5, g);
+  for (const z of [-3, 4]) for (const x of [18.85, 19.55]) box(.06, 2.5, .06, MAT.steel, x, 0, z, g);
+  for (let i = 0; i < 12; i++) { const yy = [.16, .96, 1.76][i % 3], zz = -2.5 + Math.floor(i / 3) * 1.7; box(.6, .45 + (i % 2) * .15, .9, HG.card, 19.2, yy, zz, g); }
+  // 소화기
+  for (const [x, z] of [[-6.6, 10.3], [6.6, 10.3], [-14.2, -1.3], [17.6, 10.3], [12.9, -5.6]]) {
+    const e = new THREE.Mesh(HG.ext, HG.red); e.position.set(x, .3, z); e.castShadow = true; g.add(e);
+    box(.08, .12, .08, MAT.dark, x, .58, z, g);
+  }
+  b.interior = {
+    doors, lights, floor, door: 1, doorX: BAYS[1], doorK: 0, doorT: 0, hx, hz, T, OW,
+    // 걸을 수 없는 곳 [x1, z1, x2, z2]
+    blocks: [[-13.5, -4.9, -10.5, 4.9], [-2.45, -3.3, 2.45, 1.3], [10.6, -3.7, 13.4, 3.7], [13.4, 1.6, 15.6, 4.3],
+      [-8.5, -10.7, 8.5, -9.3], [9.4, -10.7, 10.6, -9.6], [-2.4, -9.6, -1.6, -8.9], [12.9, -10.7, 20, -4.9], [-20, -10.7, -14.4, -1.6],
+      [-15.1, -3.5, -14.1, -.9], [-19.7, 4.3, -16.3, 7.5], [18.6, -3.2, 20, 4.2]],
+    intro: '정비 구역 3곳, 공구함 · 작업대, 유류 보관대, 정비반 사무실이 있어요. 이름표를 누르면 그 앞으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'pit', name: '정비 1구역 · 정비 피트', at: [-12, 3.7, 0], stand: [-7.6, 6.8], look: [-12, .5, 1],
+        desc: '차량 밑에서 하부를 점검하는 깊이 1.5m 구덩이예요. 쓰지 않을 때는 덮개를 덮고, 빠짐 사고를 막기 위해 테두리를 노랑 · 검정으로 칠했어요.' },
+      { id: 'lift', name: '정비 2구역 · 차량 리프트', at: [0, 4.9, -1], stand: [3.8, 5.4], look: [0, 1.9, -1],
+        desc: '2주식 리프트로 차량을 들어 올려 브레이크와 하부를 정비해요. 올린 차량 아래에서 일할 때는 안전 잠금을 꼭 걸어요.' },
+      { id: 'tire', name: '정비 3구역 · 바퀴 교환', at: [12, 3.6, 0], stand: [16.4, 7.2], look: [13.2, .6, 2.4],
+        desc: '2.5톤 트럭의 앞바퀴를 교환하는 중이에요. 잭 받침과 고임목으로 차량이 움직이지 않게 고정했어요.' },
+      { id: 'tools', name: '공구함 · 작업대', at: [4, 3.0, -10.2], stand: [3, -6], look: [2, 1.4, -10.6],
+        desc: '정비 공구를 보관하는 곳이에요. 그림자판에 공구 자리가 그려져 있어 빠진 공구가 바로 보이고, 반출은 공구 수불대장에 적어요.' },
+      { id: 'fuel', name: '유류 · 윤활유 보관대', at: [-17.4, 3.7, -6.2], stand: [-9.2, -6.6], look: [-17.4, .8, -6.6],
+        desc: '엔진오일 · 냉각수 · 폐유 드럼을 방유턱 안에 보관해요. 화기 엄금 구역이고, 바로 옆에 소화기와 흡착포가 있어요.' },
+      { id: 'office', name: '정비반 사무실', at: [16.6, 3.7, -7.6], stand: [8.4, -2.4], look: [16.6, 1.2, -8.2],
+        desc: '정비 일지와 차량 운행 기록, 공구 대장을 관리하는 곳이에요.' },
+    ],
+  };
+  return H + (hz + .5) * .42;
 }
 function makeBunker(b, g) {
   for (const z of [-10, 10]) {
@@ -656,7 +928,7 @@ BUILDINGS.forEach(b => {
 {
   const beds = [], cabs = [], wheels = [], cars = [];
   const truck = (x, z) => { cabs.push([x, .9, z + 3.2, 2.4, 1.9, 1.8]); beds.push([x, .9, z - .8, 2.5, 2.4, 5]); for (const dz of [2.9, -.4, -2.4]) for (const dx of [-1.1, 1.1]) wheels.push([x + dx, .5, z + dz]); };
-  [66, 74, 82, 90].forEach(x => truck(x, -54));
+  [64, 70, 90, 96].forEach(x => truck(x, -54));   // 가운데 셔터(정비고 출입로) 앞은 비워 둔다
   truck(58, -30);
   [[36, 52], [36, 57.5], [36, 63], [46, 52], [46, 57.5], [46, 63]].forEach(([x, z], i) => cars.push([x, .25, z, 4.3, 1.3, 1.9, Math.PI / 2, [0x2c3e50, 0xdedede, 0x6b6f72, 0x4f5b3a, 0x8a2f2f, 0xd8d2bd][i]]));
   instBoxes(cabs, MAT.olive); instBoxes(beds, Lm({ color: 0x5b6644 }));
@@ -842,6 +1114,7 @@ const exteriorWindowMats = [];
 
 /* ---------- 카메라 · 조작 ---------- */
 const DR = { on: false };
+const IN = { on: false, ph: null, keys: new Set(), pad: new Set() };   // 건물 내부 1인칭 모드 상태 (아래 '건물 안으로 들어가기'에서 채움)
 /* 가상 시각: 부모 화면이 { type:'clock', v, speed }로 알려 주면 그 시각부터 speed배로 흘려 쓴다. 없으면 실제 시각 */
 const VC = { v: null, at: 0, speed: 1 };
 const vNow = () => VC.v == null ? Date.now() : VC.v + (performance.now() - VC.at) * VC.speed;   // 드론 카메라 모드 상태 (아래 '드론 현장확인'에서 채움)
@@ -853,7 +1126,7 @@ let fly = null;
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function flyTo(cam, tgt, force) {
-  if (DR.on && !force) return;
+  if ((DR.on || IN.on) && !force) return;
   const c = cam.clone();
   if (camera.aspect < .8) c.sub(tgt).multiplyScalar(1.5).add(tgt);
   if (reduceMotion) { camera.position.copy(c); controls.target.copy(tgt); controls.update(); return; }
@@ -909,7 +1182,7 @@ function viewOfCam(c) {
   return [tgt.clone().add(dir.multiplyScalar(58)), tgt];
 }
 function selectCamera(id, move) {
-  if (DR.on) return false;
+  if (DR.on || IN.on) return false;
   const c = findCam(id); if (!c) return false;
   selectBuilding(null); setCamSel(c); renderInfo(); info.hidden = false;
   if (move) { const [cam, t] = viewOfCam(c); flyTo(cam, t); }
@@ -926,7 +1199,7 @@ function setCamState(id, state, message) {
 }
 function find(idOrName) { if (!idOrName) return null; const k = String(idOrName).trim(); return BUILDINGS.find(b => b.id === k || b.name === k || b.name.replace(/\s/g, '') === k.replace(/\s/g, '')) || null; }
 function selectBuilding(id, move) {
-  if (DR.on) return;
+  if (DR.on || IN.on) return;
   setCamSel(null);
   const b = find(id); selected = b;
   BUILDINGS.forEach(x => x.label.classList.toggle('sel', x === b));
@@ -942,7 +1215,7 @@ function selectBuilding(id, move) {
 }
 function renderInfo() {
   const c = selectedCam;
-  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c;
+  $('btnOpen').hidden = !c; $('btnAlert').hidden = !!c; $('btnEnter').hidden = !!c || !(selected && selected.interior);
   if (c) {
     const home = c.bid ? find(c.bid) : null;
     $('infoCode').textContent = c.id + (c.live ? ' · LIVE' : ''); $('infoName').textContent = c.loc;
@@ -1028,7 +1301,7 @@ const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
 canvas.addEventListener('pointerup', e => {
-  if (DR.on) { downAt = null; return; }
+  if (DR.on || IN.on) { downAt = null; return; }
   if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) { downAt = null; return; }
   downAt = null;
   const r = canvas.getBoundingClientRect();
@@ -1041,7 +1314,7 @@ canvas.addEventListener('pointerup', e => {
 });
 let hoverPending = false;
 canvas.addEventListener('pointermove', e => {
-  if (e.pointerType !== 'mouse' || hoverPending || DR.on) return; hoverPending = true;
+  if (e.pointerType !== 'mouse' || hoverPending || DR.on || IN.on) return; hoverPending = true;
   requestAnimationFrame(() => {
     hoverPending = false;
     const r = canvas.getBoundingClientRect();
@@ -1113,7 +1386,7 @@ $('drPad').querySelectorAll('button').forEach(b => {
 { const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', '+': 'near', '=': 'near', '-': 'far' };   // 조종판이 열려 있으면 방향키 · + − 로도 조종
   addEventListener('keydown', e => { const d = KEYS[e.key]; if (d && DR.on && DR.phase === 'orbit' && !$('drPad').hidden) { e.preventDefault(); drJoy(d, .25); } }); }
 function droneStart(id, backLabel) {
-  if (DR.on) return false;
+  if (DR.on || IN.on) return false;
   const c = findCam(id), bld = c ? (c.bid ? find(c.bid) : null) : find(id);
   if (!c && !bld) return false;
   const hq = BUILDINGS.find(x => x.id === 'hq');
@@ -1255,6 +1528,246 @@ $('drBack').addEventListener('click', droneExit);
 $('drHome').addEventListener('click', droneReturn);
 addEventListener('keydown', e => { if (e.key === 'Escape' && DR.on) droneExit(); });
 
+/* ---------- 건물 안으로 들어가기 (차량정비고) ----------
+   건물 정보 카드의 '안으로 들어가기' → 셔터 앞까지 이동 → 셔터가 올라가면 걸어 들어감 → 1인칭으로 자유롭게 둘러보기
+   끌기: 시선 · W A S D/방향키(또는 화면 버튼): 걷기 · 바닥 누르기: 그곳으로 걸어감 · 이름표: 그 설비 앞으로 가서 설명 · 셔터 밖으로 걸어 나가거나 '밖으로 나가기' */
+const EYE = 1.65, inEl = $('inside'), inPoisEl = $('inPois'), inInfo = $('inInfo');
+const inTmp = new THREE.Vector3(), inLook = new THREE.Vector3(), inV = new THREE.Vector3();
+const inW = (b, x, y, z) => new THREE.Vector3(b.x + x, y, b.z + z);
+const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+const inPost = (event, extra) => {
+  const detail = Object.assign({ event, id: IN.b ? IN.b.id : null, name: IN.b ? IN.b.name : null }, extra);
+  window.dispatchEvent(new CustomEvent('basemap:interior', { detail }));
+  if (window.parent !== window) { try { window.parent.postMessage(Object.assign({ type: 'interior' }, detail), '*'); } catch (e) {} }
+};
+function inLookDir(d) { const L = d.length() || 1; IN.yaw = Math.atan2(-d.x, -d.z); IN.pitch = Math.asin(Math.max(-1, Math.min(1, d.y / L))); }
+function inApplyRot() { camera.rotation.set(IN.pitch, IN.yaw, 0, 'YXZ'); }
+function doorsStep(dt) {
+  for (const b of BUILDINGS) {
+    const I = b.interior; if (!I || I.doorK === I.doorT) continue;
+    I.doorK = I.doorT > I.doorK ? Math.min(I.doorT, I.doorK + dt / 1.6) : Math.max(I.doorT, I.doorK - dt / 1.6);
+    if (reduceMotion) I.doorK = I.doorT;
+    I.doors[I.door].scale.y = 1 - .94 * ease(I.doorK);
+  }
+}
+function inShowInfo(code, name, desc) { $('inCode').textContent = code; $('inName').textContent = name; $('inDesc').textContent = desc; inInfo.hidden = false; }
+function inBuildPois(b) {
+  inPoisEl.innerHTML = '';
+  b.interior.pois.forEach((p, i) => {
+    const el = document.createElement('button'); el.className = 'lbl';
+    el.innerHTML = `<small>${String(i + 1).padStart(2, '0')}</small>${p.name}`;
+    el.setAttribute('aria-label', `${p.name}: 앞으로 가서 설명 보기`);
+    el.addEventListener('click', () => inGoto(p));
+    inPoisEl.appendChild(el); p.el = el; p.w = inW(b, ...p.at);
+  });
+}
+function inUpdatePois() {
+  const W = innerWidth, H = innerHeight;
+  for (const p of IN.b.interior.pois) {
+    const el = p.el; inV.copy(p.w).project(camera);
+    if (inV.z > 1 || Math.abs(inV.x) > 1.05 || Math.abs(inV.y) > 1.05) { el.style.opacity = 0; el.style.pointerEvents = 'none'; continue; }
+    const dist = camera.position.distanceTo(p.w), op = p === IN.poi ? 1 : Math.max(.45, Math.min(1, 1.5 - dist / 30));
+    el.style.opacity = op; el.style.pointerEvents = 'auto'; el.classList.toggle('sel', p === IN.poi);
+    el.style.transform = `translate(-50%,-100%) translate(${((inV.x * .5 + .5) * W).toFixed(1)}px,${((-inV.y * .5 + .5) * H).toFixed(1)}px)`;
+    el.style.zIndex = String(p === IN.poi ? 20000 : 10000 - Math.round(dist * 10));
+  }
+}
+/* 걸을 수 있는지: 벽 안쪽 + 설비 피하기. 셔터가 열린 칸으로는 밖으로 나갈 수 있다 */
+function inFree(x, z) {
+  const I = IN.b.interior, r = .35;
+  if (x < -I.hx + I.T + r || x > I.hx - I.T - r || z < -I.hz + I.T + r) return false;
+  if (z > I.hz - I.T - r && !(I.doorK > .8 && Math.abs(x - I.doorX) < I.OW / 2 - r)) return false;
+  return !I.blocks.some(([x1, z1, x2, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r);
+}
+/* 정해진 곳으로 걸어가며 시선도 함께 돌린다 (설비 이름표 · 바닥 누르기 · 나가기) */
+function inMoveTo(p1, yaw1, pitch1, ph) {
+  const d = camera.position.distanceTo(p1);
+  IN.m = { p0: camera.position.clone(), p1, y0: IN.yaw, dy: angDiff(IN.yaw, yaw1), pi0: IN.pitch, pi1: pitch1, dur: Math.max(.7, Math.min(3.5, d / 3)) };
+  IN.ph = ph || 'move'; IN.k = 0;
+  if (reduceMotion) IN.k = 1;
+}
+/* 곧장 갈 수 없으면 앞 통로(셔터 쪽) 또는 뒤 통로를 따라 돌아간다 */
+function inClear(ax, az, bx, bz) { const n = Math.ceil(Math.hypot(bx - ax, bz - az) / .25); for (let i = 1; i <= n; i++) if (!inFree(ax + (bx - ax) * i / n, az + (bz - az) * i / n)) return false; return true; }
+function inRoute(dst, yaw1, pitch1, ph) {
+  const b = IN.b, ax = camera.position.x - b.x, az = camera.position.z - b.z, bx = dst.x - b.x, bz = dst.z - b.z;
+  let pts = [[bx, bz]];
+  if (!inClear(ax, az, bx, bz)) {
+    let best = null;
+    for (const z of [8.4, -7]) {
+      const q = [[ax, z], [bx, z], [bx, bz]];
+      if (!inClear(ax, az, ax, z) || !inClear(ax, z, bx, z) || !inClear(bx, z, bx, bz)) continue;
+      const L = Math.abs(z - az) + Math.abs(bx - ax) + Math.abs(bz - z);
+      if (!best || L < best.L) best = { L, q };
+    }
+    if (best) pts = best.q.filter((p, i, a) => i === 0 ? Math.hypot(p[0] - ax, p[1] - az) > .3 : Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > .3);
+  }
+  IN.path = pts.map(([x, z]) => inW(b, x, EYE, z)); IN.path[IN.path.length - 1] = dst.clone();
+  IN.final = { yaw: yaw1, pitch: pitch1 }; IN.legPh = ph || 'move';
+  inNextLeg();
+}
+function inNextLeg() {
+  const p = IN.path.shift(); if (!p) return false;
+  const last = !IN.path.length, d = inTmp.subVectors(p, camera.position);
+  if (last) inMoveTo(p, IN.final.yaw, IN.final.pitch, IN.legPh);
+  else inMoveTo(p, d.lengthSq() > .01 ? Math.atan2(-d.x, -d.z) : IN.yaw, 0, IN.legPh);
+  return true;
+}
+function inGoto(p) {
+  if (!IN.on || !['free', 'move'].includes(IN.ph)) return;
+  const b = IN.b, st = inW(b, p.stand[0], EYE, p.stand[1]), lk = inW(b, ...p.look);
+  inLookDir(inTmp.subVectors(lk, st)); const y1 = IN.yaw, p1 = IN.pitch;
+  IN.yaw = camera.rotation.y; IN.pitch = camera.rotation.x;
+  IN.poi = p; inRoute(st, y1, p1);
+  inShowInfo(`${b.code} · 내부 ${String(b.interior.pois.indexOf(p) + 1).padStart(2, '0')}`, p.name, p.desc);
+  inPost('poi', { poi: p.id });
+}
+function interiorEnter(id) {
+  const b = find(id);
+  if (!b || !b.interior || IN.on || DR.on) return false;
+  const I = b.interior;
+  const save = { cam: camera.position.clone(), tgt: controls.target.clone(), sel: b.id };
+  selectBuilding(null);
+  Object.assign(IN, { on: true, b, save, poi: null, bob: 0 });
+  IN.keys.clear(); IN.pad.clear();
+  fly = null; controls.enabled = false; controls.autoRotate = false;
+  camera.near = .1; camera.updateProjectionMatrix();
+  document.body.classList.add('interior'); inEl.hidden = false; inEl.classList.remove('ready'); inInfo.hidden = true;
+  $('inTopCode').textContent = `${b.code} · 내부`; $('inTopName').textContent = `${b.name} 내부`;
+  $('inHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 둘러보고, 버튼이나 바닥을 눌러 걸어요.' : '끌어서 둘러보기 · W A S D · 방향키로 걷기 · 바닥을 누르면 그곳으로 이동';
+  I.lights.forEach(l => { l.intensity = 1.25; });
+  inBuildPois(b);
+  IN.a0 = camera.position.clone(); IN.l0 = controls.target.clone();
+  IN.a1 = inW(b, I.doorX, EYE, I.hz + 5); IN.l1 = inW(b, I.doorX, EYE, -I.hz);
+  IN.a2 = inW(b, I.doorX, EYE, I.hz - 4.5);
+  IN.dur = Math.max(1.4, Math.min(2.6, IN.a0.distanceTo(IN.a1) / 70)); IN.ph = 'approach'; IN.k = 0;
+  if (reduceMotion) { I.doorT = I.doorK = 1; doorsStep(0); camera.position.copy(IN.a2); inLookDir(inTmp.subVectors(IN.l1, IN.a2)); inApplyRot(); IN.ph = 'free'; inEl.classList.add('ready'); inShowInfo(`${b.code} · 내부`, b.name, I.intro); }
+  inPost('enter');
+  return true;
+}
+function inFinishExit() {
+  const b = IN.b, sv = IN.save;
+  b.interior.doorT = 0; b.interior.lights.forEach(l => { l.intensity = 0; });
+  IN.on = false; IN.ph = null; IN.keys.clear(); IN.pad.clear(); inDrag = null;
+  document.body.classList.remove('interior'); inEl.hidden = true; inPoisEl.innerHTML = '';
+  $('inPad').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  camera.near = .5; camera.updateProjectionMatrix();
+  controls.enabled = true;
+  controls.target.copy(camera.position).addScaledVector(camera.getWorldDirection(inTmp), 20);
+  camera.rotation.order = 'XYZ';
+  inPost('exit');
+  IN.b = null;
+  selectBuilding(sv.sel, false);
+  flyTo(sv.cam, sv.tgt, true);
+}
+/* instant: 바깥 화면에서 다른 곳을 보여 달라고 할 때 바로 나온다 */
+function interiorExit(instant) {
+  if (!IN.on) return false;
+  if (instant || reduceMotion || IN.ph === 'approach') { inFinishExit(); if (instant) fly = null; return true; }
+  if (IN.ph === 'walkout') return true;
+  const I = IN.b.interior; I.doorT = 1; IN.poi = null; inInfo.hidden = true; inEl.classList.remove('ready');
+  // 셔터 안쪽까지 (막히면 통로로 돌아서) 간 다음, 밖을 바라보며 셔터 밖으로
+  IN.exitOut = inW(IN.b, I.doorX, EYE, I.hz + 5);
+  inRoute(inW(IN.b, I.doorX, EYE, I.hz - 2.5), Math.PI, 0, 'walkout');
+  return true;
+}
+function inStep(dt) {
+  const b = IN.b, I = b.interior;
+  if (IN.ph === 'approach') {
+    IN.k = Math.min(1, IN.k + dt / IN.dur); const e = ease(IN.k);
+    camera.position.lerpVectors(IN.a0, IN.a1, e); inLook.lerpVectors(IN.l0, IN.l1, e); camera.lookAt(inLook);
+    if (IN.k > .3) I.doorT = 1;
+    if (IN.k >= 1) { IN.ph = 'walkin'; IN.k = 0; }
+  } else if (IN.ph === 'walkin') {
+    camera.lookAt(IN.l1);
+    if (I.doorK > .8) {
+      IN.k = Math.min(1, IN.k + dt / 2.2); const e = IN.k * IN.k * (3 - 2 * IN.k);
+      camera.position.lerpVectors(IN.a1, IN.a2, e); camera.lookAt(IN.l1);
+      if (IN.k >= 1) { inLookDir(camera.getWorldDirection(inTmp)); inApplyRot(); IN.ph = 'free'; inEl.classList.add('ready'); inShowInfo(`${b.code} · 내부`, b.name, I.intro); inPost('inside'); }
+    }
+  } else if (IN.ph === 'move' || IN.ph === 'walkout') {
+    const m = IN.m; IN.k = Math.min(1, IN.k + dt / m.dur); const e = IN.k * IN.k * (3 - 2 * IN.k);
+    camera.position.lerpVectors(m.p0, m.p1, e);
+    camera.position.y = EYE + Math.sin(IN.k * m.dur * 9) * .025 * Math.sin(Math.PI * IN.k);
+    IN.yaw = m.y0 + m.dy * Math.min(1, e * 1.6); IN.pitch = m.pi0 + (m.pi1 - m.pi0) * Math.min(1, e * 1.6); inApplyRot();
+    if (IN.k >= 1) {
+      if (inNextLeg()) return;
+      if (IN.ph === 'walkout') {
+        if (IN.exitOut) { const o = IN.exitOut; IN.exitOut = null; inMoveTo(o, Math.PI, 0, 'walkout'); } else inFinishExit();
+        return;
+      }
+      IN.ph = 'free';
+    }
+  } else if (IN.ph === 'free') {
+    const K = c => IN.keys.has(c) ? 1 : 0, P = c => IN.pad.has(c) ? 1 : 0;
+    const fwd = Math.min(1, K('KeyW') + K('ArrowUp') + P('f')) - Math.min(1, K('KeyS') + K('ArrowDown') + P('b'));
+    const str = K('KeyD') - K('KeyA'), turn = Math.min(1, K('ArrowLeft') + K('KeyQ') + P('l')) - Math.min(1, K('ArrowRight') + K('KeyE') + P('r'));
+    IN.yaw += turn * 1.7 * dt;
+    if (fwd || str) {
+      const sp = (IN.keys.has('ShiftLeft') || IN.keys.has('ShiftRight') ? 5 : 2.8) * dt;
+      const fx = -Math.sin(IN.yaw), fz = -Math.cos(IN.yaw), rx = Math.cos(IN.yaw), rz = -Math.sin(IN.yaw);
+      let dx = (fx * fwd + rx * str), dz = (fz * fwd + rz * str); const n = Math.hypot(dx, dz); dx *= sp / n; dz *= sp / n;
+      const lx = camera.position.x - b.x, lz = camera.position.z - b.z;
+      if (inFree(lx + dx, lz)) camera.position.x += dx;
+      if (inFree(camera.position.x - b.x, lz + dz)) camera.position.z += dz;
+      IN.bob += dt * 9; camera.position.y = EYE + Math.sin(IN.bob) * .03;
+      if (camera.position.z - b.z > I.hz + .6) { interiorExit(); }
+    }
+    inApplyRot();
+  }
+  inUpdatePois();
+}
+/* 끌어서 둘러보기 · 바닥을 눌러 걸어가기 */
+let inDrag = null;
+const inRay = new THREE.Raycaster(), inNdc = new THREE.Vector2();
+canvas.addEventListener('pointerdown', e => {
+  if (!IN.on) return;
+  inDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
+  try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+});
+canvas.addEventListener('pointermove', e => {
+  if (!IN.on || !inDrag || e.pointerId !== inDrag.id) return;
+  const dx = e.clientX - inDrag.x, dy = e.clientY - inDrag.y; inDrag.x = e.clientX; inDrag.y = e.clientY;
+  if (!['free', 'move'].includes(IN.ph)) return;
+  if (IN.ph === 'move' && Math.hypot(e.clientX - inDrag.x0, e.clientY - inDrag.y0) > 6) IN.ph = 'free';   // 직접 돌려 보면 자동 이동은 멈춤
+  const s = e.pointerType === 'mouse' ? .0042 : .006;
+  IN.yaw += dx * s; IN.pitch = Math.max(-1.25, Math.min(1.25, IN.pitch + dy * s)); inApplyRot();
+});
+const inDragEnd = e => {
+  if (!IN.on || !inDrag || e.pointerId !== inDrag.id) return;
+  const tap = Math.hypot(e.clientX - inDrag.x0, e.clientY - inDrag.y0) < 6; inDrag = null;
+  if (!tap || e.type !== 'pointerup' || !['free', 'move'].includes(IN.ph)) return;
+  const r = canvas.getBoundingClientRect();
+  inNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  inRay.setFromCamera(inNdc, camera);
+  const hit = inRay.intersectObjects(buildingMeshes, false)[0];
+  if (!hit || hit.object !== IN.b.interior.floor) return;       // 바닥이 아닌 설비 · 벽을 누르면 무시
+  const b = IN.b, lx = hit.point.x - b.x, lz = Math.min(hit.point.z - b.z, b.interior.hz - .8);
+  if (!inFree(lx, lz)) return;
+  const p1 = inW(b, lx, EYE, lz), d = inTmp.subVectors(p1, camera.position);
+  if (d.length() < .5) return;
+  IN.poi = null; inRoute(p1, Math.atan2(-d.x, -d.z), Math.min(IN.pitch, 0));
+};
+['pointerup', 'pointercancel'].forEach(n => canvas.addEventListener(n, inDragEnd));
+canvas.addEventListener('wheel', e => { if (IN.on) e.preventDefault(); }, { passive: false });
+{ const KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'];
+  addEventListener('keydown', e => {
+    if (!IN.on) return;
+    if (e.key === 'Escape') { interiorExit(); return; }
+    if (KEYS.includes(e.code)) { e.preventDefault(); IN.keys.add(e.code); if (IN.ph === 'move' && !e.code.startsWith('Shift')) IN.ph = 'free'; }
+  });
+  addEventListener('keyup', e => IN.keys.delete(e.code));
+  addEventListener('blur', () => { IN.keys.clear(); IN.pad.clear(); });
+}
+$('inPad').querySelectorAll('button').forEach(btn => {
+  const d = btn.dataset.m, off = () => { IN.pad.delete(d); btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); if (!IN.on) return; if (IN.ph === 'move') IN.ph = 'free'; IN.pad.add(d); btn.classList.add('on'); try { btn.setPointerCapture(e.pointerId); } catch (x) {} });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => btn.addEventListener(n, off));
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+});
+$('inExit').addEventListener('click', () => interiorExit());
+inInfo.querySelector('.close').addEventListener('click', () => { inInfo.hidden = true; IN.poi = null; });
+$('btnEnter').addEventListener('click', () => { if (selected) interiorEnter(selected.id); });
+
 /* ---------- 외부 연동 API ---------- */
 window.BaseMap = {
   list: () => BUILDINGS.map(b => ({ id: b.id, name: b.name, code: b.code })),
@@ -1271,12 +1784,19 @@ window.BaseMap = {
   drone: id => droneStart(id),
   droneExit: () => droneExit(),
   droneReturn: () => droneReturn(),
+  enter: id => interiorEnter(id),
+  exitInterior: () => interiorExit(),
+  interiorState: () => IN.on ? { id: IN.b.id, name: IN.b.name, phase: IN.ph, poi: IN.poi ? IN.poi.id : null } : null,
   droneState: () => DR.on ? { id: DR.b.id, name: DR.b.name, phase: DR.phase, result: DR.result } : null,
   active: () => [...alerts.entries()].map(([id, a]) => ({ id, name: find(id).name, message: a.message, since: a.since })),
 };
 window.addEventListener('message', e => {
   const m = e.data; if (!m || typeof m !== 'object') return;
-  if (m.type === 'alert') { const id = m.id || (findCam(m.cam) || {}).bid; setAlert(id, m.message); if (m.focus !== false) BaseMap.focus(id); }
+  // 안에 들어가 있을 때 바깥 화면이 다른 곳을 보여 달라고 하면 먼저 밖으로 나온다
+  if (IN.on && (['focus', 'cam-focus', 'drone', 'overview', 'enter'].includes(m.type) || (m.type === 'alert' && m.focus !== false))) interiorExit(true);
+  if (m.type === 'enter') interiorEnter(m.id);
+  else if (m.type === 'exit-interior') interiorExit();
+  else if (m.type === 'alert') { const id = m.id || (findCam(m.cam) || {}).bid; setAlert(id, m.message); if (m.focus !== false) BaseMap.focus(id); }
   else if (m.type === 'cam-state') setCamState(m.id, m.state, m.message);
   else if (m.type === 'cam-focus') selectCamera(m.id, true);
   else if (m.type === 'cams') BaseMap.setCams(m.on);
@@ -1472,7 +1992,8 @@ function loop() {
     if (fly.k >= 1) fly = null;
   }
   if (DR.on) droneStep(dt);
-  controls.update();
+  if (IN.on) inStep(dt); else controls.update();
+  doorsStep(dt);
   if (DR.on && !reduceMotion) {   // 기체 흔들림: 호버링(현장 도착 후) 때는 바람에 좌우로 기우는 폭을 더 크게
     const amp = DR.phase === 'orbit' ? 1 : .45;
     camera.rotation.z += (Math.sin(t * .9) * .012 + Math.sin(t * 2.3 + 1.3) * .006 + Math.sin(t * 5.1) * .002) * amp;

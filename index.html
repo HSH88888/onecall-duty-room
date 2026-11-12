@@ -1109,7 +1109,7 @@ button.recip{background:var(--panel)}
     </section>
     <div class="m3-wrap">
       <div class="m3-stage">
-        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1111hand" loading="lazy"></iframe>
+        <iframe id="m3" title="부대 3D 배치도" data-src="basemap3d.html?ui=minimal&v=1112garage" loading="lazy"></iframe>
       </div>
       <aside class="m3-side">
         <div class="m3-status" id="m3Status">평시 · 이상 없음</div>
@@ -5386,7 +5386,7 @@ function ccDrone(camId){
   if (CC.sel !== i) selectCam(i);
   Object.assign(CCD, { on:true, cam:camId, phase:"link", result:null, auto:false, pad:false });
   const f = $("#ccDroneFrame"); f.hidden = false;
-  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; vtBroadcast(); if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1111hand"; }
+  if (!f.src){ f.addEventListener("load", () => { try { f.contentDocument.documentElement.setAttribute("data-theme", "dark"); } catch(e) {} CCD.ready = true; vtBroadcast(); if (CCD.on) ccdLaunch(); }); f.src = "basemap3d.html?feed=1&v=1112garage"; }
   else if (CCD.ready) ccdLaunch();
   ccDroneUI();
 }
