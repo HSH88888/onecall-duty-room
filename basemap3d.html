@@ -576,13 +576,13 @@ fenceRect(-120, -100, -64, -44, { e: [[-72, 4]] });   // 탄약고 이중 울타
 const BUILDINGS = [
   { id: 'gate', code: 'B-01', name: '위병소', x: 16, z: 88, w: 10, d: 7, floors: 1, color: 0xd8d2c2, roof: 'flat',
     facts: '1층 · 24시간 근무', desc: '부대 출입을 통제하고 면회객과 차량을 확인하는 곳이에요.' },
-  { id: 'hq', code: 'B-02', name: '대대본부', x: 0, z: 35, w: 40, d: 14, floors: 3, color: 0xe4dfd2, roof: 'flat',
+  { id: 'hq', code: 'B-02', name: '대대본부', x: 0, z: 35, plan: 'hq', w: 40, d: 14, floors: 3, color: 0xe4dfd2, roof: 'flat',
     facts: '3층 · 당직실 1층', desc: '지휘통제실과 당직실이 있는 본관이에요. 모든 상황 보고가 이곳으로 모여요.' },
-  { id: 'barracks1', code: 'B-03', name: '생활관 1동', x: -76, z: 30, w: 42, d: 14, floors: 4, color: 0xe8e2d0, roof: 'gable', roofColor: 0x52704a,
+  { id: 'barracks1', code: 'B-03', name: '생활관 1동', x: -76, z: 30, plan: 'barracks', w: 42, d: 14, floors: 4, color: 0xe8e2d0, roof: 'gable', roofColor: 0x52704a,
     facts: '4층 · 약 160명', desc: '병사들이 생활하는 숙소예요. 야간에는 대부분의 인원이 이곳에 있어요.' },
-  { id: 'barracks2', code: 'B-04', name: '생활관 2동', x: -76, z: -22, w: 42, d: 14, floors: 4, color: 0xe8e2d0, roof: 'gable', roofColor: 0x52704a,
+  { id: 'barracks2', code: 'B-04', name: '생활관 2동', x: -76, z: -22, plan: 'barracks', w: 42, d: 14, floors: 4, color: 0xe8e2d0, roof: 'gable', roofColor: 0x52704a,
     facts: '4층 · 약 160명', desc: '병사들이 생활하는 숙소예요. 1동과 같은 구조예요.' },
-  { id: 'mess', code: 'B-05', name: '취사장', x: 72, z: 35, w: 32, d: 18, floors: 2, color: 0xdcd5c4, roof: 'gable', roofColor: 0x8a3e30,
+  { id: 'mess', code: 'B-05', name: '취사장', x: 72, z: 35, plan: 'mess', w: 32, d: 18, floors: 2, color: 0xdcd5c4, roof: 'gable', roofColor: 0x8a3e30,
     facts: '2층 · 식당 겸용', desc: '식사를 준비하고 배식하는 곳이에요. 가스와 화기를 다뤄요.' },
   { id: 'medical', code: 'B-06', name: '의무대', x: 72, z: -15, w: 26, d: 14, floors: 2, color: 0xeeeae0, roof: 'flat',
     facts: '2층 · 구급차 1대', desc: '응급처치와 진료를 맡아요. 환자 후송이 시작되는 곳이에요.' },
@@ -610,8 +610,11 @@ function makeOffice(b, g) {
   const wall = Lm({ map: winTex, emissiveMap: winEm, emissive: 0x000000, color: b.color });
   b.wallMat = wall;
   box(b.w + 1, .6, b.d + 1, MAT.concrete, 0, 0, 0, g);
-  box(b.w, H, b.d, wall, 0, .6, 0, g, [1 / (4 * N), 1 / (3.4 * N)]);
-  box(Math.min(5, b.w * .3), 2.7, .3, MAT.glass, 0, .6, b.d / 2 + .05, g);
+  if (b.plan) buildShell(b, g, wall);                       // 안에 들어갈 수 있는 건물: 속이 빈 1층 + 위층 덩어리 + 자동문
+  else {
+    box(b.w, H, b.d, wall, 0, .6, 0, g, [1 / (4 * N), 1 / (3.4 * N)]);
+    box(Math.min(5, b.w * .3), 2.7, .3, MAT.glass, 0, .6, b.d / 2 + .05, g);
+  }
   box(Math.min(7, b.w * .4), .3, 2.4, MAT.concrete, 0, 3.4, b.d / 2 + 1.1, g);
   const top = .6 + H;
   if (b.roof === 'gable') { gableRoof(b.w, b.d, b.d * .24, b.roofColor, top, g); return top + b.d * .24; }
@@ -766,7 +769,6 @@ function makeHangar(b, g) {
   for (const x of [-18, -6, 6, 18]) box(.08, 3.6, .08, MAT.steel, x, 7.7, 0, g);
   box(.5, .6, .42, HG.yellow, 12, 6.8, 0, g); box(.04, 2.4, .04, MAT.dark, 12, 4.4, 0, g); box(.25, .25, .1, MAT.dark, 12, 4.2, 0, g);
   for (const x of [-15, -5, 5, 15]) for (const z of [-4.5, 4.5]) { box(2.2, .1, .45, HG.lamp, x, 5.6, z, g); box(.03, 1.2, .03, MAT.dark, x, 5.7, z, g); }
-  const lights = BAYS.map(x => { const l = new THREE.PointLight(0xfff0d6, 0, 30, 1.4); l.position.set(x, 5.2, 0); g.add(l); return l; });
   // 정비 1구역: 피트 위 트럭
   mkTruck(g, -12, 0);
   // 정비 2구역: 2주식 리프트 + 들어 올린 소형 전술차량
@@ -824,7 +826,7 @@ function makeHangar(b, g) {
     box(.08, .12, .08, MAT.dark, x, .58, z, g);
   }
   b.interior = {
-    doors, lights, floor, door: 1, doorX: BAYS[1], doorK: 0, doorT: 0, hx, hz, T, OW,
+    doors, floors: [floor], lightPos: [[-12, 5.2, 0], [0, 5.2, 0], [12, 5.2, 0]], lightDist: 30, lightI: 1.25, floorY: .05, door: 1, doorX: BAYS[1], doorK: 0, doorT: 0, hx, hz, T, OW,
     // 걸을 수 없는 곳 [x1, z1, x2, z2]
     blocks: [[-13.5, -4.9, -10.5, 4.9], [-2.45, -3.3, 2.45, 1.3], [10.6, -3.7, 13.4, 3.7], [13.4, 1.6, 15.6, 4.3],
       [-8.5, -10.7, 8.5, -9.3], [9.4, -10.7, 10.6, -9.6], [-2.4, -9.6, -1.6, -8.9], [12.9, -10.7, 20, -4.9], [-20, -10.7, -14.4, -1.6],
@@ -875,6 +877,434 @@ function makePad(b, g) {
   for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; box(.35, .3, .35, MAT.lampHead, Math.cos(a) * 10.6, 0, Math.sin(a) * 10.6, g); }
   return .6;
 }
+/* ===== 안에 들어갈 수 있는 사무 · 숙소 · 식당 건물 (대대본부 · 생활관 1 · 2동 · 취사장) =====
+   겉모습은 그대로 두고 1층 벽을 속이 빈 구조로 바꾼다. 1층 방 · 복도 · 설비는 처음 들어갈 때 만든다 (페이지를 여는 속도에 영향이 없도록).
+   2층 이상은 바깥에서만 보이는 층이다. 좌표는 건물 그룹 기준(가운데 0,0), 앞면(출입문) = +z. */
+const HP = { fy: .6, ch: 3.4, dh: 2.3 };      // 1층 바닥 높이 · 층고 · 문 높이 (m)
+let HI = null;
+function plateMat(txt, w = 512, h = 96) {
+  return Lm({ map: flatTex(w, h, g => {
+    g.fillStyle = '#1f281f'; g.fillRect(0, 0, w, h); g.fillStyle = '#ece7d4'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    let s = 46; do { g.font = `700 ${s}px ${KR_FONT}`; s -= 2; } while (g.measureText(txt).width > w - 40 && s > 16);
+    g.fillText(txt, w / 2, h / 2 + 2);
+  }), emissive: 0x181818 });
+}
+function boardMat(title, lines, w = 512, h = 384, bg = '#f4f2ea', head = '#1f281f') {
+  return Lm({ map: flatTex(w, h, g => {
+    g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = head; g.fillRect(0, 0, w, h * .2);
+    g.fillStyle = '#ece7d4'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = `700 ${h * .105}px ${KR_FONT}`; g.fillText(title, w * .05, h * .105);
+    const n = lines.length, top = h * .22, step = (h * .76) / Math.max(n, 5);
+    g.fillStyle = '#1f281f'; g.font = `500 ${Math.min(h * .075, step * .64)}px ${KR_FONT}`;
+    lines.forEach((t, i) => g.fillText(t, w * .06, top + step * (i + .55)));
+    g.strokeStyle = '#1f281f'; g.lineWidth = 5; g.strokeRect(2, 2, w - 4, h - 4);
+  }), emissive: 0x181818 });
+}
+function hiInit() {
+  if (HI) return HI;
+  const sp = (g, w, h, n, a) => { for (let i = 0; i < n; i++) { const v = hr() < .5 ? 0 : 255; g.fillStyle = `rgba(${v},${v},${v},${a * hr()})`; g.fillRect(hr() * w, hr() * h, 1 + hr() * 2, 1 + hr() * 2); } };
+  const fm = map => Lm({ map, emissive: 0x1a1a18 });
+  const tex = {
+    tile: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#cbc8bb'; g.fillRect(0, 0, w, h); sp(g, w, h, 1100, .1); g.strokeStyle = 'rgba(80,78,70,.5)'; g.lineWidth = 3; g.strokeRect(0, 0, w, h); }),
+    check: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#e8e4d6'; g.fillRect(0, 0, w, h); g.fillStyle = '#b9b5a4'; g.fillRect(0, 0, w / 2, h / 2); g.fillRect(w / 2, h / 2, w / 2, h / 2); sp(g, w, h, 900, .08); }),
+    carpet: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#4d5b69'; g.fillRect(0, 0, w, h); sp(g, w, h, 900, .24); }),
+    wood: canvasTex(128, 128, (g, w, h) => {
+      ['#b58b56', '#a97f4c', '#bd9561', '#ad8450'].forEach((c, i) => { g.fillStyle = c; g.fillRect(i * 32, 0, 32, h); });
+      g.strokeStyle = 'rgba(60,40,20,.55)'; g.lineWidth = 2;
+      for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, h); g.stroke(); }
+      for (let i = 0; i < 4; i++) { const y = (i % 2 ? 40 : 100); g.beginPath(); g.moveTo(i * 32, y); g.lineTo(i * 32 + 32, y); g.stroke(); }
+      sp(g, w, h, 500, .08);
+    }),
+    wet: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#7fa7a8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#bcd5d4'; g.lineWidth = 2; for (let k = 0; k <= 64; k += 16) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, h); g.moveTo(0, k); g.lineTo(w, k); g.stroke(); } sp(g, w, h, 200, .08); }),
+    quarry: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#9c4f38'; g.fillRect(0, 0, w, h); sp(g, w, h, 900, .14); g.strokeStyle = '#6f6c64'; g.lineWidth = 4; g.strokeRect(0, 0, w, h); g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); }),
+    conc: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#8c908a'; g.fillRect(0, 0, w, h); sp(g, w, h, 1500, .14); g.strokeStyle = 'rgba(40,44,40,.3)'; g.lineWidth = 2; g.strokeRect(0, 0, w, h); }),
+  };
+  HI = {
+    fTile: fm(tex.tile), fCheck: fm(tex.check), fCarpet: fm(tex.carpet), fWood: fm(tex.wood), fWet: fm(tex.wet), fQuarry: fm(tex.quarry), fConc: fm(tex.conc),
+    wall: Lm({ color: 0xe8e3d3, emissive: 0x1c1c18 }), cold: Lm({ color: 0xbccdd5, emissive: 0x141a1d }), tileWall: Lm({ color: 0xcfe0e0, emissive: 0x1a2020 }),
+    ceil: Lm({ color: 0xefede4, emissive: 0x2c2c28, side: THREE.DoubleSide }),
+    door: Lm({ color: 0x4d5a50, emissive: 0x101410 }),
+    inst: Lm({ color: 0xffffff, emissive: 0x0d0d0d }),
+    flagG: Lm({ color: 0x2f5d3a, side: THREE.DoubleSide }),
+    clock: Lm({ map: flatTex(128, 128, g => {
+      g.fillStyle = '#f4f2ea'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#1f281f'; g.lineWidth = 6; g.beginPath(); g.arc(64, 64, 58, 0, 7); g.stroke();
+      g.lineWidth = 3; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(64 + Math.sin(a) * 48, 64 - Math.cos(a) * 48); g.lineTo(64 + Math.sin(a) * 55, 64 - Math.cos(a) * 55); g.stroke(); }
+      g.lineWidth = 5; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + 28, 64 - 16); g.stroke(); g.lineWidth = 3; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 - 6, 64 - 44); g.stroke();
+    }), emissive: 0x181818 }),
+    map: Lm({ map: flatTex(512, 256, g => {
+      g.fillStyle = '#8fa66f'; g.fillRect(0, 0, 512, 256);
+      g.strokeStyle = 'rgba(80,100,60,.55)'; g.lineWidth = 2; for (let r = 30; r < 300; r += 34) { g.beginPath(); g.ellipse(380, 70, r * 1.3, r, .3, 0, 7); g.stroke(); }
+      g.strokeStyle = '#6b9fb0'; g.lineWidth = 9; g.beginPath(); g.moveTo(430, 0); g.bezierCurveTo(400, 90, 470, 160, 430, 256); g.stroke();
+      g.strokeStyle = '#7a7a72'; g.lineWidth = 7; g.beginPath(); g.moveTo(0, 190); g.lineTo(512, 175); g.stroke();
+      g.strokeStyle = '#e8e2c8'; g.lineWidth = 2; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(0, 190); g.lineTo(512, 175); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(226,164,59,.35)'; g.fillRect(150, 60, 170, 100); g.strokeStyle = '#8a3e30'; g.lineWidth = 3; g.setLineDash([8, 5]); g.strokeRect(150, 60, 170, 100); g.setLineDash([]);
+      g.fillStyle = '#10200f'; g.font = `700 22px ${KR_FONT}`; g.textAlign = 'center'; g.fillText('가상 부대 일대', 235, 118);
+      g.font = `500 16px ${KR_FONT}`; g.fillText('1:25,000', 70, 238);
+    }), emissive: 0x181818 }),
+  };
+  return HI;
+}
+function hiKit(b, g, I) {
+  const FY = I.floorY, CHt = HP.ch, DH = HP.dh, hx = I.hx, hz = I.hz, col = new THREE.Color();
+  const IB = [], IC = [], IL = [], IS = [], mats = {};
+  const K = {
+    FY, hx, hz,
+    /* y = 물체 바닥 높이 (바닥 기준) */
+    box(x, y, z, w, h, d, c, ry) { IB.push([x, FY + y, z, w, h, d, ry || 0, c == null ? 0xcccccc : c]); },
+    cyl(x, y, z, r, h, c) { IC.push([x, FY + y, z, r, h, c == null ? 0xcccccc : c]); },
+    lamp(x, z, w, d) { IL.push([x, FY + CHt - .07, z, w || 1.3, .06, d || .35, 0]); },
+    screen(x, y, z, w, h, ry) { IS.push([x, FY + y, z, w, h, .04, ry || 0]); },
+    blk(x1, z1, x2, z2) { I.blocks.push([Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2)]); },
+    solid(x, y, z, w, h, d, c) { K.box(x, y, z, w, h, d, c); K.blk(x - w / 2, z - d / 2, x + w / 2, z + d / 2); },
+    floor(x1, z1, x2, z2, mat, tile) {
+      const w = x2 - x1, d = z2 - z1, geo = new THREE.PlaneGeometry(w, d); geo.rotateX(-Math.PI / 2); scaleUV(geo, w / (tile || 1), d / (tile || 1));
+      const m = new THREE.Mesh(geo, mat); m.position.set((x1 + x2) / 2, FY + .012, (z1 + z2) / 2); m.receiveShadow = true; g.add(m); I.floors.push(m); return m;
+    },
+    ceiling() { const geo = new THREE.PlaneGeometry(2 * hx - 2 * I.T, 2 * hz - 2 * I.T); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, HI.ceil); m.position.set(0, FY + CHt - .004, 0); g.add(m); return m; },
+    /* 칸막이 벽: gaps = [[가운데, 반폭], ...] 는 문틀 (위에 인방이 얹힌다) */
+    wall(x1, z1, x2, z2, gaps, mat, t) {
+      mat = mat || HI.wall; t = t || .15; gaps = gaps || [];
+      const ax = z1 === z2;
+      segments(x1, z1, x2, z2, gaps, (L, cx, cz) => {
+        const w = ax ? L : t, d = ax ? t : L;
+        box(w, CHt, d, mat, cx, FY, cz, g).castShadow = false;
+        K.blk(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2);
+      });
+      gaps.forEach(([c, hw]) => { box(ax ? hw * 2 : t, CHt - DH, ax ? t : hw * 2, mat, ax ? c : x1, FY + DH, ax ? z1 : c, g).castShadow = false; });
+    },
+    leaf(x, z, w) { box(w, DH, .09, HI.door, x, FY, z, g).castShadow = false; K.blk(x - w / 2, z - .1, x + w / 2, z + .1); },
+    plate(txt, x, z, ry, w, y) {
+      const key = 'p' + txt, mat = mats[key] || (mats[key] = plateMat(txt)), ww = w || 1.7;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(ww, ww * 96 / 512), mat); m.position.set(x, FY + (y || 2.62), z); m.rotation.y = ry || 0; g.add(m); return m;
+    },
+    sign(mat, w, h, x, y, z, ry) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, FY + y, z); m.rotation.y = ry || 0; g.add(m); return m; },
+    flag(x, z, mat, side) {
+      K.cyl(x, 0, z, .035, 2.8, 0x9a9a9a); K.blk(x - .12, z - .12, x + .12, z + .12);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, .75), mat); m.position.set(x + (side || -1) * .58, FY + 2.3, z); g.add(m);
+    },
+    chair(x, z, f, c) { c = c || 0x2f3a45; K.box(x, .42, z, .46, .06, .46, c); K.box(x, .46, z + f * .21, .46, .52, .05, c); K.cyl(x, 0, z, .04, .42, 0x2a2d30); },
+    /* 책상 + 모니터 + 의자. f: 의자가 있는 쪽(+1: +z, -1: -z) */
+    desk(x, z, f, w, c) {
+      w = w || 1.4;
+      K.box(x, .72, z, w, .05, .72, c || 0x9a7b55); K.box(x - w / 2 + .04, 0, z, .05, .72, .62, 0x6e7378); K.box(x + w / 2 - .04, 0, z, .05, .72, .62, 0x6e7378);
+      K.blk(x - w / 2, z - .36, x + w / 2, z + .36);
+      K.box(x, .77, z - f * .12, .52, .34, .04, 0x181b1d); K.screen(x, .8, z - f * .12 + f * .025, .46, .28, 0); K.box(x, .77, z + f * .14, .42, .02, .15, 0x2a2d2f);
+      K.chair(x, z + f * .85, f);
+    },
+    /* 2층 침대 (머리는 +z) */
+    bunk(x, z) {
+      for (const dx of [-.47, .47]) for (const dz of [-.97, .97]) K.box(x + dx, 0, z + dz, .05, 1.85, .05, 0x6b6f72);
+      for (const y of [.36, 1.36]) { K.box(x, y, z, .9, .12, 1.95, 0x8e8a7c); K.box(x, y + .12, z, .86, .05, 1.9, 0x56603a); K.box(x, y + .17, z + .7, .5, .1, .32, 0xeeeade); }
+      K.blk(x - .5, z - 1, x + .5, z + 1);
+    },
+    /* 열린 선반: 층판 + 네 모서리 기둥. 물건은 호출한 쪽에서 층판 위(y = 층 * (h-.04)/tiers + .04)에 올린다 */
+    shelf(cx, cz, len, depth, h, tiers, c, alongZ) {
+      const w = alongZ ? depth : len, d = alongZ ? len : depth, tb = h - .04;
+      for (let t = 0; t <= tiers; t++) K.box(cx, t * tb / tiers, cz, w, .04, d, c);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) K.box(cx + sx * (w / 2 - .025), 0, cz + sz * (d / 2 - .025), .05, h, .05, 0x6e7378);
+      K.blk(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2);
+    },
+    ext(x, z) { K.cyl(x, 0, z, .1, .5, 0xb52d24); K.box(x, .5, z, .08, .12, .08, 0x222222); },
+    flush() {
+      const mk = (geo, list, mat, fn) => {
+        if (!list.length) return;
+        const im = new THREE.InstancedMesh(geo, mat, list.length);
+        list.forEach((a, i) => { fn(a, i, im); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); });
+        im.frustumCulled = false; g.add(im);        // r128 은 인스턴스 범위로 컬링하지 못해서 끈다
+      };
+      const bx = (a, i, im) => { dummy.position.set(a[0], a[1] + a[4] / 2, a[2]); dummy.rotation.set(0, a[6], 0); dummy.scale.set(a[3], a[4], a[5]); if (im) im.setColorAt(i, col.setHex(a[7]).multiplyScalar(.82)); };
+      mk(UNIT_BOX, IB, HI.inst, bx);
+      mk(UNIT_CYL, IC, HI.inst, (a, i, im) => { dummy.position.set(a[0], a[1] + a[4] / 2, a[2]); dummy.rotation.set(0, 0, 0); dummy.scale.set(a[3], a[4], a[3]); im.setColorAt(i, col.setHex(a[5]).multiplyScalar(.82)); });
+      mk(UNIT_BOX, IL, HG.lamp, (a, i) => bx(a, i, null));
+      mk(UNIT_BOX, IS, HG.screen, (a, i) => bx(a, i, null));
+    },
+  };
+  return K;
+}
+/* ---- 건물별 로 쓰는 껍데기: 속이 빈 1층 벽 + 위층 덩어리 + 자동문 ---- */
+function buildShell(b, g, wall) {
+  const W = b.w, D = b.d, hx = W / 2, hz = D / 2, T = .3, FY = HP.fy, CHt = HP.ch, OW = 3, DH = 2.5, wk = [1 / (4 * N), 1 / (3.4 * N)];
+  box(W, CHt, T, wall, 0, FY, -hz + T / 2, g, wk);
+  for (const s of [-1, 1]) box(T, CHt, D - 2 * T, wall, s * (hx - T / 2), FY, 0, g, wk);
+  const seg = hx - OW / 2;
+  for (const s of [-1, 1]) box(seg, CHt, T, wall, s * (OW / 2 + seg / 2), FY, hz - T / 2, g, wk);
+  box(OW, CHt - DH, T, wall, 0, FY + DH, hz - T / 2, g, wk);
+  if (b.floors > 1) box(W, (b.floors - 1) * 3.4, D, wall, 0, FY + CHt, 0, g, wk);
+  // 출입문: 유리 문짝 둘이 양쪽으로 열린다
+  const leaves = [-1, 1].map(s => {
+    const geo = new THREE.BoxGeometry(OW / 2 - .04, DH, .08); geo.translate(-s * (OW / 4 - .02), DH / 2, 0);
+    const m = new THREE.Mesh(geo, MAT.glass); m.position.set(s * OW / 2, FY, hz - .12); m.castShadow = true; g.add(m); return m;
+  });
+  box(OW + .2, .12, .5, MAT.steel, 0, FY + DH, hz + .1, g);
+  box(OW + 2, .3, 1.2, MAT.concrete, 0, 0, hz + 1.1, g);          // 계단 첫 단
+  const I = b.interior = {
+    floorY: FY, hx, hz, T, OW, doorX: 0, doorK: 0, doorT: 0, floors: [], blocks: [], pois: [], lightPos: [], lightDist: 20,
+    setDoor(k) { leaves.forEach(m => { m.scale.x = 1 - .94 * k; }); },
+    populate() { hiInit(); const K = hiKit(b, g, I); PLANS[b.plan](b, g, I, K); K.flush(); },
+  };
+}
+
+/* ---------- 대대본부 1층 ---------- */
+function planHQ(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  // 바닥
+  K.floor(-19.7, -1.5, 19.7, 1.5, H.fTile, 1.2);
+  K.floor(-19.7, 1.5, -6, 6.7, H.fTile, 1.2); K.floor(-6, 1.5, 3, 6.7, H.fCheck, 2); K.floor(3, 1.5, 9.5, 6.7, H.fTile, 1.2); K.floor(9.5, 1.5, 19.7, 6.7, H.fTile, 1.2);
+  K.floor(-19.7, -6.7, -12, -1.5, H.fCarpet, 2); K.floor(-12, -6.7, -3, -1.5, H.fTile, 1.2); K.floor(-3, -6.7, 3, -1.5, H.fConc, 2); K.floor(3, -6.7, 11, -1.5, H.fCarpet, 2); K.floor(11, -6.7, 19.7, -1.5, H.fConc, 2);
+  // 벽 · 문틀
+  K.wall(-19.7, 1.5, 19.7, 1.5, [[-12, .65], [-1.5, 4.5], [8.6, .65], [14.5, .65]]);
+  K.wall(-19.7, -1.5, 19.7, -1.5, [[-16, .65], [-7.5, .65], [0, .65], [7, .65], [15, .65]]);
+  for (const x of [-6, 3, 9.5]) K.wall(x, 1.5, x, 6.7);
+  for (const x of [-12, -3, 3, 11]) K.wall(x, -6.7, x, -1.5);
+  K.leaf(0, -1.5, 1.3);
+  [['행정반', -12], ['당직실', 8.6], ['통신실', 14.5]].forEach(([t, x]) => K.plate(t, x, 1.41, Math.PI));
+  [['대대장실', -16], ['작전과', -7.5], ['계단실', 0], ['지휘통제실', 7], ['총기 보관실', 15]].forEach(([t, x]) => K.plate(t, x, -1.41, 0));
+  for (let x = -17; x <= 17; x += 5.7) K.lamp(x, 0, 1.6, .4);
+  // 복도: 안내문 · 소화기
+  K.sign(boardMat('비상 연락망', ['당직실  내선 100', '의무대  내선 150', '소방서  119', '군사경찰  내선 112', '화재 시 소리쳐 알리고', '대피 · 119 신고']), 1.5, 1.1, -16.5, 1.0, 1.42, Math.PI);
+  K.sign(boardMat('화재 시 행동요령', ['1. 큰 소리로 알린다', '2. 119 · 당직실 신고', '3. 초기 진화는 안전할 때만', '4. 계단으로 대피', '5. 연기는 낮은 자세로']), 1.5, 1.1, 5.5, 1.0, 1.42, Math.PI);
+  K.sign(boardMat('비상 대피도', ['현 위치에서 정문까지', '복도 직진 → 현관', '2층 이상은 계단실 이용']), 1.3, 1.0, -11.5, 1.0, -1.42, 0);
+  [[-5, 1.3], [5, -1.3], [14, 1.3], [-18, -1.3]].forEach(([x, z]) => K.ext(x, z));
+
+  // 현관 로비
+  K.solid(-5.4, 0, 3.8, .9, 1.05, 3, 0x6e5a42); K.box(-5.4, 1.05, 3.8, 1, .05, 3.2, 0xd9d2c0); K.screen(-5.35, 1.1, 3.2, .4, .26, 0); K.chair(-4.5, 3.8, -1, 0x4a3a2a);
+  K.sign(Lm({ map: flatTex(768, 256, c => { c.fillStyle = '#1f281f'; c.fillRect(0, 0, 768, 256); c.fillStyle = '#ece7d4'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 84px ${KR_FONT}`; c.fillText('대대본부', 384, 100); c.font = `500 34px ${KR_FONT}`; c.fillText('모든 상황 보고는 당직실로', 384, 190); }), emissive: 0x181818 }), 3, 1, -5.92, 1.9, 3.8, Math.PI / 2);
+  K.sign(boardMat('부대 현황', ['현재 인원  이상 없음', '당직 근무  이상 없음', '오늘의 일정', ' 08:30 과업 시작', ' 13:00 오후 일과', ' 18:00 저녁 식사']), 1.8, 1.3, 2.92, 1.1, 4.2, -Math.PI / 2);
+  K.flag(2.4, 2.2, MAT.flag, -1); K.flag(2.4, 5.2, H.flagG, -1);
+  K.solid(-3.5, 0, 6.15, 2, .45, .5, 0x5b4a38); K.cyl(2.3, 0, 6.2, .3, .45, 0x7a5b3c); K.cyl(2.3, .45, 6.2, .24, .8, 0x2f6b34);
+  K.lamp(-1.5, 3.2, 1.6, .4); K.lamp(-1.5, 5.4, 1.6, .4);
+
+  // 행정반
+  for (const x of [-17.4, -14.8, -12.2, -9.6, -7.2]) K.desk(x, 3, 1);
+  for (let i = 0; i < 7; i++) K.solid(-19.2 + i * .95, 0, 6.4, .85, 1.5, .5, 0x8f979b);
+  K.solid(-8.5, .74, 5.3, 2.2, .06, .9, 0xb9a07a); [[-9.4, 4.55, -1], [-7.6, 4.55, -1], [-9.4, 6.05, 1], [-7.6, 6.05, 1]].forEach(([x, z, f]) => K.chair(x, z, f));
+  K.sign(boardMat('당직 근무 현황', ['당직사관  ○○○ 대위', '당직병  ○○○ 상병', '근무 교대  18:00', '특이사항  없음', '이상 유무  이상 없음']), 1.8, 1.3, -19.62, 1.0, 4.0, Math.PI / 2);
+  K.lamp(-16, 4.2); K.lamp(-11, 4.2); K.lamp(-8, 2.2);
+
+  // 당직실 (CCTV 화면 벽 + 당직사관 책상 + 간이침대)
+  for (const x of [4, 5.25, 6.5]) for (const y of [.95, 1.62]) { K.box(x, y - .03, 1.59, 1.18, .66, .03, 0x15191b); K.screen(x, y, 1.62, 1.1, .6, 0); }
+  K.box(5.8, .72, 4.2, 2.2, .05, .8, 0x7b6246); K.box(4.8, 0, 4.2, .05, .72, .7, 0x6e7378); K.box(6.8, 0, 4.2, .05, .72, .7, 0x6e7378); K.blk(4.7, 3.8, 6.9, 4.6);
+  for (const x of [5.2, 6.4]) { K.box(x, .77, 4.28, .5, .34, .04, 0x181b1d); K.screen(x, .8, 4.255, .46, .28, 0); }
+  K.box(6.9, .77, 4.05, .2, .08, .2, 0x222222); K.chair(5.8, 3.35, -1, 0x45403a);
+  K.solid(9.0, 0, 4.6, .9, .45, 2, 0x5d6b3c); K.box(9, .45, 5.4, .5, .1, .3, 0xeeeade); K.box(9.4, 1.2, 2.6, .12, .9, .7, 0x6b2a25);
+  K.sign(H.clock, .5, .5, 5.5, 1.9, 6.62, Math.PI); K.lamp(6, 3.2); K.lamp(6, 5.6);
+
+  // 통신실 (서버 랙 · 케이블 트레이 · UPS)
+  for (let i = 0; i < 8; i++) { const x = 11 + i; K.solid(x, 0, 6.2, .62, 2.0, .9, 0x2b3035); K.screen(x, 1.45, 5.745, .4, .5, 0); K.screen(x, .85, 5.745, .4, .3, 0); }
+  K.box(14.5, 2.5, 6.2, 8.6, .08, .5, 0x777c80); K.desk(11.6, 3.2, 1, 1.6); K.desk(17.4, 3.2, 1, 1.6);
+  K.solid(19.2, 0, 2.4, .9, 1.1, .8, 0x4f5559); K.box(19.5, 2.2, 4.5, .3, .6, 1.2, 0xdcdedd);
+  K.sign(plateMat('통신실 · 관계자 외 출입금지', 512, 96), 2.4, .45, 19.62, 1.9, 3.5, -Math.PI / 2);
+  K.lamp(12, 4.2); K.lamp(17, 4.2); K.ext(10, 1.8);
+
+  // 대대장실
+  K.box(-16, .72, -4.8, 2.2, .05, 1.0, 0x5b3f2b); K.box(-17, 0, -4.8, .05, .72, .9, 0x4a3322); K.box(-15, 0, -4.8, .05, .72, .9, 0x4a3322); K.blk(-17.1, -5.3, -14.9, -4.3);
+  K.box(-16, .77, -4.66, .52, .34, .04, 0x181b1d); K.screen(-16, .8, -4.685, .46, .28, 0); K.chair(-16, -5.65, -1, 0x3a2c22);
+  K.chair(-16.8, -3.9, 1, 0x4a5a48); K.chair(-15.2, -3.9, 1, 0x4a5a48);
+  K.solid(-16, 0, -6.45, 5, 2, .35, 0x6e5238); for (let r = 0; r < 3; r++) { K.box(-16, .3 + r * .6, -6.3, 4.9, .04, .3, 0x4a3322); for (let i = 0; i < 19; i++) K.box(-18.3 + i * .26, .34 + r * .6, -6.28, .13 + ((i * 7 + r) % 3) * .03, .3 + ((i + r) % 3) * .05, .2, [0x8a3e30, 0x2e5a8a, 0x3f6b3a, 0xc9a24a, 0x5d6166, 0x6b4c7a][(i * 5 + r * 2) % 6]); }
+  K.flag(-19.2, -6.3, MAT.flag, 1); K.flag(-12.8, -6.3, H.flagG, 1);
+  K.solid(-19.0, 0, -3.3, .9, .8, 2.2, 0x4a5a48); K.box(-19.4, .4, -3.3, .2, .6, 2.2, 0x3e4c3c); K.solid(-17.7, 0, -3.3, .7, .4, 1, 0x5b3f2b);
+  K.lamp(-16, -3.5);
+
+  // 작전과
+  for (const x of [-10.8, -8.6, -5.4]) K.desk(x, -5.4, 1);
+  K.sign(H.map, 3.2, 1.6, -7.5, 1.3, -6.62, 0);
+  K.solid(-3.6, 0, -3, .5, 1.5, 1.6, 0x8f979b); K.lamp(-9, -3.6); K.lamp(-5.5, -3.6);
+
+  // 지휘통제실
+  for (const x of [4.6, 7, 9.4]) { K.box(x, 1.05, -6.64, 2.12, 1.22, .03, 0x15191b); K.screen(x, 1.1, -6.61, 2.0, 1.1, 0); }
+  K.solid(7, .74, -3.9, 3.4, .06, 1.1, 0x3a4046); K.box(5.6, 0, -3.9, .08, .74, .9, 0x2a2f33); K.box(8.4, 0, -3.9, .08, .74, .9, 0x2a2f33);
+  for (const x of [5.8, 7, 8.2]) { K.chair(x, -2.85, 1, 0x2f3a45); K.chair(x, -4.95, -1, 0x2f3a45); }
+  K.solid(10.3, 0, -2.2, .6, 1.1, .5, 0x4a3a2a);
+  K.sign(boardMat('지휘통제 현황', ['접수 상황  이상 없음', 'CCTV  25대 정상', '출동 대기  1개 조']), 1.6, 1.0, 3.12, 1.0, -3.8, Math.PI / 2);
+  K.lamp(5.5, -3.9); K.lamp(8.5, -3.9);
+
+  // 총기 보관실
+  for (let r = 0; r < 4; r++) {
+    const x = 12.7 + r * 1.9; K.solid(x, 0, -6.35, 1.7, .22, .4, 0x4a4f52); K.box(x, 1.55, -6.35, 1.7, .08, .4, 0x4a4f52); K.box(x, 1.0, -6.12, 1.7, .03, .03, 0x999999);
+    for (let j = 0; j < 12; j++) { const rx = x - .77 + j * .14; K.box(rx, .22, -6.35, .04, 1.2, .05, 0x1d1f20); K.box(rx, .22, -6.28, .05, .5, .09, 0x4f3a28); }
+  }
+  K.desk(18.4, -3.2, -1, 1.4, 0x5d6166); K.sign(boardMat('총기 출입 통제', ['총기 수불 대장 기록', '출입 인원 확인', '잠금장치 이상 유무', '수량 일치 확인']), 1.6, 1.1, 17.5, 1.1, -1.62, Math.PI);
+  K.lamp(13.5, -4); K.lamp(18, -4); K.ext(11.5, -2.2);
+
+  Object.assign(I, {
+    entryLook: [-5.4, 3.8],
+    lightPos: [[-14, F + 3, 0], [-5, F + 3, 0], [4, F + 3, 0], [13, F + 3, 0], [-1.5, F + 3, 4.5], [7, F + 3, -3.5]],
+    intro: '1층에 현관 로비 · 행정반 · 당직실 · 통신실 · 대대장실 · 작전과 · 지휘통제실 · 총기 보관실이 있어요. 2~3층은 계단실이 잠겨 있어 바깥에서만 볼 수 있어요. 이름표를 누르면 그 방으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'lobby', name: '현관 로비', at: [-5.4, F + 2.5, 3.8], stand: [0.5, 5.2], look: [-5.6, F + 1.4, 3.8], desc: '대대본부 현관이에요. 안내 데스크와 부대 현황판이 있고, 방문자는 여기서 출입 확인을 받아요. 정문 위병소에서 이어지는 첫 번째 확인 지점이에요.' },
+      { id: 'admin', name: '대대 행정반', at: [-13, F + 2.4, 3], stand: [-15.5, 5.2], look: [-12.5, F + 1.0, 2.8], desc: '인사 · 군수 · 교육 서류를 처리하는 사무실이에요. 벽의 상황판에는 오늘의 당직 근무 현황을 적어요.' },
+      { id: 'duty', name: '당직실', at: [6, F + 2.4, 3.4], stand: [7.6, 6.0], look: [5.0, F + 1.4, 1.9], desc: '당직사관과 당직병이 24시간 근무하는 곳이에요. 부대 곳곳의 CCTV 화면이 한 벽에 모이고, 모든 상황 보고가 이곳에서 시작돼요. 간이침대는 야간 근무 때 쪽잠용이에요.' },
+      { id: 'comms', name: '통신실', at: [14.5, F + 2.6, 5], stand: [14, 3.2], look: [14, F + 1.2, 6.2], desc: '부대 전화 · 인터넷 · 무전 장비가 있는 곳이에요. 서버 랙과 UPS가 있어서 화재와 정전에 특히 민감해요.' },
+      { id: 'ops', name: '작전과', at: [-7.5, F + 2.4, -4.5], stand: [-7.5, -3.2], look: [-7.5, F + 1.5, -6.6], desc: '교육 훈련과 작전 계획을 세우는 사무실이에요. 벽에는 부대 일대 지도가 걸려 있어요.' },
+      { id: 'cmd', name: '지휘통제실', at: [7, F + 2.6, -3.9], stand: [4.4, -2.3], look: [7, F + 1.3, -6.6], desc: '상황이 접수되면 지휘관과 참모가 모여 대응을 지휘하는 곳이에요. 큰 화면 세 개로 상황을 같이 보면서 판단해요.' },
+      { id: 'arms', name: '총기 보관실', at: [15.6, F + 2.2, -5], stand: [15, -3.4], look: [15, F + 1.0, -6.3], desc: '소총을 보관하는 철제 거치대와 수불 대장이 있어요. 출입이 통제되고, 총기 수량은 장부와 실물을 매일 맞춰봐요. 1정이라도 맞지 않으면 찾을 때까지 분실로 봐요.' },
+      { id: 'cdr', name: '대대장실', at: [-16, F + 2.5, -4.8], stand: [-14.4, -3.2], look: [-16, F + 1.2, -5.2], desc: '대대장이 집무하는 방이에요. 상황 보고를 받으면 이곳이나 지휘통제실에서 판단을 내려요.' },
+    ],
+  });
+}
+
+/* ---------- 생활관 (1동 · 2동 같은 구조) 1층 ---------- */
+function planBarracks(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  K.floor(-20.7, -1.5, 20.7, 1.5, H.fTile, 1.2); K.floor(-4, 1.5, 4, 6.7, H.fCheck, 2);
+  [[-20.7, -12.5], [-12.5, -4], [4, 13]].forEach(([a, c]) => K.floor(a, 1.5, c, 6.7, H.fWood, 1));
+  K.floor(13, 1.5, 20.7, 6.7, H.fTile, 1.2);
+  K.floor(-20.7, -6.7, -15, -1.5, H.fCarpet, 2); K.floor(-15, -6.7, -9, -1.5, H.fConc, 2); K.floor(-9, -6.7, -3, -1.5, H.fWet, .8); K.floor(-3, -6.7, 3, -1.5, H.fConc, 2);
+  K.floor(3, -6.7, 10, -1.5, H.fWet, .8); K.floor(10, -6.7, 16, -1.5, H.fTile, 1.2); K.floor(16, -6.7, 20.7, -1.5, H.fConc, 2);
+  K.wall(-20.7, 1.5, 20.7, 1.5, [[-16.5, .65], [-8.2, .65], [0, 4], [8.5, .65], [16.5, .9]]);
+  K.wall(-20.7, -1.5, 20.7, -1.5, [[-18, .65], [-12, .65], [-6, .65], [0, .65], [6.5, .65], [13, .65], [18.3, .65]]);
+  for (const x of [-12.5, -4, 4, 13]) K.wall(x, 1.5, x, 6.7);
+  for (const x of [-15, -9, -3, 3, 10, 16]) K.wall(x, -6.7, x, -1.5);
+  K.leaf(0, -1.5, 1.3);
+  [['1생활관', -16.5], ['2생활관', -8.2], ['3생활관', 8.5], ['PX', 16.5]].forEach(([t, x]) => K.plate(t, x, 1.41, Math.PI, 1.5));
+  [['휴게실', -18], ['보일러실', -12], ['세탁 · 건조실', -6], ['계단실', 0], ['화장실 · 세면장', 6.5], ['중대 행정반', 13], ['군장실', 18.3]].forEach(([t, x]) => K.plate(t, x, -1.41, 0, 1.5));
+  for (let x = -18; x <= 18; x += 6) K.lamp(x, 0, 1.6, .4);
+  K.ext(-2, 1.3); K.ext(2, -1.3); K.ext(11, 1.3);
+
+  // 생활관 3개: 침대는 창쪽 벽에 머리를 두고, 관물대는 복도쪽 벽에 붙인다
+  const bay = (x1, x2, doorX) => {
+    const n = Math.floor((x2 - x1 - .3) / 1.25);
+    for (let i = 0; i < n; i++) K.bunk(x1 + .75 + i * 1.25, 5.65);
+    for (let x = x1 + .6; x < x2 - .5; x += .9) if (Math.abs(x - doorX) > 1.05) K.solid(x, 0, 1.85, .85, 1.9, .5, [0x7a8678, 0x6e7a70][Math.round((x - x1) / .9) % 2]);
+    K.lamp((x1 + x2) / 2 - 1.5, 3.4); K.lamp((x1 + x2) / 2 + 1.5, 3.4);
+    K.box((x1 + x2) / 2, 0, 3.4, 1.2, .45, .45, 0x6e5a42);          // 좌식 탁자
+  };
+  bay(-20.7, -12.5, -16.5); bay(-12.5, -4, -8.2); bay(4, 13, 8.5);
+  K.sign(boardMat('일과 시간표', ['06:30  기상 · 점호', '07:00  아침 식사', '08:30  과업 시작', '12:00  점심 식사', '18:00  저녁 식사', '22:00  점호', '22:30  취침']), 1.7, 1.5, -12.42, 1.0, 4.2, -Math.PI / 2);
+
+  // 현관: 신발장과 게시판
+  K.solid(-3.7, 0, 4.2, .5, 1.0, 2.6, 0x7b7f84); K.solid(3.7, 0, 4.2, .5, 1.0, 2.6, 0x7b7f84);
+  for (let i = 0; i < 10; i++) for (const s of [-1, 1]) K.box(s * 3.7, 1.0, 3.1 + i * .22, .36, .12, .16, 0x1d1f20);
+  K.sign(boardMat('일과 시간표', ['06:30  기상 · 점호', '07:00  아침 식사', '08:30  과업 시작', '18:00  저녁 식사', '22:00  점호']), 1.6, 1.4, -3.92, 1.4, 4.2, Math.PI / 2);
+  K.sign(boardMat('중대 인원 현황', ['편성  ○○명', '현재  ○○명', '휴가 · 외출  ○명', '근무  ○명', '이상 유무  이상 없음']), 1.6, 1.4, 3.92, 1.4, 4.2, -Math.PI / 2);
+  K.flag(-1.5, 6.2, H.flagG, -1); K.lamp(0, 3.2, 1.6, .4); K.lamp(0, 5.4, 1.6, .4);
+
+  // PX
+  K.solid(14.0, 0, 3.4, .8, 1.0, 2.4, 0x6e5a42); K.box(14, 1.0, 3.4, .9, .05, 2.5, 0xd9d2c0); K.screen(14.1, 1.08, 3.0, .3, .22, Math.PI / 2); K.chair(13.5, 3.0, -1, 0x45403a);
+  const prod = [0xc8322a, 0xe2a43b, 0x2e5a8a, 0x3f6b3a, 0xd9d2bd, 0x8a3e30];
+  for (const z of [4.4, 5.8]) { K.shelf(17.3, z, 4.8, .5, 1.5, 3, 0xc9ccc9, false); for (let t = 0; t < 3; t++) for (let i = 0; i < 16; i++) K.box(14.95 + i * .29, .04 + t * .4867, z, .22, .26, .34, prod[(i + t + (z > 5 ? 2 : 0)) % 6]); }
+  K.solid(20.15, 0, 3.0, .7, 1.9, 1.2, 0xe9eef0); K.screen(19.8, .2, 3.0, 1.0, 1.5, Math.PI / 2);
+  K.sign(plateMat('병영 매점 PX'), 1.8, .34, 20.6, 2.5, 4.2, -Math.PI / 2); K.lamp(15, 3); K.lamp(18.5, 3);
+
+  // 휴게실
+  K.screen(-18.3, 1.0, -6.62, 1.5, .85, 0); K.box(-18.3, 0, -6.45, 1.8, .5, .45, 0x3a3f44); K.blk(-19.2, -6.7, -17.4, -6.2);
+  K.solid(-17.9, 0, -4.2, 2.4, .8, .9, 0x4a5a48); K.box(-17.9, .4, -3.7, 2.4, .6, .2, 0x3e4c3c);
+  K.solid(-15.6, 0, -5.8, .9, 1.9, .7, 0xc8322a); K.screen(-15.6, .5, -5.44, .6, 1.0, 0); K.solid(-20.2, 0, -2.6, .5, 1.6, 1.2, 0x6e5238); K.lamp(-18, -4);
+
+  // 보일러실
+  for (const x of [-13.6, -11.4]) { K.cyl(x, 0, -5.4, .55, 1.9, 0x3d6a8a); K.cyl(x, 1.9, -5.4, .5, .08, 0x2a2f33); K.blk(x - .6, -6, x + .6, -4.8); K.screen(x, .9, -4.83, .3, .3, 0); }
+  K.box(-12.5, 2.2, -6.45, 5.4, .14, .14, 0xb54a2e); K.box(-12.5, 1.9, -6.45, 5.4, .14, .14, 0x3d6a8a);
+  for (const x of [-13.6, -11.4]) { K.box(x - .1, 1.9, -6.0, .1, .4, .1, 0xb54a2e); K.box(x + .1, 1.9, -6.0, .1, .3, .1, 0x3d6a8a); }
+  K.cyl(-9.9, 0, -6.2, .35, 1.4, 0xb0b4b6); K.blk(-10.3, -6.6, -9.5, -5.8);
+  K.solid(-14.8, 0, -3.5, .15, 1.9, .7, 0x8a8f90); K.screen(-14.72, 1.2, -3.5, .5, .4, Math.PI / 2);
+  K.sign(Lm({ map: flatTex(512, 256, c => { c.fillStyle = '#c8322a'; c.fillRect(0, 0, 512, 256); c.strokeStyle = '#fff'; c.lineWidth = 12; c.strokeRect(14, 14, 484, 228); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 86px ${KR_FONT}`; c.fillText('화기엄금', 256, 100); c.font = `500 34px ${KR_FONT}`; c.fillText('보일러실 · 관계자 외 출입금지', 256, 195); }), emissive: 0x201010 }), 1.5, .75, -10, 1.5, -1.62, Math.PI);
+  K.lamp(-12, -3.6);
+
+  // 세탁 · 건조실
+  for (let i = 0; i < 3; i++) { const x = -8.3 + i * .85; K.solid(x, 0, -6.2, .75, .95, .75, 0xeceeee); K.screen(x, .38, -5.82, .36, .36, 0); }
+  for (let i = 0; i < 3; i++) { const x = -5.5 + i * .85; K.solid(x, 0, -6.2, .75, .95, .75, 0xb7bcbe); K.screen(x, .38, -5.82, .36, .36, 0); }
+  K.solid(-4.2, .8, -3.3, 2, .06, .9, 0xb9a07a); K.box(-4.2, 0, -3.3, 1.9, .8, .8, 0x6e7378); K.box(-8.6, 0, -3.0, .06, 1.6, 1.4, 0x9aa0a4);
+  for (let i = 0; i < 6; i++) K.box(-8.55, .5 + (i % 3) * .45, -3.4 + (i > 2 ? .6 : 0), .05, .3, .5, [0x4f5b3a, 0x6f7a5a, 0xcfcab6][i % 3]);
+  K.lamp(-6, -3.6);
+
+  // 화장실 · 세면장
+  const xs = [5.0, 6.0, 7.0, 8.0];
+  [4.5, 5.5, 6.5, 7.5, 8.5].forEach(x => K.solid(x, 0, -5.6, .05, 1.8, 2.1, 0xb6c4c4));
+  xs.forEach(x => { K.solid(x, .15, -4.55, .9, 1.6, .04, 0x7f95a0); K.box(x, 0, -6.35, .4, .4, .55, 0xfafafa); K.box(x, .4, -6.55, .4, .4, .15, 0xfafafa); });
+  K.solid(3.45, 0, -3, .5, .9, 3.2, 0xcfd6d6); for (let i = 0; i < 4; i++) K.cyl(3.5, .9, -4.1 + i * .75, .12, .12, 0xe6eef0);
+  K.box(3.1, 1.25, -3, .03, .8, 2.8, 0xaebfc7);
+  for (let i = 0; i < 3; i++) K.box(9.8, .65, -2.4 - i * .8, .3, .6, .3, 0xfafafa);
+  K.lamp(6.5, -3.2); K.lamp(6.5, -5.4);
+
+  // 중대 행정반
+  K.desk(11.0, -5.4, 1); K.desk(15.0, -5.4, 1);
+  K.sign(boardMat('중대 상황판', ['근무 현황', '인원 현황', '특이사항  없음', '금일 일정', '당직 근무자']), 2.4, 1.5, 13, 1.1, -6.62, 0);
+  K.solid(15.45, 0, -2.6, .5, 1.5, 1.4, 0x8f979b); K.box(10.5, 1.2, -1.7, .4, .3, .06, 0x6b2a25); K.lamp(13, -3.6);
+
+  // 군장실
+  K.shelf(18.4, -6.3, 4, .5, 2, 4, 0x777c80, false); for (let t = 0; t < 4; t++) for (let i = 0; i < 6; i++) K.box(16.6 + i * .6, .04 + t * .49, -6.3, .46, .4, .4, [0x4f5b3a, 0x5d6b3c, 0x6f7a5a][(i + t) % 3]);
+  K.solid(17.6, 0, -3.0, .9, 1.7, .5, 0x777c80); K.lamp(18.4, -4);
+
+  Object.assign(I, {
+    entryLook: [-14, 0],
+    lightPos: [[-16, F + 3, 0], [-8, F + 3, 0], [0, F + 3, 0], [8, F + 3, 0], [16, F + 3, 0], [-16, F + 3, 4]],
+    intro: `${b.name} 1층이에요. 생활관 3개 · PX · 휴게실 · 보일러실 · 세탁 · 건조실 · 화장실 · 중대 행정반이 있어요. 2~4층은 계단실이 잠겨 있어 바깥에서만 볼 수 있어요. 이름표를 누르면 그 방으로 걸어가서 설명을 보여줘요.`,
+    pois: [
+      { id: 'hall', name: '현관 · 복도', at: [0, F + 2.6, 4.2], stand: [0.2, 4.8], look: [-3.9, F + 1.5, 4.2], desc: '신발을 벗어 두는 현관이에요. 벽에는 일과 시간표와 중대 인원 현황이 붙어 있어요.' },
+      { id: 'bay', name: '1생활관 (침상)', at: [-16.6, F + 2.5, 5.0], stand: [-13.3, 2.9], look: [-19, F + .9, 5.2], desc: '병사들이 잠을 자는 생활관이에요. 2층 침대가 창쪽 벽에 머리를 두고 놓여 있고, 복도쪽 벽에는 개인 물품을 두는 관물대가 있어요. 야간에는 이 방에 가장 많은 인원이 있어요.' },
+      { id: 'office', name: '중대 행정반', at: [13, F + 2.5, -4.8], stand: [13, -3.2], look: [13, F + 1.5, -6.6], desc: '중대 인원 · 근무 · 일정을 관리하는 사무실이에요. 상황판에 오늘 근무자와 특이사항을 적어요.' },
+      { id: 'lounge', name: '휴게실', at: [-17.9, F + 2.3, -4.2], stand: [-17.9, -2.6], look: [-17.9, F + 1.3, -6.5], desc: '쉬는 시간에 TV를 보고 이야기를 나누는 방이에요. 자판기와 책장이 있어요.' },
+      { id: 'boiler', name: '보일러실', at: [-12.5, F + 2.6, -5.4], stand: [-12.5, -2.1], look: [-12.5, F + 1.2, -5.4], desc: '난방과 온수를 만드는 보일러 2기가 있어요. 배관을 따라 뜨거운 물(빨강)과 찬 물(파랑)이 흘러요. 화기 엄금 구역이고, 연기나 열 이상이 생기면 가장 먼저 확인하는 곳이에요.' },
+      { id: 'laundry', name: '세탁 · 건조실', at: [-6, F + 2.4, -5], stand: [-6.5, -3.3], look: [-6, F + 1.0, -6.2], desc: '세탁기 3대와 건조기 3대가 있어요. 건조기 보풀과 과열이 화재 원인이 될 수 있어서 자주 청소해요.' },
+      { id: 'wc', name: '화장실 · 세면장', at: [6.5, F + 2.4, -4], stand: [7, -2.4], look: [3.5, F + 1.4, -3], desc: '변기 4칸과 소변기, 세면대가 있어요. 바닥이 물에 젖기 쉬워 미끄럼에 조심해야 해요.' },
+      { id: 'px', name: 'PX (병영 매점)', at: [17.3, F + 2.3, 4.4], stand: [15.9, 3.0], look: [17.6, F + .9, 5.1], desc: '과자 · 음료 · 생활용품을 파는 매점이에요. 판매대와 냉장고가 있어요.' },
+    ],
+  });
+}
+
+/* ---------- 취사장 1층: 식당 + 조리실 ---------- */
+function planMess(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  K.floor(-15.7, -1, 15.7, 8.7, H.fCheck, 2); K.floor(-15.7, -8.7, 15.7, -1, H.fQuarry, 1); K.floor(9.5, -8.7, 15.7, -3.5, H.fConc, 2);
+  K.wall(-15.7, -1, 15.7, -1, [[-13, .65], [0, 6], [7.5, .65]]);
+  K.wall(9.5, -8.7, 9.5, -3.5, null, H.cold); K.wall(9.5, -3.5, 15.7, -3.5, [[12.6, .65]], H.cold);
+  K.plate('조리실', -13, -.91, 0, 1.5); K.plate('조리실', 7.5, -.91, 0, 1.5); K.plate('배식대', 0, -.91, 0, 1.8, 2.7); K.plate('냉장 · 냉동고', 12.6, -3.41, 0, 1.7);
+
+  // 식당: 가운데는 통로, 양쪽에 긴 식탁 4개씩 3줄
+  const trays = [0x8a9096, 0x7c828a];
+  for (const side of [-1, 1]) for (const z of [1.7, 4.5, 7.0]) for (let t = 0; t < 4; t++) {
+    const x = side * (3.4 + t * 3.4);
+    K.box(x, .74, z, 3, .05, .9, 0xc9b48c); K.box(x - 1.2, 0, z, .06, .74, .8, 0x6e7378); K.box(x + 1.2, 0, z, .06, .74, .8, 0x6e7378);
+    for (const s of [-1, 1]) { K.box(x, .42, z + s * .65, 3, .05, .3, 0x5b6068); K.box(x - 1.2, 0, z + s * .65, .06, .42, .26, 0x4a4f54); K.box(x + 1.2, 0, z + s * .65, .06, .42, .26, 0x4a4f54); }
+    K.blk(x - 1.5, z - .8, x + 1.5, z + .8);
+    if ((t + z * 3 + side) % 2) for (const dx of [-.6, .6]) { K.box(x + dx, .79, z - .25, .4, .03, .3, trays[t % 2]); K.box(x + dx, .79, z + .25, .4, .03, .3, trays[(t + 1) % 2]); }
+  }
+  for (const z of [2.5, 5.5]) for (const x of [-9, 9, -3.4, 3.4]) K.lamp(x, z);
+  // 배식대
+  K.solid(0, 0, -.35, 11.4, .95, .7, 0x9aa2a6); K.box(0, .95, -.35, 11.6, .05, .8, 0xd7dcde); K.box(0, .88, .45, 11.4, .04, .1, 0x6d747a);
+  [0xd9c27a, 0xb5651d, 0x4f7a34, 0xc0392b, 0x8a4b2a, 0xe0d8a6].forEach((c, i) => { const x = -4.6 + i * 1.84; K.box(x, 1.0, -.35, 1.6, .08, .55, 0x6d747a); K.box(x, 1.08, -.35, 1.4, .04, .45, c); });
+  K.box(-5.1, 1.0, .0, .6, .3, .45, 0xb9bec0);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(11.2, .45, .03), HG.glass); guard.position.set(0, F + 1.5, .12); g.add(guard);
+  K.solid(14.6, 0, .35, 2, .95, .8, 0x9aa2a6); K.sign(plateMat('식기 · 잔반 반납'), 1.6, .3, 14.6, 1.5, -.88, 0);
+  K.sign(boardMat('오늘의 식단', ['아침  쌀밥 · 미역국 · 계란찜', '점심  제육볶음 · 된장국', '저녁  돈가스 · 야채수프', '후식  과일 · 요구르트', '※ 알레르기 유발 식품 표시']), 3.2, 1.9, -8, 1.3, 8.62, Math.PI);
+  K.sign(boardMat('배식 시간표', ['아침  07:00 ~ 08:00', '점심  12:00 ~ 13:00', '저녁  18:00 ~ 19:00', '손 씻기 · 줄 서기 · 식판 반납']), 3.2, 1.9, 8, 1.3, 8.62, Math.PI);
+
+  // 조리실: 가스레인지 · 대형 솥 · 후드 · 가스 배관
+  for (let i = 0; i < 4; i++) { const x = -14.6 + i * 1.2; K.solid(x, 0, -8.0, 1.0, .85, 1.0, 0x9aa2a6); K.cyl(x - .22, .85, -8.2, .17, .04, 0x1a1a1a); K.cyl(x + .22, .85, -8.2, .17, .04, 0x1a1a1a); K.cyl(x - .22, .85, -7.8, .17, .04, 0x1a1a1a); K.cyl(x + .22, .85, -7.8, .17, .04, 0x1a1a1a); K.cyl(x, .89, -8.0, .3, .4, 0x7d868b); }
+  for (let i = 0; i < 3; i++) { const x = -8.4 + i * 1.6; K.solid(x, 0, -8.0, 1.4, .85, 1.1, 0x9aa2a6); K.cyl(x, .85, -8.0, .56, .6, 0xb8bec2); K.cyl(x, 1.45, -8.0, .58, .06, 0x8a9296); }
+  K.solid(-3.2, 0, -8.0, 1.2, 1.8, 1.0, 0xaeb4b6); K.screen(-3.2, 1.0, -7.46, .5, .4, 0); K.solid(-1.6, 0, -8.0, 1.2, .9, 1.0, 0x9aa2a6);
+  K.box(-8.2, 2.05, -8.0, 14.2, .55, 1.5, 0xb7bcc0); for (const x of [-12, -6, -1.5]) K.box(x, 2.6, -8.2, .9, .8, .9, 0xb7bcc0);
+  K.box(-8, 1.15, -8.62, 14.5, .08, .08, 0xe2b52e); K.box(-15.4, 1.15, -8.0, .1, .1, 1.3, 0xe2b52e); K.box(-15.4, 1.0, -7.0, .1, .5, .1, 0xe2b52e);
+  K.box(-15.3, 1.05, -6.9, .22, .22, .22, 0xc8322a); K.cyl(-15.3, 1.27, -6.9, .05, .15, 0x8a1f1a);
+  K.sign(Lm({ map: flatTex(512, 256, c => { c.fillStyle = '#e2b52e'; c.fillRect(0, 0, 512, 256); c.fillStyle = '#1d1d1b'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 70px ${KR_FONT}`; c.fillText('가스 밸브', 256, 90); c.font = `700 44px ${KR_FONT}`; c.fillText('비상 시 차단', 256, 170); c.lineWidth = 10; c.strokeStyle = '#1d1d1b'; c.strokeRect(8, 8, 496, 240); }), emissive: 0x201c08 }), 1.2, .6, -15.62, 1.5, -6.9, Math.PI / 2);
+  [-12, -7, -2].forEach(x => { K.solid(x, 0, -4.8, 2.4, .9, .9, 0xc7ccce); K.box(x, .9, -4.8, .6, .03, .4, 0xb08d5e); K.box(x + .7, .9, -4.8, .3, .1, .3, 0x3f6b3a); });
+  K.solid(-14.6, 0, -3.3, 1.0, 1.5, 2.6, 0xbfc5c7); K.screen(-14.08, .9, -3.3, 1.6, .4, Math.PI / 2); K.solid(-12.3, .0, -2.2, 1.0, .9, 1.0, 0xc7ccce);
+  for (let i = 0; i < 4; i++) K.box(-12.3, .9 + i * .08, -2.2, .7, .06, .7, 0x8a9096);
+  // 냉장 · 냉동고 안쪽
+  K.shelf(15.2, -6.1, 3.4, .5, 1.8, 4, 0x9aa2a6, true); K.shelf(12.6, -8.3, 5, .5, 1.8, 4, 0x9aa2a6, false);
+  for (let t = 0; t < 4; t++) { for (let i = 0; i < 6; i++) K.box(15.2, .04 + t * .44, -7.5 + i * .55, .42, .34, .46, [0xe8eef0, 0xbcd4e0, 0xf0e6c8][(i + t) % 3]); for (let i = 0; i < 8; i++) K.box(10.45 + i * .6, .04 + t * .44, -8.3, .5, .34, .42, [0xe8eef0, 0xbcd4e0, 0xf0e6c8][(i + t) % 3]); }
+  K.lamp(12.5, -5.5);
+  for (const [x, z] of [[-6, -1.6], [0, -1.6], [-4, 8.4], [4, 8.4], [-15.3, -1.7], [14, -1.8], [8.8, -8.4]]) K.ext(x, z);
+  for (const x of [-12, -6, 0, 5]) for (const z of [-3.2, -6.2]) K.lamp(x, z);
+
+  Object.assign(I, {
+    lightPos: [[-8, F + 3, 3.5], [8, F + 3, 3.5], [0, F + 3, 6.5], [-8, F + 3, -5], [1, F + 3, -5], [12, F + 3, -6]],
+    intro: '1층에 식당 홀과 조리실이 있어요. 식당 가운데 통로 끝이 배식대이고, 양옆 문으로 조리실에 들어갈 수 있어요. 2층은 바깥에서만 볼 수 있어요. 이름표를 누르면 그 곳으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'hall', name: '식당 홀', at: [-8, F + 2.4, 4.5], stand: [0, 5.2], look: [-7, F + .9, 4.5], desc: '한 번에 여러 소대가 앉아 먹는 식당이에요. 긴 식탁과 벤치가 줄지어 있고, 식사 시간에는 인원이 한꺼번에 몰려요. 비상 때는 정문쪽 출입문과 조리실 문으로 나갈 수 있어요.' },
+      { id: 'line', name: '배식대', at: [0, F + 2.2, 0], stand: [0, 1.1], look: [0, F + .9, -.3], desc: '밥 · 국 · 반찬을 식판에 담아 주는 곳이에요. 보온 배식 팬이 줄지어 있고, 앞에 줄을 서요.' },
+      { id: 'cook', name: '조리 라인 (대형 솥)', at: [-8, F + 2.3, -8], stand: [-8, -2.8], look: [-8, F + 1.0, -8], desc: '가스레인지와 대형 국솥이 있는 조리 구역이에요. 수백 명 분을 한 번에 끓이기 때문에 불과 뜨거운 물을 가장 많이 다뤄요.' },
+      { id: 'hood', name: '환기 후드 · 덕트', at: [-8.2, F + 3.1, -8], stand: [-8, -2.8], look: [-8.2, F + 2.4, -8], desc: '조리할 때 나오는 열과 기름 연기를 지붕 위로 빼내는 배기 설비예요. 기름때가 쌓이면 불이 붙기 쉬워서 정기적으로 닦아요.' },
+      { id: 'gas', name: '가스 배관 · 차단 밸브', at: [-15.3, F + 2.0, -7], stand: [-13.5, -6.2], look: [-15.3, F + 1.2, -7.4], desc: '조리 기구로 이어지는 노란 가스 배관과 비상 차단 밸브예요. 가스 냄새가 나거나 누출이 의심되면 불을 쓰지 말고 이 밸브부터 잠가요.' },
+      { id: 'wash', name: '식기 세척실', at: [-14.6, F + 2.2, -3.3], stand: [-12.3, -3.5], look: [-14.6, F + 1.0, -3.3], desc: '식판과 식기를 닦고 소독하는 세척기가 있어요. 바닥에 물이 많아 미끄러워요.' },
+      { id: 'cold', name: '냉장 · 냉동고', at: [12.6, F + 2.4, -6], stand: [12.6, -2.4], look: [12.6, F + 1.0, -6.5], desc: '식재료를 보관하는 큰 냉장 · 냉동 창고예요. 문이 두꺼워서 안에 갇히지 않도록 안쪽 비상 손잡이가 있어요.' },
+    ],
+  });
+}
+const PLANS = { hq: planHQ, barracks: planBarracks, mess: planMess };
+
 const buildingMeshes = [];
 BUILDINGS.forEach(b => {
   const g = new THREE.Group(); g.position.set(b.x, 0, b.z); scene.add(g);
@@ -1531,7 +1961,9 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && DR.on) droneExit();
 /* ---------- 건물 안으로 들어가기 (차량정비고) ----------
    건물 정보 카드의 '안으로 들어가기' → 셔터 앞까지 이동 → 셔터가 올라가면 걸어 들어감 → 1인칭으로 자유롭게 둘러보기
    끌기: 시선 · W A S D/방향키(또는 화면 버튼): 걷기 · 바닥 누르기: 그곳으로 걸어감 · 이름표: 그 설비 앞으로 가서 설명 · 셔터 밖으로 걸어 나가거나 '밖으로 나가기' */
-const EYE = 1.65, inEl = $('inside'), inPoisEl = $('inPois'), inInfo = $('inInfo');
+let EYE = 1.7;                    // 눈높이 = 바닥 높이 + 1.65 (건물마다 바닥 높이가 달라서 들어갈 때 정한다)
+const inLights = Array.from({ length: 6 }, () => { const l = new THREE.PointLight(0xfff0d6, 0, 30, 1.4); scene.add(l); return l; });   // 건물 안 조명 (건물이 달라도 같은 6개를 옮겨 쓴다: 광원 수가 늘면 모든 재질의 셰이더가 무거워진다)
+const inEl = $('inside'), inPoisEl = $('inPois'), inInfo = $('inInfo');
 const inTmp = new THREE.Vector3(), inLook = new THREE.Vector3(), inV = new THREE.Vector3();
 const inW = (b, x, y, z) => new THREE.Vector3(b.x + x, y, b.z + z);
 const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
@@ -1547,7 +1979,7 @@ function doorsStep(dt) {
     const I = b.interior; if (!I || I.doorK === I.doorT) continue;
     I.doorK = I.doorT > I.doorK ? Math.min(I.doorT, I.doorK + dt / 1.6) : Math.max(I.doorT, I.doorK - dt / 1.6);
     if (reduceMotion) I.doorK = I.doorT;
-    I.doors[I.door].scale.y = 1 - .94 * ease(I.doorK);
+    if (I.setDoor) I.setDoor(ease(I.doorK)); else I.doors[I.door].scale.y = 1 - .94 * ease(I.doorK);
   }
 }
 function inShowInfo(code, name, desc) { $('inCode').textContent = code; $('inName').textContent = name; $('inDesc').textContent = desc; inInfo.hidden = false; }
@@ -1586,22 +2018,53 @@ function inMoveTo(p1, yaw1, pitch1, ph) {
   IN.ph = ph || 'move'; IN.k = 0;
   if (reduceMotion) IN.k = 1;
 }
-/* 곧장 갈 수 없으면 앞 통로(셔터 쪽) 또는 뒤 통로를 따라 돌아간다 */
-function inClear(ax, az, bx, bz) { const n = Math.ceil(Math.hypot(bx - ax, bz - az) / .25); for (let i = 1; i <= n; i++) if (!inFree(ax + (bx - ax) * i / n, az + (bz - az) * i / n)) return false; return true; }
-function inRoute(dst, yaw1, pitch1, ph) {
-  const b = IN.b, ax = camera.position.x - b.x, az = camera.position.z - b.z, bx = dst.x - b.x, bz = dst.z - b.z;
-  let pts = [[bx, bz]];
-  if (!inClear(ax, az, bx, bz)) {
-    let best = null;
-    for (const z of [8.4, -7]) {
-      const q = [[ax, z], [bx, z], [bx, bz]];
-      if (!inClear(ax, az, ax, z) || !inClear(ax, z, bx, z) || !inClear(bx, z, bx, bz)) continue;
-      const L = Math.abs(z - az) + Math.abs(bx - ax) + Math.abs(bz - z);
-      if (!best || L < best.L) best = { L, q };
+/* 길찾기: 건물 안을 0.25m 격자로 나눠 걸을 수 있는 칸만 이어 가장 짧은 길을 찾고, 곧게 갈 수 있는 곳은 한 번에 간다 */
+/* 걸을 수 있는 칸 격자: 건물마다 한 번만 만들어 두고(문이 열린 상태 기준), 길찾기와 직선 확인은 이 표를 읽기만 한다 (충돌 사각형을 매번 훑으면 수십 초가 걸린다) */
+function inGrid() {
+  const I = IN.b.interior; if (I._g) return I._g;
+  const cs = .25, x0 = -I.hx, z0 = -I.hz, nx = Math.ceil(2 * I.hx / cs) + 1, nz = Math.ceil((2 * I.hz + 1.5) / cs) + 1, a = new Uint8Array(nx * nz);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) a[j * nx + i] = inFree(x0 + i * cs, z0 + j * cs) ? 1 : 0;
+  return (I._g = { cs, x0, z0, nx, nz, free: a });
+}
+function inFreeG(G, x, z) { const i = Math.round((x - G.x0) / G.cs), j = Math.round((z - G.z0) / G.cs); return i >= 0 && j >= 0 && i < G.nx && j < G.nz && G.free[j * G.nx + i] === 1; }
+function inClear(ax, az, bx, bz) { const G = inGrid(), n = Math.ceil(Math.hypot(bx - ax, bz - az) / .2); for (let i = 1; i <= n; i++) if (!inFreeG(G, ax + (bx - ax) * i / n, az + (bz - az) * i / n)) return false; return true; }
+function inPathLocal(ax, az, bx, bz) {
+  if (inClear(ax, az, bx, bz)) return [[bx, bz]];
+  const G = inGrid(), cs = G.cs, x0 = G.x0, z0 = G.z0, nx = G.nx, nz = G.nz, free = G.free;
+  const idx = (i, j) => j * nx + i, cx = i => x0 + i * cs, cz = j => z0 + j * cs;
+  const near = (x, z) => {
+    const i0 = Math.min(nx - 1, Math.max(0, Math.round((x - x0) / cs))), j0 = Math.min(nz - 1, Math.max(0, Math.round((z - z0) / cs)));
+    if (free[idx(i0, j0)]) return [i0, j0];
+    for (let r = 1; r < 60; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+      const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= nx || j >= nz) continue; if (free[idx(i, j)]) return [i, j];
     }
-    if (best) pts = best.q.filter((p, i, a) => i === 0 ? Math.hypot(p[0] - ax, p[1] - az) > .3 : Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > .3);
+    return null;
+  };
+  const S = near(ax, az), E = near(bx, bz); if (!S || !E) return [[bx, bz]];
+  const dist = new Float64Array(nx * nz).fill(1e9), prev = new Int32Array(nx * nz).fill(-1), heap = [];
+  const push = (d, n) => { heap.push([d, n]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const s0 = idx(S[0], S[1]), e0 = idx(E[0], E[1]); dist[s0] = 0; push(0, s0);
+  while (heap.length) {
+    const [d, n] = pop(); if (d > dist[n]) continue; if (n === e0) break;
+    const i = n % nx, j = (n / nx) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+      const m = idx(ii, jj); if (!free[m]) continue; if (di && dj && !(free[idx(i + di, j)] && free[idx(i, j + dj)])) continue;
+      const nd = d + (di && dj ? 1.414 : 1) * cs; if (nd < dist[m]) { dist[m] = nd; prev[m] = n; push(nd, m); }
+    }
   }
-  IN.path = pts.map(([x, z]) => inW(b, x, EYE, z)); IN.path[IN.path.length - 1] = dst.clone();
+  if (prev[e0] < 0 && s0 !== e0) return [[bx, bz]];
+  const cells = []; for (let n = e0; n !== -1; n = prev[n]) cells.push([cx(n % nx), cz((n / nx) | 0)]); cells.reverse();
+  const out = []; let k = 0, cur = [ax, az];
+  while (k < cells.length - 1) { let far = k + 1; for (let m = cells.length - 1; m > k; m--) if (inClear(cur[0], cur[1], cells[m][0], cells[m][1])) { far = m; break; } cur = cells[far]; out.push(cur); k = far; }
+  if (inFree(bx, bz)) { if (!out.length || inClear(out[out.length - 1][0], out[out.length - 1][1], bx, bz)) out.push([bx, bz]); }
+  return out.length ? out : [[bx, bz]];
+}
+function inRoute(dst, yaw1, pitch1, ph) {
+  const b = IN.b, pts = inPathLocal(camera.position.x - b.x, camera.position.z - b.z, dst.x - b.x, dst.z - b.z);
+  IN.path = pts.map(([x, z]) => inW(b, x, EYE, z));
   IN.final = { yaw: yaw1, pitch: pitch1 }; IN.legPh = ph || 'move';
   inNextLeg();
 }
@@ -1627,30 +2090,32 @@ function interiorEnter(id) {
   const I = b.interior;
   const save = { cam: camera.position.clone(), tgt: controls.target.clone(), sel: b.id };
   selectBuilding(null);
+  if (I.populate && !I.populated) { I.populated = true; I.populate(); b.group.traverse(o => { if (o.isMesh && !o.isInstancedMesh && !o.userData.bid) { o.userData.bid = b.id; buildingMeshes.push(o); } }); }   // 안쪽 방 · 설비는 처음 들어갈 때 만든다
+  EYE = (I.floorY || .05) + 1.65; IN.sunBase = sun.intensity;
   Object.assign(IN, { on: true, b, save, poi: null, bob: 0 });
   IN.keys.clear(); IN.pad.clear();
   fly = null; controls.enabled = false; controls.autoRotate = false;
-  camera.near = .1; camera.updateProjectionMatrix();
+  camera.near = .1; camera.fov = 62; camera.updateProjectionMatrix();       // 실내는 시야를 넓혀서 좁은 방도 한눈에 보이게
   document.body.classList.add('interior'); inEl.hidden = false; inEl.classList.remove('ready'); inInfo.hidden = true;
   $('inTopCode').textContent = `${b.code} · 내부`; $('inTopName').textContent = `${b.name} 내부`;
   $('inHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 둘러보고, 버튼이나 바닥을 눌러 걸어요.' : '끌어서 둘러보기 · W A S D · 방향키로 걷기 · 바닥을 누르면 그곳으로 이동';
-  I.lights.forEach(l => { l.intensity = 1.25; });
+  inLights.forEach((l, i) => { const p = I.lightPos[i]; if (p) { l.position.set(b.x + p[0], p[1], b.z + p[2]); l.distance = I.lightDist || 20; l.intensity = I.lightI || .6; } else l.intensity = 0; });
   inBuildPois(b);
   IN.a0 = camera.position.clone(); IN.l0 = controls.target.clone();
-  IN.a1 = inW(b, I.doorX, EYE, I.hz + 5); IN.l1 = inW(b, I.doorX, EYE, -I.hz);
+  IN.a1 = inW(b, I.doorX, EYE, I.hz + 5); IN.l1 = I.entryLook ? inW(b, I.entryLook[0], EYE, I.entryLook[1]) : inW(b, I.doorX, EYE, -I.hz);
   IN.a2 = inW(b, I.doorX, EYE, I.hz - 4.5);
   IN.dur = Math.max(1.4, Math.min(2.6, IN.a0.distanceTo(IN.a1) / 70)); IN.ph = 'approach'; IN.k = 0;
-  if (reduceMotion) { I.doorT = I.doorK = 1; doorsStep(0); camera.position.copy(IN.a2); inLookDir(inTmp.subVectors(IN.l1, IN.a2)); inApplyRot(); IN.ph = 'free'; inEl.classList.add('ready'); inShowInfo(`${b.code} · 내부`, b.name, I.intro); }
+  if (reduceMotion) { I.doorT = I.doorK = 1; doorsStep(0); camera.position.copy(IN.a2); sun.intensity = 0; inLookDir(inTmp.subVectors(IN.l1, IN.a2)); inApplyRot(); IN.ph = 'free'; inEl.classList.add('ready'); inShowInfo(`${b.code} · 내부`, b.name, I.intro); }
   inPost('enter');
   return true;
 }
 function inFinishExit() {
   const b = IN.b, sv = IN.save;
-  b.interior.doorT = 0; b.interior.lights.forEach(l => { l.intensity = 0; });
+  b.interior.doorT = 0; inLights.forEach(l => { l.intensity = 0; });
   IN.on = false; IN.ph = null; IN.keys.clear(); IN.pad.clear(); inDrag = null;
   document.body.classList.remove('interior'); inEl.hidden = true; inPoisEl.innerHTML = '';
   $('inPad').querySelectorAll('button').forEach(x => x.classList.remove('on'));
-  camera.near = .5; camera.updateProjectionMatrix();
+  camera.near = .5; camera.fov = 45; camera.updateProjectionMatrix(); applyLight(mapNight ? 0 : 1);
   controls.enabled = true;
   controls.target.copy(camera.position).addScaledVector(camera.getWorldDirection(inTmp), 20);
   camera.rotation.order = 'XYZ';
@@ -1680,7 +2145,7 @@ function inStep(dt) {
   } else if (IN.ph === 'walkin') {
     camera.lookAt(IN.l1);
     if (I.doorK > .8) {
-      IN.k = Math.min(1, IN.k + dt / 2.2); const e = IN.k * IN.k * (3 - 2 * IN.k);
+      IN.k = Math.min(1, IN.k + dt / 2.2); const e = IN.k * IN.k * (3 - 2 * IN.k); sun.intensity = IN.sunBase * (1 - e);
       camera.position.lerpVectors(IN.a1, IN.a2, e); camera.lookAt(IN.l1);
       if (IN.k >= 1) { inLookDir(camera.getWorldDirection(inTmp)); inApplyRot(); IN.ph = 'free'; inEl.classList.add('ready'); inShowInfo(`${b.code} · 내부`, b.name, I.intro); inPost('inside'); }
     }
@@ -1688,6 +2153,7 @@ function inStep(dt) {
     const m = IN.m; IN.k = Math.min(1, IN.k + dt / m.dur); const e = IN.k * IN.k * (3 - 2 * IN.k);
     camera.position.lerpVectors(m.p0, m.p1, e);
     camera.position.y = EYE + Math.sin(IN.k * m.dur * 9) * .025 * Math.sin(Math.PI * IN.k);
+    if (IN.ph === 'walkout' && !IN.exitOut && !IN.path.length) sun.intensity = IN.sunBase * e;     // 밖으로 나가는 마지막 구간에서 햇빛이 돌아온다
     IN.yaw = m.y0 + m.dy * Math.min(1, e * 1.6); IN.pitch = m.pi0 + (m.pi1 - m.pi0) * Math.min(1, e * 1.6); inApplyRot();
     if (IN.k >= 1) {
       if (inNextLeg()) return;
@@ -1740,7 +2206,7 @@ const inDragEnd = e => {
   inNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   inRay.setFromCamera(inNdc, camera);
   const hit = inRay.intersectObjects(buildingMeshes, false)[0];
-  if (!hit || hit.object !== IN.b.interior.floor) return;       // 바닥이 아닌 설비 · 벽을 누르면 무시
+  if (!hit || !IN.b.interior.floors.includes(hit.object)) return;       // 바닥이 아닌 설비 · 벽을 누르면 무시
   const b = IN.b, lx = hit.point.x - b.x, lz = Math.min(hit.point.z - b.z, b.interior.hz - .8);
   if (!inFree(lx, lz)) return;
   const p1 = inW(b, lx, EYE, lz), d = inTmp.subVectors(p1, camera.position);
@@ -1787,6 +2253,7 @@ window.BaseMap = {
   enter: id => interiorEnter(id),
   exitInterior: () => interiorExit(),
   interiorState: () => IN.on ? { id: IN.b.id, name: IN.b.name, phase: IN.ph, poi: IN.poi ? IN.poi.id : null } : null,
+  interiorCheck: () => IN.on ? IN.b.interior.pois.map(p => ({ id: p.id, free: inFree(p.stand[0], p.stand[1]) })) : null,   // 설비 이름표의 서는 자리가 걸을 수 있는 바닥인지 (점검용)
   droneState: () => DR.on ? { id: DR.b.id, name: DR.b.name, phase: DR.phase, result: DR.result } : null,
   active: () => [...alerts.entries()].map(([id, a]) => ({ id, name: find(id).name, message: a.message, since: a.since })),
 };
