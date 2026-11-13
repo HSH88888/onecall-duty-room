@@ -574,7 +574,7 @@ fenceRect(-120, -100, -64, -44, { e: [[-72, 4]] });   // 탄약고 이중 울타
 
 /* ---------- 건물 ---------- */
 const BUILDINGS = [
-  { id: 'gate', code: 'B-01', name: '위병소', x: 16, z: 88, w: 10, d: 7, floors: 1, color: 0xd8d2c2, roof: 'flat',
+  { id: 'gate', code: 'B-01', name: '위병소', x: 16, z: 88, plan: 'gate', w: 10, d: 7, floors: 1, color: 0xd8d2c2, roof: 'flat',
     facts: '1층 · 24시간 근무', desc: '부대 출입을 통제하고 면회객과 차량을 확인하는 곳이에요.' },
   { id: 'hq', code: 'B-02', name: '대대본부', x: 0, z: 35, plan: 'hq', w: 40, d: 14, floors: 3, color: 0xe4dfd2, roof: 'flat',
     facts: '3층 · 당직실 1층', desc: '지휘통제실과 당직실이 있는 본관이에요. 모든 상황 보고가 이곳으로 모여요.' },
@@ -584,15 +584,15 @@ const BUILDINGS = [
     facts: '4층 · 약 160명', desc: '병사들이 생활하는 숙소예요. 1동과 같은 구조예요.' },
   { id: 'mess', code: 'B-05', name: '취사장', x: 72, z: 35, plan: 'mess', w: 32, d: 18, floors: 2, color: 0xdcd5c4, roof: 'gable', roofColor: 0x8a3e30,
     facts: '2층 · 식당 겸용', desc: '식사를 준비하고 배식하는 곳이에요. 가스와 화기를 다뤄요.' },
-  { id: 'medical', code: 'B-06', name: '의무대', x: 72, z: -15, w: 26, d: 14, floors: 2, color: 0xeeeae0, roof: 'flat',
+  { id: 'medical', code: 'B-06', name: '의무대', x: 72, z: -15, plan: 'medical', w: 26, d: 14, floors: 2, color: 0xeeeae0, roof: 'flat',
     facts: '2층 · 구급차 1대', desc: '응급처치와 진료를 맡아요. 환자 후송이 시작되는 곳이에요.' },
   { id: 'motorpool', code: 'B-07', name: '차량정비고', x: 80, z: -72, w: 40, d: 22, type: 'hangar',
     facts: '1층 · 유류 보관', desc: '군용 차량을 정비하고 보관해요. 유류와 공구가 있어요.' },
   { id: 'ammo', code: 'B-08', name: '탄약고', x: -92, z: -72, type: 'bunker',
     facts: '지하식 · 이중 울타리', desc: '탄약을 보관하는 저장고예요. 별도 울타리로 둘러싸 출입을 따로 통제해요.' },
-  { id: 'gym', code: 'B-09', name: '체력단련실', x: -76, z: 62, w: 30, d: 14, floors: 1, color: 0xd6d0bf, roof: 'gable', roofColor: 0x56636c,
+  { id: 'gym', code: 'B-09', name: '체력단련실', x: -76, z: 62, plan: 'gym', w: 30, d: 14, floors: 1, color: 0xd6d0bf, roof: 'gable', roofColor: 0x56636c,
     facts: '1층 · 운동기구', desc: '병사들이 운동하는 실내 체육시설이에요.' },
-  { id: 'pump', code: 'B-10', name: '급수 펌프실', x: 104, z: 40, w: 9, d: 7, floors: 1, color: 0xcfd3cf, roof: 'flat',
+  { id: 'pump', code: 'B-10', name: '급수 펌프실', x: 104, z: 40, plan: 'pump', w: 9, d: 7, floors: 1, color: 0xcfd3cf, roof: 'flat',
     facts: '1층 · 급수 설비', desc: '부대에 물을 보내는 펌프와 전기 설비가 있어요.' },
   { id: 'fuel', code: 'B-11', name: '유류고', x: 114, z: -74, type: 'tanks',
     facts: '탱크 2기 · 화기 엄금', desc: '차량용 경유와 휘발유를 저장해요. 방유턱으로 둘러싸여 있어요.' },
@@ -850,14 +850,33 @@ function makeHangar(b, g) {
   return H + (hz + .5) * .42;
 }
 function makeBunker(b, g) {
-  for (const z of [-10, 10]) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 18, 24, 1, false, 0, Math.PI), MAT.earth);
-    m.geometry.rotateZ(Math.PI / 2); scaleUV(m.geometry, 3, 3);
-    m.position.set(-4, 0, z); m.castShadow = m.receiveShadow = true; g.add(m);
-    box(.9, 6.8, 13.5, MAT.concrete, 5.2, 0, z, g);
-    box(.25, 3.2, 3.6, MAT.doorMetal, 5.75, 0, z, g, [1 / 1.5, 1 / 3.2]);
-    box(1.2, .3, 4.4, MAT.concrete, 6.1, 3.3, z, g);
+  /* 건물 그룹을 90° 돌려 두었다: 건물 좌표의 +z(문 쪽)가 세계의 +x(동쪽 진입로)가 된다.
+     저장고 두 동은 건물 좌표 x = ∓10 에 놓이고 길이는 z = -13 … 5, 문벽은 z = 5.2 (두께 .9). 남쪽 저장고(x = -10)만 안으로 들어갈 수 있고 북쪽은 잠겨 있다 */
+  g.rotation.y = Math.PI / 2;
+  const earth = MAT.earth.clone(); earth.side = THREE.DoubleSide;
+  const leaves = [];
+  for (const x of [-10, 10]) {
+    const geo = new THREE.CylinderGeometry(6, 6, 18, 24, 1, true, Math.PI / 2, Math.PI);       // 위쪽 반원통, 축이 z
+    geo.rotateX(Math.PI / 2); scaleUV(geo, 3, 3);
+    const m = new THREE.Mesh(geo, earth); m.position.set(x, 0, -4); m.castShadow = m.receiveShadow = true; g.add(m);
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(6, 24, 0, Math.PI), earth); cap.position.set(x, 0, -13); cap.castShadow = true; g.add(cap);
+    if (x > 0) { box(13.5, 6.8, .9, MAT.concrete, x, 0, 5.2, g); box(3.6, 3.2, .25, MAT.doorMetal, x, 0, 5.75, g, [1 / 1.5, 1 / 3.2]); }
+    else {
+      for (const s of [-1, 1]) box(4.95, 6.8, .9, MAT.concrete, x + s * (1.8 + 2.475), 0, 5.2, g);
+      box(3.6, 3.6, .9, MAT.concrete, x, 3.2, 5.2, g);
+      for (const s of [-1, 1]) {                                                              // 철문 두 짝: 바깥쪽 가장자리가 경첩, 밖으로 열린다
+        const lg = new THREE.BoxGeometry(1.78, 3.2, .25); boxUV(lg, 1.78, 3.2, .25, 1 / 1.5, 1 / 3.2); lg.translate(-s * .89, 1.6, 0);
+        const lm = new THREE.Mesh(lg, MAT.doorMetal); lm.position.set(x + s * 1.8, 0, 5.75); lm.castShadow = true; g.add(lm); leaves.push([lm, s]);
+      }
+    }
+    box(4.4, .3, 1.2, MAT.concrete, x, 3.3, 6.1, g);
   }
+  const I = b.interior = {
+    floorY: .05, hx: 16, hz: 5.2, T: .45, OW: 3.6, doorX: -10, doorK: 0, doorT: 0, floors: [], blocks: [], pois: [], lightPos: [], lightDist: 22,
+    bounds: [-14.6, -12.9, -5.4], gridBox: [-15, -13.2, -5, 6.7], entryLook: [-10, -13],
+    setDoor(k) { leaves.forEach(([m, s]) => { m.rotation.y = s * k * 1.75; }); },
+    populate() { hiInit(); const K = hiKit(b, g, I); PLANS.ammo(b, g, I, K); K.flush(); },
+  };
   return 7.5;
 }
 function makeTanks(b, g) {
@@ -916,10 +935,12 @@ function hiInit() {
     }),
     wet: canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#7fa7a8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#bcd5d4'; g.lineWidth = 2; for (let k = 0; k <= 64; k += 16) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, h); g.moveTo(0, k); g.lineTo(w, k); g.stroke(); } sp(g, w, h, 200, .08); }),
     quarry: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#9c4f38'; g.fillRect(0, 0, w, h); sp(g, w, h, 900, .14); g.strokeStyle = '#6f6c64'; g.lineWidth = 4; g.strokeRect(0, 0, w, h); g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); }),
+    rubber: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#3b3e40'; g.fillRect(0, 0, w, h); sp(g, w, h, 1400, .16); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2; g.strokeRect(0, 0, w, h); }),
+    mat: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#2f5d8a'; g.fillRect(0, 0, w, h); sp(g, w, h, 600, .1); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3; g.strokeRect(0, 0, w, h); }),
     conc: canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#8c908a'; g.fillRect(0, 0, w, h); sp(g, w, h, 1500, .14); g.strokeStyle = 'rgba(40,44,40,.3)'; g.lineWidth = 2; g.strokeRect(0, 0, w, h); }),
   };
   HI = {
-    fTile: fm(tex.tile), fCheck: fm(tex.check), fCarpet: fm(tex.carpet), fWood: fm(tex.wood), fWet: fm(tex.wet), fQuarry: fm(tex.quarry), fConc: fm(tex.conc),
+    fTile: fm(tex.tile), fCheck: fm(tex.check), fCarpet: fm(tex.carpet), fWood: fm(tex.wood), fWet: fm(tex.wet), fHosp: Lm({ map: tex.tile, color: 0xcfe3df, emissive: 0x1a1e1c }), fRubber: fm(tex.rubber), fMat: fm(tex.mat), fQuarry: fm(tex.quarry), fConc: fm(tex.conc),
     wall: Lm({ color: 0xe8e3d3, emissive: 0x1c1c18 }), cold: Lm({ color: 0xbccdd5, emissive: 0x141a1d }), tileWall: Lm({ color: 0xcfe0e0, emissive: 0x1a2020 }),
     ceil: Lm({ color: 0xefede4, emissive: 0x2c2c28, side: THREE.DoubleSide }),
     door: Lm({ color: 0x4d5a50, emissive: 0x101410 }),
@@ -951,13 +972,13 @@ function hiKit(b, g, I) {
     /* y = 물체 바닥 높이 (바닥 기준) */
     box(x, y, z, w, h, d, c, ry) { IB.push([x, FY + y, z, w, h, d, ry || 0, c == null ? 0xcccccc : c]); },
     cyl(x, y, z, r, h, c) { IC.push([x, FY + y, z, r, h, c == null ? 0xcccccc : c]); },
-    lamp(x, z, w, d) { IL.push([x, FY + CHt - .07, z, w || 1.3, .06, d || .35, 0]); },
+    lamp(x, z, w, d, y) { IL.push([x, FY + (y == null ? CHt - .07 : y), z, w || 1.3, .06, d || .35, 0]); },
     screen(x, y, z, w, h, ry) { IS.push([x, FY + y, z, w, h, .04, ry || 0]); },
     blk(x1, z1, x2, z2) { I.blocks.push([Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2)]); },
     solid(x, y, z, w, h, d, c) { K.box(x, y, z, w, h, d, c); K.blk(x - w / 2, z - d / 2, x + w / 2, z + d / 2); },
-    floor(x1, z1, x2, z2, mat, tile) {
+    floor(x1, z1, x2, z2, mat, tile, yo) {
       const w = x2 - x1, d = z2 - z1, geo = new THREE.PlaneGeometry(w, d); geo.rotateX(-Math.PI / 2); scaleUV(geo, w / (tile || 1), d / (tile || 1));
-      const m = new THREE.Mesh(geo, mat); m.position.set((x1 + x2) / 2, FY + .012, (z1 + z2) / 2); m.receiveShadow = true; g.add(m); I.floors.push(m); return m;
+      const m = new THREE.Mesh(geo, mat); m.position.set((x1 + x2) / 2, FY + .012 + (yo || 0), (z1 + z2) / 2); m.receiveShadow = true; g.add(m); I.floors.push(m); return m;
     },
     ceiling() { const geo = new THREE.PlaneGeometry(2 * hx - 2 * I.T, 2 * hz - 2 * I.T); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, HI.ceil); m.position.set(0, FY + CHt - .004, 0); g.add(m); return m; },
     /* 칸막이 벽: gaps = [[가운데, 반폭], ...] 는 문틀 (위에 인방이 얹힌다) */
@@ -1304,6 +1325,223 @@ function planMess(b, g, I, K) {
   });
 }
 const PLANS = { hq: planHQ, barracks: planBarracks, mess: planMess };
+/* ---------- 위병소 ---------- */
+function planGate(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  K.floor(-4.7, -3.2, 2, 3.2, H.fTile, 1.2); K.floor(2, -3.2, 4.7, 3.2, H.fWood, 1);
+  K.wall(2, -3.2, 2, 3.2, [[-1, .65]]);
+  // 근무실: 근무 콘솔 · CCTV 화면 · 무전기 충전대 · 총기 거치대
+  K.desk(-2.6, -2.55, 1, 2.2);
+  for (const x of [-3.3, -1.9]) { K.box(x, .77, -2.67, .52, .34, .04, 0x181b1d); K.screen(x, .8, -2.645, .46, .28, 0); }
+  for (const z of [-.3, 1.0]) for (const y of [1.0, 1.7]) { K.box(-4.68, y - .03, z, .03, .66, 1.08, 0x15191b); K.screen(-4.66, y, z, 1.0, .6, Math.PI / 2); }
+  K.solid(-4.4, 0, -1, .5, .9, 1.2, 0x6e7378); for (let i = 0; i < 6; i++) { K.box(-4.4, .9, -1.45 + i * .18, .12, .18, .06, 0x1d1f20); K.screen(-4.4, 1.0, -1.45 + i * .18, .05, .04, Math.PI / 2); }
+  K.solid(-4.35, 0, 2.3, .5, .3, 1.4, 0x4a4f52); for (let i = 0; i < 4; i++) { K.box(-4.45, .3, 1.8 + i * .26, .05, 1.1, .06, 0x1d1f20); K.box(-4.45, .3, 1.8 + i * .26, .06, .45, .08, 0x4f3a28); }
+  K.sign(boardMat('위병 근무 일지', ['근무자  ○○○ 상병', '교대 시각  ○○:○○', '출입 차량  ○대', '특이사항  없음']), 1.5, 1.0, -2.5, 1.2, 3.12, Math.PI);
+  K.sign(boardMat('차단기 제어', ['정문 차단기  열기 · 닫기', '후문 차단기  열기 · 닫기', '비상 정지  버튼', '※ 차량 신원 확인 후']), 1.2, .9, 1.9, 1.2, -2.2, -Math.PI / 2);
+  K.box(1.85, 1.9, -1.8, .08, .12, .12, 0xc8322a); K.lamp(-1.5, 0, 1.4, .4);
+  // 면회실
+  K.box(3.4, .72, 0, 1.2, .05, .9, 0x9a7b55); K.box(2.9, 0, 0, .05, .72, .8, 0x6e7378); K.box(3.9, 0, 0, .05, .72, .8, 0x6e7378); K.blk(2.8, -.45, 4, .45);
+  K.chair(3.4, .95, 1, 0x4a5a48); K.chair(3.4, -.95, -1, 0x4a5a48);
+  K.solid(4.4, 0, 2.4, .5, .9, 1.2, 0x6e5a42); for (let i = 0; i < 5; i++) K.box(4.4, .9, 1.9 + i * .2, .12, .04, .14, [0xe2b52e, 0xeeeade, 0x2e5a8a][i % 3]);
+  K.box(4.4, 0, -2.6, .35, 1.0, .35, 0xe9eef0); K.box(4.4, 1.0, -2.6, .3, .35, .3, 0x6fb2d8);
+  K.sign(boardMat('면회 안내', ['평일  18:00 ~ 21:00', '주말  09:00 ~ 21:00', '신분증 · 방문증 필수', '반입 금지 물품 확인']), 1.3, 1.0, 4.66, 1.2, 1.0, -Math.PI / 2); K.lamp(3.4, 0, 1.2, .4);
+  Object.assign(I, {
+    lightPos: [[-1.5, F + 3, 0], [3.4, F + 3, 0]], lightDist: 12, entryLook: [-4, -1.5],
+    intro: '정문 위병소 안이에요. 왼쪽이 위병 근무실, 오른쪽이 면회실이에요. 이름표를 누르면 그 곳으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'desk', name: '위병 근무 콘솔', at: [-2.6, F + 2.5, -2.6], stand: [-1.2, .3], look: [-3, F + 1.0, -2.6], desc: '위병이 출입자와 차량을 확인하고 근무 일지를 쓰는 책상이에요. 모니터로 정문 쪽 CCTV를 같이 봐요.' },
+      { id: 'cctv', name: 'CCTV 감시 화면', at: [-4.6, F + 2.5, .35], stand: [-2.2, .6], look: [-4.6, F + 1.35, .35], desc: '정문 · 후문 · 울타리 카메라 화면 네 개가 벽에 걸려 있어요. 이상이 보이면 바로 당직실에 보고해요.' },
+      { id: 'barrier', name: '차단기 제어 · 무전', at: [1.9, F + 2.4, -2.2], stand: [.4, -1.6], look: [1.92, F + 1.2, -2.2], desc: '정문 차단기를 여닫는 제어판이에요. 위기 상황이면 비상 정지로 차량을 막고 무전으로 당직실에 알려요. 왼쪽 선반에는 무전기 충전대가 있어요.' },
+      { id: 'visit', name: '면회실', at: [3.4, F + 2.3, 0], stand: [3.4, -1.9], look: [3.4, F + .9, 0], desc: '면회객이 신분 확인을 받고 기다리는 방이에요. 방문증을 받아 가슴에 달아야 부대 안으로 들어갈 수 있어요.' },
+    ],
+  });
+}
+
+/* ---------- 의무대 1층 ---------- */
+function planMedical(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  K.floor(-12.7, -1.5, 12.7, 1.5, H.fHosp, 1.2); K.floor(-12.7, 1.5, -5.5, 6.7, H.fTile, 1.2); K.floor(-5.5, 1.5, 4.5, 6.7, H.fCheck, 2); K.floor(4.5, 1.5, 12.7, 6.7, H.fTile, 1.2);
+  K.floor(-12.7, -6.7, -3, -1.5, H.fHosp, 1.2); K.floor(-3, -6.7, 3, -1.5, H.fConc, 2); K.floor(3, -6.7, 8.5, -1.5, H.fHosp, 1.2); K.floor(8.5, -6.7, 12.7, -1.5, H.fTile, 1.2);
+  K.wall(-12.7, 1.5, 12.7, 1.5, [[-9, .65], [-.5, 5], [8.6, .65]]);
+  K.wall(-12.7, -1.5, 12.7, -1.5, [[-8, .75], [0, .65], [5.7, .65], [10.6, .65]]);
+  for (const x of [-5.5, 4.5]) K.wall(x, 1.5, x, 6.7);
+  for (const x of [-3, 3, 8.5]) K.wall(x, -6.7, x, -1.5);
+  K.leaf(0, -1.5, 1.3);
+  [['진료실', -9], ['약제실', 8.6]].forEach(([t, x]) => K.plate(t, x, 1.41, Math.PI));
+  [['입원실', -8], ['계단실', 0], ['응급 처치실', 5.7], ['격리실', 10.6]].forEach(([t, x]) => K.plate(t, x, -1.41, 0));
+  for (let x = -10; x <= 10; x += 5) K.lamp(x, 0, 1.6, .4);
+  K.sign(boardMat('응급 · 질병 신고', ['응급 환자  내선 150', '당직실  내선 100', '구급차  119 연계', '진료 후 처방 · 투약 기록']), 1.5, 1.1, -3.5, 1.0, -1.42, 0);
+  K.ext(-4, 1.3); K.ext(2, -1.3); K.ext(11, 1.3);
+  // 접수 · 대기
+  K.solid(-3.3, 0, 4.2, 3.4, 1.05, .7, 0x6e5a42); K.box(-3.3, 1.05, 4.2, 3.5, .05, .8, 0xe8ece9); K.box(-3.3, 1.1, 4.1, .5, .34, .04, 0x181b1d); K.screen(-3.3, 1.13, 4.125, .46, .28, 0); K.chair(-3.3, 5.2, 1, 0x2f6b6b);
+  for (const x of [1, 1.7, 2.4, 3.1, 3.8]) K.chair(x, 6.25, 1, 0x2f6b6b);
+  K.sign(boardMat('진료 안내', ['평일  08:30 ~ 17:30', '응급 환자는 24시간', '진료 전 접수 · 신분 확인', '감염 의심 시 먼저 신고']), 1.8, 1.3, -3.2, 1.3, 6.62, Math.PI);
+  K.cyl(4.1, 0, 3.2, .26, .45, 0x7a5b3c); K.cyl(4.1, .45, 3.2, .22, .75, 0x2f6b34); K.lamp(-1, 3.4, 1.6, .4); K.lamp(-1, 5.6, 1.6, .4);
+  // 진료실
+  K.desk(-9.8, 3, 1, 1.6); K.solid(-12, 0, 4.9, .9, .62, 2, 0xe6ecee); K.box(-12, .62, 5.7, .5, .1, .35, 0xffffff); K.box(-11.4, 0, 3.5, .02, 1.9, 1.6, 0xb9d6d2);
+  K.shelf(-9, 6.45, 3, .45, 1.9, 4, 0xdfe5e7, false); for (let t = 0; t < 4; t++) for (let i = 0; i < 9; i++) K.box(-10.3 + i * .32, .04 + t * .465, 6.45, .2, .22, .22, [0xc8322a, 0xeeeade, 0x2e5a8a, 0x3f6b3a][(i + t) % 4]);
+  K.box(-6.8, 0, 5.8, .5, .08, .45, 0x333a3d); K.lamp(-9, 4.2);
+  // 약제실
+  K.shelf(8.6, 6.45, 7.6, .45, 2, 4, 0xdfe5e7, false); for (let t = 0; t < 4; t++) for (let i = 0; i < 22; i++) K.box(4.95 + i * .33, .04 + t * .49, 6.45, .22, .26, .24, [0xeeeade, 0xc8322a, 0x2e5a8a, 0xe2a43b, 0x3f6b3a][(i * 3 + t) % 5]);
+  K.solid(6.2, 0, 3.4, 2.2, 1, .7, 0x6e5a42); K.box(6.2, 1, 3.4, 2.3, .05, .8, 0xe8ece9); K.chair(6.2, 4.3, 1, 0x2f6b6b);
+  K.solid(12.1, 0, 2.8, .7, 1.7, .7, 0xe9eef0); K.screen(11.74, 1.3, 2.8, .3, .2, Math.PI / 2); K.solid(12.2, 0, 5.2, .6, 1.6, 1, 0xb52d24);
+  K.sign(plateMat('마약류 · 향정신성 의약품 보관'), 1.3, .25, 11.88, 1.9, 5.2, -Math.PI / 2); K.lamp(8, 4.2);
+  // 입원실: 침상 4개
+  [-11.5, -9.1, -6.7, -4.3].forEach((x, i) => {
+    K.solid(x, 0, -5.4, 1, .5, 2.1, 0xcfd5d8); K.box(x, .5, -5.4, .92, .14, 2, 0xf2f4f4); K.box(x, .64, -4.9, .94, .06, 1.2, 0x7fb2c8); K.box(x, .64, -6.2, .5, .1, .3, 0xffffff); K.box(x, .5, -6.55, 1, .6, .05, 0xb09a78);
+    K.solid(x + .75, 0, -6.2, .4, .6, .4, 0xd8d2c0); K.cyl(x - .65, 0, -4.2, .025, 1.8, 0x9aa0a4); K.box(x - .65, 1.5, -4.2, .12, .2, .05, 0xcfe8f0); K.box(x - .65, 0, -4.2, .4, .04, .4, 0x777b7e);
+  });
+  K.lamp(-9, -3.6); K.lamp(-5, -3.6);
+  // 응급 처치실
+  K.solid(5.4, 0, -4.5, .8, .8, 2, 0xdfe5e7); K.box(5.4, .8, -4.5, .84, .1, 2.04, 0xf2f4f4); for (const dx of [-.3, .3]) for (const dz of [-.8, .8]) K.cyl(5.4 + dx, 0, -4.5 + dz, .06, .3, 0x333);
+  K.cyl(3.5, 0, -6.2, .14, 1.1, 0x2f7a3d); K.cyl(3.85, 0, -6.2, .14, 1.1, 0x2f7a3d); K.box(7.9, 1.2, -6.58, .3, .3, .1, 0xc8322a); K.screen(7.9, 1.25, -6.52, .2, .12, 0);
+  K.solid(7.7, 0, -5.8, .7, 1, .6, 0xb52d24); for (let i = 0; i < 3; i++) K.box(7.7, .2 + i * .27, -5.49, .6, .02, .02, 0xeeeeee);
+  K.sign(boardMat('응급 처치 순서', ['1  반응 확인 · 119 호출', '2  기도 확보', '3  가슴 압박 30회', '4  AED 사용']), 1.6, 1.2, 5.7, 1.1, -6.62, 0); K.lamp(5.4, -4.5);
+  // 격리실
+  K.solid(11.6, 0, -5.2, 1, .5, 2.1, 0xcfd5d8); K.box(11.6, .5, -5.2, .92, .14, 2, 0xf2f4f4); K.box(11.6, .64, -6, .5, .1, .3, 0xffffff);
+  K.shelf(9.2, -6.45, 1.6, .45, 1.6, 3, 0xdfe5e7, false); for (let t = 0; t < 3; t++) for (let i = 0; i < 5; i++) K.box(8.7 + i * .3, .04 + t * .52, -6.45, .22, .3, .3, [0xeeeade, 0x6fb2d8, 0xc8322a][(i + t) % 3]);
+  K.sign(boardMat('감염 의심자 격리', ['보호구 착용 후 출입', '출입 기록 작성', '환자 이동 제한', '의무관 지시 필요']), 1.4, 1.0, 12.6, 1.2, -2.6, -Math.PI / 2); K.lamp(11, -4);
+  Object.assign(I, {
+    lightPos: [[-9, F + 3, 0], [-1, F + 3, 0], [8, F + 3, 0], [-8, F + 3, 4], [-8, F + 3, -4], [6, F + 3, -4]],
+    intro: '의무대 1층이에요. 접수 · 대기실, 진료실, 약제실, 입원실, 응급 처치실, 격리실이 있어요. 2층은 계단실이 잠겨 있어 바깥에서만 볼 수 있어요. 이름표를 누르면 그 방으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'lobby', name: '접수 · 대기', at: [-3.3, F + 2.4, 4.2], stand: [.8, 3], look: [-3.3, F + 1.2, 4.2], desc: '진료를 받으려면 먼저 접수하고 신분을 확인받는 곳이에요. 감염병이 의심되면 여기서 바로 격리실로 안내해요.' },
+      { id: 'exam', name: '진료실', at: [-10, F + 2.5, 4], stand: [-8.2, 5], look: [-11.5, F + .8, 4.9], desc: '군의관이 환자를 진찰하는 방이에요. 진찰대와 약품 선반이 있고, 간단한 처치도 이곳에서 해요.' },
+      { id: 'pharm', name: '약제실', at: [8.6, F + 2.8, 6.4], stand: [9.5, 3], look: [8.6, F + 1.3, 6.4], desc: '처방 받은 약을 조제해 주는 곳이에요. 마약류와 백신은 잠금 보관함과 냉장고에 따로 보관해요.' },
+      { id: 'ward', name: '입원실 (병상 4)', at: [-8, F + 2.5, -5], stand: [-8, -2.6], look: [-8, F + .8, -5.6], desc: '경증 환자가 쉬는 병상 4개가 있어요. 병상마다 링거대와 보조 탁자가 있고, 야간에는 당직 군의관이 순회해요.' },
+      { id: 'er', name: '응급 처치실', at: [5.4, F + 2.4, -4.5], stand: [5.7, -2.4], look: [5.4, F + .9, -4.6], desc: '다치거나 쓰러진 사람을 가장 먼저 처치하는 곳이에요. 산소통 · 응급 카트 · 제세동기가 있고, 상태가 나쁘면 여기서 구급차로 병원에 보내요.' },
+      { id: 'iso', name: '격리실', at: [11.6, F + 2.3, -5.2], stand: [10.6, -2.4], look: [11.6, F + .8, -5.2], desc: '감염이 의심되는 사람을 따로 두는 방이에요. 보호구를 입고 출입하고, 출입 기록을 남겨요.' },
+    ],
+  });
+}
+
+/* ---------- 체력단련실 ---------- */
+function planGym(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling();
+  K.floor(-14.7, -6.7, 14.7, 6.7, H.fRubber, 1.5); K.floor(-6, -6.4, 6, -1.2, H.fMat, 2, .003);
+  K.floor(-14.7, -6.7, -9, -1.8, H.fWet, .8, .004); K.floor(9, -6.7, 14.7, -1.8, H.fConc, 2, .004);
+  K.wall(-9, -6.7, -9, -1.8, [[-3.4, .7]]); K.wall(-14.7, -1.8, -9, -1.8); K.wall(9, -6.7, 9, -1.8, [[-3.4, .7]]); K.wall(9, -1.8, 14.7, -1.8);
+  K.plate('탈의 · 샤워실', -8.91, -3.4, Math.PI / 2, 1.4); K.plate('기구 보관실', 8.91, -3.4, -Math.PI / 2, 1.4);
+  for (const x of [-12, -4, 4, 12]) for (const z of [-3.5, 2.5]) K.lamp(x, z, 1.6, .4);
+  // 거울 · 안내
+  K.box(0, .5, -6.66, 17.2, 1.9, .03, 0xaebfc7); K.plate('체력단련 · 운동 전 준비운동', 0, -6.58, 0, 3.6, 2.7);
+  K.sign(boardMat('체력 측정 기록', ['3km 달리기', '팔굽혀펴기 · 윗몸일으키기', '분기 체력 검정', '부상 예방 준비운동']), 2.0, 1.4, -4.2, 1.5, 6.62, Math.PI);
+  // 웨이트존
+  [[-11.5, 3.2], [-8, 3.2]].forEach(([x, z]) => {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) K.box(x + sx * .6, 0, z + sz * .5, .08, 2.2, .08, 0x2a2d30);
+    K.box(x, 2.1, z - .5, 1.28, .08, .08, 0x2a2d30); K.box(x, 1.4, z, 1.9, .04, .04, 0xaeb4b6);
+    for (const dx of [-.85, .85, -.72, .72]) K.box(x + dx, 1.15, z, .06, .5, .5, 0x1d1f20);
+    K.box(x, .38, z + .1, .35, .08, 1.3, 0x2a2d30); K.box(x, 0, z + .1, .08, .38, .6, 0x555a5e);
+    K.blk(x - .8, z - .65, x + .8, z + .65);
+  });
+  K.shelf(-4.4, 5.9, 3.6, .6, 1.1, 2, 0x4a4f52, false); for (let t = 0; t < 2; t++) for (let i = 0; i < 10; i++) K.box(-5.95 + i * .34, .04 + t * .53, 5.9, .26, .2, .2, 0x1d1f20);
+  K.cyl(-13.8, 0, .5, .05, 1.4, 0x888c90); for (let i = 0; i < 5; i++) K.box(-13.8, .25 + i * .24, .5, .5, .1, .5, [0x1d1f20, 0x2e5a8a, 0xc8322a][i % 3]); K.blk(-14.1, .2, -13.5, .8);
+  K.box(-5.5, .38, 1.5, .35, .08, 1.3, 0x2a2d30);
+  // 유산소존
+  [5.5, 7.5, 9.5, 11.5].forEach(x => {
+    K.box(x, .1, 5, .8, .14, 1.9, 0x1d1f20); for (const sx of [-1, 1]) { K.box(x + sx * .45, .1, 5, .08, .2, 1.9, 0x555a5e); K.box(x + sx * .4, .24, 5.9, .06, 1.1, .06, 0x333639); }
+    K.box(x, 1.3, 5.9, .55, .3, .12, 0x222426); K.screen(x, 1.33, 5.83, .4, .2, 0); K.blk(x - .55, 4, x + .55, 6);
+  });
+  [7, 9].forEach(x => { K.box(x, .15, .2, .5, .2, 2, 0x4a4f52); K.box(x, .35, .9, .4, .05, .3, 0x2a2d30); K.box(x, .5, -.7, .5, .55, .1, 0x1d1f20); K.screen(x, .9, -.76, .26, .16, 0); K.blk(x - .4, -.9, x + .4, 1.3); });
+  [2.2, 3.5].forEach(z => { K.box(13.3, .1, z, .5, .8, .9, 0x4a4f52); K.cyl(13.3, .85, z + .35, .22, .1, 0x2a2d30); K.box(13.3, .8, z - .35, .5, .5, .06, 0x2a2d30); K.screen(13.3, 1.2, z - .38, .2, .12, 0); K.blk(13.0, z - .6, 13.7, z + .6); });
+  // 기능성 · 매트 구역
+  for (const x of [-3.5, -1.5]) for (const z of [-5.5]) K.box(x, 0, z, .08, 2.4, .08, 0x2a2d30); K.box(-2.5, 2.35, -5.5, 2.1, .06, .06, 0xaeb4b6); K.blk(-3.7, -5.7, -1.3, -5.3);
+  [[1, .4], [1.7, .6], [2.4, .8]].forEach(([x, h], i) => { K.solid(x, 0, -5.5, .6, h, .5, [0xb08d5e, 0x2e5a8a, 0x8a3e30][i]); });
+  for (let i = 0; i < 5; i++) K.cyl(-.5 + i * .35, 0, -3.2, .13, .26, [0x1d1f20, 0xc8322a][i % 2]);
+  K.cyl(3.6, 0, -2.6, .22, .22, 0x4a5a48); K.cyl(4.1, 0, -2.6, .22, .22, 0x4a5a48); K.cyl(4.6, 0, -2.6, .22, .22, 0x4a5a48);
+  K.cyl(4.2, 1.0, -4.5, .3, 1.2, 0x8a3e30); K.box(4.2, 2.2, -4.5, .02, 1.2, .02, 0x777b7e); K.blk(3.8, -4.9, 4.6, -4.1);
+  K.box(-5, .3, -2.5, .35, .1, 1.1, 0x2a2d30);
+  // 탈의 · 샤워실
+  for (let i = 0; i < 7; i++) K.solid(-14.4, 0, -6.3 + i * .6, .5, 1.9, .55, [0x5a6a8a, 0x6f7a5a][i % 2]);
+  K.solid(-12.3, 0, -4.2, .5, .45, 3, 0x8a8f8a); K.solid(-9.8, 0, -5.9, .04, 1.9, 1.4, 0xb6c4c4); K.cyl(-10.8, 1.9, -6.5, .05, .1, 0x888c90); K.box(-10.8, 1, -6.6, .05, .9, .05, 0x999da0);
+  K.lamp(-12, -4);
+  // 기구 보관실
+  K.shelf(12, -6.3, 5, .5, 1.8, 3, 0x777c80, false); for (let t = 0; t < 3; t++) for (let i = 0; i < 9; i++) K.box(9.9 + i * .5, .04 + t * .58, -6.3, .4, .45, .4, [0x1d1f20, 0x2e5a8a, 0x4a5a48][(i + t) % 3]);
+  K.cyl(13.9, 0, -2.6, .3, .9, 0x2e5a8a); K.cyl(13.3, 0, -2.6, .3, .9, 0xc8322a); K.cyl(12.7, 0, -2.6, .3, .9, 0x2e5a8a); K.blk(12.3, -3, 14.3, -2.2); K.lamp(12, -4);
+  Object.assign(I, {
+    lightPos: [[-9, F + 3, 3], [0, F + 3, 3], [9, F + 3, 3], [-6, F + 3, -3], [4, F + 3, -3], [12, F + 3, -4]], lightDist: 20,
+    intro: '체력단련실 안이에요. 웨이트존 · 유산소존 · 기능성 매트 구역이 있고, 뒤쪽에 탈의 · 샤워실과 기구 보관실이 있어요. 이름표를 누르면 그 곳으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'entry', name: '입구 · 안전 수칙', at: [0, F + 3, -6.4], stand: [.5, 3.5], look: [0, F + 1.5, -6.5], desc: '운동 전에는 준비운동을 하고, 기구는 쓴 뒤 제자리에 두어요. 정면 거울은 자세를 확인하는 용도예요.' },
+      { id: 'weights', name: '웨이트존 (파워랙 · 벤치)', at: [-9.7, F + 2.6, 3.2], stand: [-9.8, -.4], look: [-9.8, F + 1.0, 3.2], desc: '바벨 · 벤치프레스와 덤벨이 있는 곳이에요. 무거운 중량은 보조자와 함께 하고, 바벨 원판은 반드시 고정해요.' },
+      { id: 'cardio', name: '유산소존 (러닝머신)', at: [8.5, F + 2.4, 5], stand: [8.5, 2.0], look: [8.5, F + .9, 5.2], desc: '러닝머신 4대, 로잉머신, 실내 자전거가 있어요. 3km 달리기 같은 체력 검정을 준비할 때 많이 써요.' },
+      { id: 'func', name: '기능성 · 매트 구역', at: [0, F + 2.6, -4.5], stand: [0, .6], look: [0, F + 1, -5.2], desc: '바닥이 푹신한 매트 구역이에요. 철봉 · 점프 박스 · 케틀벨 · 샌드백이 있어 맨몸 운동과 체력 훈련을 해요.' },
+      { id: 'locker', name: '탈의 · 샤워실', at: [-12, F + 2.4, -4], stand: [-10.6, -2.5], look: [-13.5, F + 1.2, -5], desc: '운동복으로 갈아입는 사물함과 샤워 칸이 있어요. 바닥이 젖어 미끄러워서 천천히 걸어야 해요.' },
+      { id: 'store', name: '기구 보관실', at: [12, F + 2.3, -5], stand: [11.5, -2.6], look: [12, F + 1, -6.3], desc: '원판 · 매트 · 케틀벨 같은 기구를 보관하는 방이에요. 무거운 물건은 아래 선반에 둬요.' },
+    ],
+  });
+}
+
+/* ---------- 급수 펌프실 ---------- */
+function planPump(b, g, I, K) {
+  const F = K.FY, H = HI;
+  K.ceiling(); K.floor(-4.2, -3.2, 4.2, 3.2, H.fConc, 2);
+  K.box(0, .95, -3.05, 8.2, .18, .18, 0x3a6fa8);
+  [-2.8, 2].forEach(x => {
+    K.solid(x, 0, -2.1, 1.5, .12, .9, 0x4a4f52); K.box(x - .3, .12, -2.1, .7, .45, .5, 0x2e5a8a); K.cyl(x + .45, .12, -2.1, .28, .5, 0x9aa2a6);
+    K.box(x + .45, .3, -1.5, .14, .14, .8, 0x3a6fa8); K.cyl(x + .45, .62, -1.2, .1, .04, 0xc8322a); K.box(x + .45, .5, -2.6, .14, .5, .14, 0x3a6fa8); K.blk(x - .8, -2.6, x + .8, -1.6);
+  });
+  K.cyl(3.4, 0, -1.2, .62, 2.1, 0x6f9fc0); K.cyl(3.4, 2.1, -1.2, .5, .1, 0x8aa6bc); K.screen(3.4, 1.5, -.58, .25, .25, 0); K.box(3.4, .4, -1.9, .14, .14, .8, 0x3a6fa8); K.blk(2.75, -1.85, 4.05, -.55);
+  K.solid(-4, 0, -.2, .4, 1.9, 1.4, 0x8a8f90); for (const z of [-.6, .2]) K.screen(-3.78, 1.1, z, .4, .5, Math.PI / 2); for (let i = 0; i < 4; i++) K.box(-3.78, 1.7, -.7 + i * .35, .04, .08, .08, [0x3fae5a, 0xc8322a, 0xe2a43b, 0x3fae5a][i]);
+  K.sign(Lm({ map: flatTex(512, 256, c => { c.fillStyle = '#e2b52e'; c.fillRect(0, 0, 512, 256); c.fillStyle = '#1d1d1b'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 74px ${KR_FONT}`; c.fillText('고압 · 감전 주의', 256, 100); c.font = `500 34px ${KR_FONT}`; c.fillText('관계자 외 출입금지', 256, 190); c.lineWidth = 10; c.strokeStyle = '#1d1d1b'; c.strokeRect(8, 8, 496, 240); }), emissive: 0x201c08 }), 1.2, .6, -4.1, 2.25, -.2, Math.PI / 2);
+  K.solid(4, 0, 2.3, .4, 1.8, 1, 0x8a8f90); K.screen(3.78, 1.2, 2.3, .7, .4, Math.PI / 2); K.box(3.78, .8, 2.3, .04, .12, .3, 0xc8322a);
+  K.cyl(-1.2, 0, .6, .22, .02, 0x15181a); K.ext(-3.9, 2.8); K.lamp(-1.5, -.5, 1.4, .3); K.lamp(1.5, -.5, 1.4, .3);
+  Object.assign(I, {
+    lightPos: [[-1.5, F + 3, 0], [1.5, F + 3, 0]], lightDist: 12, entryLook: [0, -3],
+    intro: '부대 전체에 물을 보내는 펌프실이에요. 펌프 2기와 압력탱크, 배전반이 있고 좁아서 한 번에 한두 명만 들어가요. 이름표를 누르면 그 곳으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'pump', name: '급수 펌프 2기', at: [-.4, F + 2.2, -2.1], stand: [.5, .6], look: [-1.4, F + .7, -2.2], desc: '저수조의 물을 끌어올려 부대 전체로 보내는 펌프예요. 한 대가 고장 나도 다른 한 대가 받쳐 주도록 두 대를 설치했어요.' },
+      { id: 'tank', name: '압력탱크 · 배관', at: [3.4, F + 2.8, -1.2], stand: [1.4, 1.3], look: [3.4, F + 1.2, -1.2], desc: '수압을 일정하게 유지하는 탱크예요. 파란 배관을 따라 물이 각 건물로 가요. 수압 게이지가 떨어지면 누수를 의심해요.' },
+      { id: 'panel', name: '배전반 · 제어반', at: [-4, F + 2.5, -.2], stand: [-2, 1], look: [-4, F + 1.2, -.2], desc: '펌프에 전기를 보내고 켜고 끄는 장치예요. 감전 위험이 있어 관계자만 열어요. 정전이나 과열이 생기면 부대 급수가 멈춰요.' },
+    ],
+  });
+}
+
+/* ---------- 탄약고 (남쪽 저장고 안) ---------- */
+function planAmmo(b, g, I, K) {
+  const F = K.FY, H = HI, cx = -10, R = 5.75;
+  K.floor(-15.75, -13, -4.25, 4.75, H.fConc, 2);
+  const vm = Lm({ map: H.fConc.map, color: 0xa3a69f, emissive: 0x181a18, side: THREE.BackSide });
+  const vg = new THREE.CylinderGeometry(R, R, 17.75, 24, 1, true, Math.PI / 2, Math.PI); vg.rotateX(Math.PI / 2); scaleUV(vg, 5, 5);
+  const vault = new THREE.Mesh(vg, vm); vault.position.set(cx, .05, -4.125); g.add(vault);
+  const back = new THREE.Mesh(new THREE.CircleGeometry(R, 24, 0, Math.PI), Lm({ map: H.fConc.map, color: 0x92958e, emissive: 0x161816 })); back.position.set(cx, .05, -12.95); g.add(back);
+  const rib = Lm({ color: 0x6f726c, emissive: 0x121412 });
+  for (const z of [-12, -9, -6, -3, 0, 3]) { const m = new THREE.Mesh(new THREE.TorusGeometry(R - .08, .13, 6, 24, Math.PI), rib); m.position.set(cx, .05, z); g.add(m); }
+  for (let z = -11; z <= 3; z += 3.5) { K.lamp(cx, z, .5, .3, 4.6); K.box(cx, 4.7, z, .03, .5, .03, 0x222426); }
+  // 바닥 안내선
+  K.box(-12.1, 0, -4, .12, .015, 17.4, 0xe2b52e); K.box(-7.9, 0, -4, .12, .015, 17.4, 0xe2b52e);
+  // 탄약 상자 더미 (팔레트 + 상자 3~5단, 노란 띠)
+  const stack = (x, z, n) => {
+    K.box(x, 0, z, 1.3, .14, .9, 0x9a7b55);
+    for (let k = 0; k < n; k++) { K.box(x, .14 + k * .42, z, 1.1, .4, .7, [0x55603a, 0x5d6b3c, 0x6a6f3e][k % 3]); K.box(x, .14 + k * .42 + .27, z, 1.12, .04, .72, 0xe2b52e); }
+    K.blk(x - .7, z - .5, x + .7, z + .5);
+  };
+  let n = 0; for (let z = -12; z <= 1; z += 2.4) { stack(-13.2, z, 3 + (n % 3)); stack(-6.8, z, 3 + ((n + 1) % 3)); n++; }
+  for (const z of [-9.6, -4.8]) { K.box(-14.6, 0, z, 1, .14, .8, 0x9a7b55); for (let k = 0; k < 3; k++) K.box(-14.6, .14 + k * .42, z, .8, .4, .6, 0x5d6b3c); }
+  // 입구쪽: 수불대장 책상 · 제습기 · 표지 · 소화기
+  K.box(-13.6, .72, 3.2, 1.4, .05, .7, 0x6e5a42); K.box(-14.2, 0, 3.2, .05, .72, .6, 0x4a4f52); K.box(-13, 0, 3.2, .05, .72, .6, 0x4a4f52); K.blk(-14.3, 2.85, -12.9, 3.55); K.box(-13.6, .77, 3.2, .3, .03, .4, 0xeeeade); K.chair(-13.6, 4.0, 1, 0x4a5a48);
+  K.solid(-6, 0, 3.4, .5, .9, .4, 0xe9eef0); K.screen(-6, .6, 3.18, .3, .2, 0);
+  K.sign(boardMat('탄약 수불 대장', ['반출 · 반입 일시', '품목 · 수량', '인수자 서명', '관리자 확인']), 1.4, 1.0, -13.6, 1.3, 4.72, Math.PI);
+  K.sign(Lm({ map: flatTex(512, 256, c => { c.fillStyle = '#c8322a'; c.fillRect(0, 0, 512, 256); c.strokeStyle = '#fff'; c.lineWidth = 12; c.strokeRect(14, 14, 484, 228); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 70px ${KR_FONT}`; c.fillText('화기엄금', 256, 95); c.font = `500 32px ${KR_FONT}`; c.fillText('라이터 · 휴대전화 반입 금지', 256, 190); }), emissive: 0x201010 }), 1.5, .75, -9.5, 2.3, 4.72, Math.PI);
+  K.sign(boardMat('온 · 습도 기록', ['온도  18 °C', '습도  55 %', '점검 일시  ○○:○○', '점검자  ○○○']), 1.1, .9, -6.6, 1.4, 4.72, Math.PI);
+  K.ext(-14.1, 4.1); K.ext(-5.9, 4.1);
+  Object.assign(I, {
+    lightPos: [[cx, 4.5, 2], [cx, 4.5, -2], [cx, 4.5, -6], [cx, 4.5, -10]], lightDist: 14,
+    intro: '탄약을 보관하는 남쪽 저장고 안이에요. 두꺼운 흙으로 덮인 아치형 구조라 서늘하고 습도가 일정해요. 북쪽 저장고는 문이 잠겨 있어요. 이름표를 누르면 그 곳으로 걸어가서 설명을 보여줘요.',
+    pois: [
+      { id: 'ledger', name: '출입 통제 · 수불대장', at: [-13.6, F + 2.4, 3.2], stand: [-11, 3], look: [-13.6, F + 1, 3.2], desc: '탄약을 꺼내거나 넣을 때마다 수량과 서명을 적는 곳이에요. 출입 인원도 여기서 통제하고, 라이터와 휴대전화는 들고 들어올 수 없어요.' },
+      { id: 'rows', name: '탄약 저장 구역', at: [-13.2, F + 2.8, -4], stand: [-10, .5], look: [-13.2, F + 1, -4], desc: '팔레트 위에 탄약 상자를 쌓아 둔 구역이에요. 노란 띠가 둘린 상자는 종류별로 나눠 두고, 가운데 통로는 항상 비워 둬요.' },
+      { id: 'stacks', name: '탄약 상자 더미', at: [-6.8, F + 2.6, -7.5], stand: [-9.6, -7.5], look: [-6.8, F + 1, -7.5], desc: '상자는 최대 5단까지만 쌓고 벽과 천장에서 떨어뜨려 둬요. 불이 나면 폭발 위험이 커서 가장 먼저 지켜야 할 곳이에요.' },
+      { id: 'dehum', name: '제습 · 환기 설비', at: [-6, F + 1.9, 3.4], stand: [-9, 2.4], look: [-6, F + .9, 3.4], desc: '습기가 차면 탄약이 상하기 때문에 제습기로 습도를 맞춰요. 온 · 습도는 매일 기록해요.' },
+      { id: 'end', name: '저장고 안쪽', at: [-10, F + 3.6, -12.8], stand: [-10, -9.5], look: [-10, F + 2, -12.8], desc: '저장고의 가장 안쪽이에요. 둥근 천장 아래 콘크리트 보가 일정한 간격으로 있어요. 문 하나뿐이라 비상 시에는 바로 문 쪽으로 나가야 해요.' },
+    ],
+  });
+}
+PLANS.gate = planGate; PLANS.medical = planMedical; PLANS.gym = planGym; PLANS.pump = planPump; PLANS.ammo = planAmmo;
+
 
 const buildingMeshes = [];
 BUILDINGS.forEach(b => {
@@ -1965,7 +2203,8 @@ let EYE = 1.7;                    // 눈높이 = 바닥 높이 + 1.65 (건물마
 const inLights = Array.from({ length: 6 }, () => { const l = new THREE.PointLight(0xfff0d6, 0, 30, 1.4); scene.add(l); return l; });   // 건물 안 조명 (건물이 달라도 같은 6개를 옮겨 쓴다: 광원 수가 늘면 모든 재질의 셰이더가 무거워진다)
 const inEl = $('inside'), inPoisEl = $('inPois'), inInfo = $('inInfo');
 const inTmp = new THREE.Vector3(), inLook = new THREE.Vector3(), inV = new THREE.Vector3();
-const inW = (b, x, y, z) => new THREE.Vector3(b.x + x, y, b.z + z);
+const inW = (b, x, y, z) => { b.group.updateWorldMatrix(true, false); return b.group.localToWorld(new THREE.Vector3(x, y, z)); };     // 건물 좌표(문이 +z) → 세계
+const inL = (b, x, z) => { b.group.updateWorldMatrix(true, false); const v = b.group.worldToLocal(new THREE.Vector3(x, 0, z)); return [v.x, v.z]; };   // 세계 → 건물 좌표
 const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
 const inPost = (event, extra) => {
   const detail = Object.assign({ event, id: IN.b ? IN.b.id : null, name: IN.b ? IN.b.name : null }, extra);
@@ -2006,8 +2245,8 @@ function inUpdatePois() {
 }
 /* 걸을 수 있는지: 벽 안쪽 + 설비 피하기. 셔터가 열린 칸으로는 밖으로 나갈 수 있다 */
 function inFree(x, z) {
-  const I = IN.b.interior, r = .35;
-  if (x < -I.hx + I.T + r || x > I.hx - I.T - r || z < -I.hz + I.T + r) return false;
+  const I = IN.b.interior, r = .35, bd = I.bounds;
+  if (x < (bd ? bd[0] : -I.hx + I.T) + r || x > (bd ? bd[2] : I.hx - I.T) - r || z < (bd ? bd[1] : -I.hz + I.T) + r) return false;
   if (z > I.hz - I.T - r && !(I.doorK > .8 && Math.abs(x - I.doorX) < I.OW / 2 - r)) return false;
   return !I.blocks.some(([x1, z1, x2, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r);
 }
@@ -2022,7 +2261,7 @@ function inMoveTo(p1, yaw1, pitch1, ph) {
 /* 걸을 수 있는 칸 격자: 건물마다 한 번만 만들어 두고(문이 열린 상태 기준), 길찾기와 직선 확인은 이 표를 읽기만 한다 (충돌 사각형을 매번 훑으면 수십 초가 걸린다) */
 function inGrid() {
   const I = IN.b.interior; if (I._g) return I._g;
-  const cs = .25, x0 = -I.hx, z0 = -I.hz, nx = Math.ceil(2 * I.hx / cs) + 1, nz = Math.ceil((2 * I.hz + 1.5) / cs) + 1, a = new Uint8Array(nx * nz);
+  const cs = .25, gb = I.gridBox || [-I.hx, -I.hz, I.hx, I.hz + 1.5], x0 = gb[0], z0 = gb[1], nx = Math.ceil((gb[2] - gb[0]) / cs) + 1, nz = Math.ceil((gb[3] - gb[1]) / cs) + 1, a = new Uint8Array(nx * nz);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) a[j * nx + i] = inFree(x0 + i * cs, z0 + j * cs) ? 1 : 0;
   return (I._g = { cs, x0, z0, nx, nz, free: a });
 }
@@ -2063,7 +2302,7 @@ function inPathLocal(ax, az, bx, bz) {
   return out.length ? out : [[bx, bz]];
 }
 function inRoute(dst, yaw1, pitch1, ph) {
-  const b = IN.b, pts = inPathLocal(camera.position.x - b.x, camera.position.z - b.z, dst.x - b.x, dst.z - b.z);
+  const b = IN.b, [ax, az] = inL(b, camera.position.x, camera.position.z), [bx, bz] = inL(b, dst.x, dst.z), pts = inPathLocal(ax, az, bx, bz);
   IN.path = pts.map(([x, z]) => inW(b, x, EYE, z));
   IN.final = { yaw: yaw1, pitch: pitch1 }; IN.legPh = ph || 'move';
   inNextLeg();
@@ -2099,7 +2338,7 @@ function interiorEnter(id) {
   document.body.classList.add('interior'); inEl.hidden = false; inEl.classList.remove('ready'); inInfo.hidden = true;
   $('inTopCode').textContent = `${b.code} · 내부`; $('inTopName').textContent = `${b.name} 내부`;
   $('inHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 둘러보고, 버튼이나 바닥을 눌러 걸어요.' : '끌어서 둘러보기 · W A S D · 방향키로 걷기 · 바닥을 누르면 그곳으로 이동';
-  inLights.forEach((l, i) => { const p = I.lightPos[i]; if (p) { l.position.set(b.x + p[0], p[1], b.z + p[2]); l.distance = I.lightDist || 20; l.intensity = I.lightI || .6; } else l.intensity = 0; });
+  inLights.forEach((l, i) => { const p = I.lightPos[i]; if (p) { l.position.copy(inW(b, p[0], p[1], p[2])); l.distance = I.lightDist || 20; l.intensity = I.lightI || .6; } else l.intensity = 0; });
   inBuildPois(b);
   IN.a0 = camera.position.clone(); IN.l0 = controls.target.clone();
   IN.a1 = inW(b, I.doorX, EYE, I.hz + 5); IN.l1 = I.entryLook ? inW(b, I.entryLook[0], EYE, I.entryLook[1]) : inW(b, I.doorX, EYE, -I.hz);
@@ -2172,11 +2411,12 @@ function inStep(dt) {
       const sp = (IN.keys.has('ShiftLeft') || IN.keys.has('ShiftRight') ? 5 : 2.8) * dt;
       const fx = -Math.sin(IN.yaw), fz = -Math.cos(IN.yaw), rx = Math.cos(IN.yaw), rz = -Math.sin(IN.yaw);
       let dx = (fx * fwd + rx * str), dz = (fz * fwd + rz * str); const n = Math.hypot(dx, dz); dx *= sp / n; dz *= sp / n;
-      const lx = camera.position.x - b.x, lz = camera.position.z - b.z;
-      if (inFree(lx + dx, lz)) camera.position.x += dx;
-      if (inFree(camera.position.x - b.x, lz + dz)) camera.position.z += dz;
+      const [lx, lz] = inL(b, camera.position.x, camera.position.z), rc = Math.cos(b.group.rotation.y), rs = Math.sin(b.group.rotation.y);
+      const ldx = dx * rc - dz * rs, ldz = dx * rs + dz * rc;       // 걷는 방향을 건물 좌표로
+      let mx = 0, mz = 0; if (inFree(lx + ldx, lz)) mx = ldx; if (inFree(lx + mx, lz + ldz)) mz = ldz;
+      camera.position.x += mx * rc + mz * rs; camera.position.z += -mx * rs + mz * rc;
       IN.bob += dt * 9; camera.position.y = EYE + Math.sin(IN.bob) * .03;
-      if (camera.position.z - b.z > I.hz + .6) { interiorExit(); }
+      if (inL(b, camera.position.x, camera.position.z)[1] > I.hz + .6) { interiorExit(); }
     }
     inApplyRot();
   }
@@ -2207,7 +2447,7 @@ const inDragEnd = e => {
   inRay.setFromCamera(inNdc, camera);
   const hit = inRay.intersectObjects(buildingMeshes, false)[0];
   if (!hit || !IN.b.interior.floors.includes(hit.object)) return;       // 바닥이 아닌 설비 · 벽을 누르면 무시
-  const b = IN.b, lx = hit.point.x - b.x, lz = Math.min(hit.point.z - b.z, b.interior.hz - .8);
+  const b = IN.b, [lx, lz0] = inL(b, hit.point.x, hit.point.z), lz = Math.min(lz0, b.interior.hz - .8);
   if (!inFree(lx, lz)) return;
   const p1 = inW(b, lx, EYE, lz), d = inTmp.subVectors(p1, camera.position);
   if (d.length() < .5) return;
