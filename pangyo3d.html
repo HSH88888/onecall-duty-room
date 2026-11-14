@@ -47,6 +47,37 @@
     background: #6b74c9; border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,0.6);
   }
   .label.show { opacity: 1; }
+  #inMenu { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.14); }
+  #inMenu .sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 7px; }
+  #inMenu button.on { background: #ff9f5a; color: #1a1a1a; font-weight: 700; }
+  #inHelp { font-size: 11.5px; color: rgba(255,255,255,0.72); margin-top: 8px; line-height: 1.45; }
+  body.inside #stages, body.inside #stageDesc, body.inside .btns.asm, body.inside #bar, body.inside #help { display: none; }
+  body.inside #inMenu { margin-top: 0; padding-top: 0; border-top: 0; }
+  #inCard {
+    position: fixed; left: 16px; bottom: 16px; z-index: 12; max-width: 340px; color: #fff;
+    background: rgba(20,22,36,0.82); border-radius: 12px; padding: 12px 34px 12px 14px; backdrop-filter: blur(6px);
+  }
+  #inCard small { display: block; font-size: 11px; color: #ffb27a; font-weight: 700; margin-bottom: 2px; }
+  #inCard b { font-size: 15px; }
+  #inCard p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,0.85); }
+  #inCardX { position: absolute; top: 6px; right: 6px; background: none; color: #fff; padding: 2px 8px; font-size: 18px; font-weight: 400; }
+  #inPois { position: fixed; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
+  .poi {
+    position: absolute; left: 0; top: 0; pointer-events: auto; white-space: nowrap;
+    background: rgba(20,22,36,0.78); color: #fff; font-size: 12.5px; font-weight: 700; padding: 5px 10px 5px 6px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.25); transition: opacity .2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .poi small { background: #ff9f5a; color: #1a1a1a; border-radius: 999px; padding: 1px 6px; font-size: 10.5px; }
+  .poi.sel { background: #ff9f5a; color: #1a1a1a; }
+  .poi.sel small { background: #1a1a1a; color: #ff9f5a; }
+  #inPad { position: fixed; right: 16px; bottom: 16px; z-index: 12; display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 48px); gap: 6px; }
+  #inPad[hidden] { display: none; }
+  #inPad button { width: 48px; height: 48px; padding: 0; border-radius: 12px; background: rgba(20,22,36,0.7); color: #fff; font-size: 16px; touch-action: none; }
+  #inPad button.on { background: #ff9f5a; color: #1a1a1a; }
+  #inPad [data-m="f"] { grid-column: 2; grid-row: 1; } #inPad [data-m="l"] { grid-column: 1; grid-row: 2; }
+  #inPad [data-m="b"] { grid-column: 2; grid-row: 2; } #inPad [data-m="r"] { grid-column: 3; grid-row: 2; }
+  #fade { position: fixed; inset: 0; z-index: 20; background: #0d0f16; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; opacity: 0; pointer-events: none; transition: opacity .35s; }
+  #fade.on { opacity: 1; }
   @media (max-width: 600px) {
     #hud { top: 8px; left: 8px; right: 8px; max-width: none; padding: 8px 10px; }
     #hud h1 { display: none; }
@@ -57,6 +88,12 @@
     #bar { margin-top: 6px; }
     #help { display: none; }
     .label { font-size: 11px; }
+    #inMenu .sub { display: none; }
+    #inHelp { display: none; }
+    #inCard { left: 8px; right: 8px; bottom: 8px; max-width: none; padding: 9px 30px 9px 11px; }
+    body.inside #inCard { bottom: 124px; }
+    #inCard p { font-size: 11.5px; }
+    .poi { font-size: 11px; padding: 3px 8px 3px 4px; }
   }
 </style>
 <script type="importmap">
@@ -74,13 +111,28 @@
   <h1>판교 IoT혁신센터 일대 · 조립 모형</h1>
   <div id="stages"></div>
   <div id="stageDesc">준비 중…</div>
-  <div class="btns">
+  <div class="btns asm">
     <button id="replay">다시 조립</button>
     <button id="speed" class="ghost">속도 1×</button>
     <button id="skip" class="ghost">완성 보기</button>
   </div>
   <div id="bar"><div id="barFill"></div></div>
+  <div id="inMenu">
+    <div class="sub">건물 안 둘러보기 · IoT혁신센터</div>
+    <div class="btns">
+      <button class="ghost" data-floor="1">1층 로비</button>
+      <button class="ghost" data-floor="7">7층 업무층</button>
+      <button id="inExit" hidden>밖으로 나가기</button>
+    </div>
+    <div id="inHelp" hidden></div>
+  </div>
 </div>
+<div id="inCard" hidden><button id="inCardX" aria-label="닫기">×</button><small id="inCode"></small><b id="inName"></b><p id="inDesc"></p></div>
+<div id="inPois"></div>
+<div id="inPad" hidden>
+  <button data-m="f" aria-label="앞으로">▲</button><button data-m="l" aria-label="왼쪽으로 돌기">◀</button><button data-m="b" aria-label="뒤로">▼</button><button data-m="r" aria-label="오른쪽으로 돌기">▶</button>
+</div>
+<div id="fade"></div>
 <div id="help">왼쪽 드래그: 회전 · 휠: 확대/축소 · 오른쪽 드래그: 이동</div>
 
 <script type="module">
@@ -529,7 +581,7 @@ wait(0.4);
 stage('기둥', '층마다 바닥판, 기둥, 유리 외벽이 차례로 올라갑니다');
 const colGeo = new THREE.BoxGeometry(0.34, FH - T, 0.34).translate(0, (FH - T) / 2, 0);
 buildings.forEach(b => {
-  const holesSlab = (b.holes || []).map(h => offset(h, -0.35));
+  const holesSlab = (b.holes || []).map(h => offset(h, 0));
   b.slabGeo = extrudeGeo(offset(b.pts, 0.35), T, holesSlab);
   b.glassGeo = extrudeGeo(b.pts, FH - T, b.holes || []);
   b.colPts = perimeterPoints(offset(b.pts, 0.17), 3.0);
@@ -747,6 +799,676 @@ label('AI데이터<br>안심활용센터', 480, 560, roofTop(buildings[3]) + 4);
 label('지능형ICT<br>융합연구센터', 1000, 820, roofTop(buildings[1]) + 4);
 
 /* =========================================================
+   9. 건물 안 둘러보기 — IoT혁신센터 1층 로비 · 7층 업무층
+   (내부 배치는 시연용으로 꾸민 가상 배치입니다)
+   끌기: 시선 · W A S D/방향키: 걷기 · Shift: 빨리 · 바닥 누르기: 그곳으로 · 이름표 누르기: 그 앞으로 가서 설명
+   ========================================================= */
+const U = 0.375;                                  // 실내는 미터로 만들고 1m = 0.375 단위로 줄인다 (층고 4m = 1.5)
+const CH = (FH - T) / U;                          // 천장 높이 ≈ 3.15m
+const IO = P(590, 285), ITH = -13 * Math.PI / 180; // 실내 좌표 원점 = 아트리움 중심, u축 = 건물 긴 방향(동), v축 = 남쪽
+const IUx = Math.cos(ITH), IUz = Math.sin(ITH), IVx = -Math.sin(ITH), IVz = Math.cos(ITH);
+const toL = (x, z) => { const dx = x - IO.x, dz = z - IO.z; return [(dx * IUx + dz * IUz) / U, (dx * IVx + dz * IVz) / U]; };
+const FOOT = NORTH.map(p => { const [u, v] = toL(p.x, p.z); return { x: u, z: v }; });
+const HOLE_L = NORTH_HOLE.map(p => { const [u, v] = toL(p.x, p.z); return { x: u, z: v }; });
+const FOOT_IN = offset(FOOT, -0.7), HOLE_OUT = offset(HOLE_L, 0.3);
+
+const IM = {
+  stone:  new THREE.MeshStandardMaterial({ color: 0xe6e1d7, roughness: 0.28, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  carpet: new THREE.MeshStandardMaterial({ color: 0x59626f, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  wood:   new THREE.MeshStandardMaterial({ color: 0xa97c52, roughness: 0.55 }),
+  woodDk: new THREE.MeshStandardMaterial({ color: 0x6d4b33, roughness: 0.6 }),
+  white:  new THREE.MeshStandardMaterial({ color: 0xf3f1ec, roughness: 0.55 }),
+  wall:   new THREE.MeshStandardMaterial({ color: 0xe9e5dc, roughness: 0.8 }),
+  core:   new THREE.MeshStandardMaterial({ color: 0xc9c1b2, roughness: 0.65 }),
+  dark:   new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.5 }),
+  black:  new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.35 }),
+  metal:  new THREE.MeshStandardMaterial({ color: 0xb9bdc4, roughness: 0.25, metalness: 0.85 }),
+  glass:  new THREE.MeshStandardMaterial({ color: 0xcfe3ee, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.2, depthWrite: false }),
+  blue:   new THREE.MeshStandardMaterial({ color: 0x3e5f8c, roughness: 0.9 }),
+  gray:   new THREE.MeshStandardMaterial({ color: 0x8b8f96, roughness: 0.9 }),
+  orange: new THREE.MeshStandardMaterial({ color: 0xd98a4e, roughness: 0.9 }),
+  green:  new THREE.MeshStandardMaterial({ color: 0x6d8f5c, roughness: 0.9 }),
+  leaf:   new THREE.MeshStandardMaterial({ color: 0x4d7a37, roughness: 1, flatShading: true }),
+  leaf2:  new THREE.MeshStandardMaterial({ color: 0x6b9443, roughness: 1, flatShading: true }),
+  trunk:  new THREE.MeshStandardMaterial({ color: 0x6b4f3a, roughness: 1 }),
+  grass:  new THREE.MeshStandardMaterial({ color: 0x6f9a4a, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  water:  new THREE.MeshStandardMaterial({ color: 0x4d8db0, roughness: 0.08, metalness: 0.3 }),
+  pot:    new THREE.MeshStandardMaterial({ color: 0xe7e2d7, roughness: 0.7 }),
+  rug:    new THREE.MeshStandardMaterial({ color: 0x9c8f7c, roughness: 1 }),
+  light:  new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2dc, emissiveIntensity: 1.6 }),
+  led:    new THREE.MeshStandardMaterial({ color: 0x0b2030, emissive: 0x58d0ff, emissiveIntensity: 1.6 }),
+  ledG:   new THREE.MeshStandardMaterial({ color: 0x0b2010, emissive: 0x5dff8a, emissiveIntensity: 1.4 }),
+};
+
+/* 같은 모양은 인스턴싱으로 한 번에 그린다 (가구가 수백 개라도 그리기 호출이 적다) */
+function makeBuilder() {
+  const geos = {
+    box: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+    cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 18).translate(0, 0.5, 0),
+    ball: new THREE.IcosahedronGeometry(0.5, 1).translate(0, 0.5, 0),
+  };
+  const lists = new Map(), q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), sc = new THREE.Vector3();
+  const put = (kind, mat, x, y, z, sx, sy, sz, ry = 0) => {
+    const k = kind + '|' + mat.uuid; if (!lists.has(k)) lists.set(k, { kind, mat, ms: [] });
+    lists.get(k).ms.push(new THREE.Matrix4().compose(pos.set(x, y, z), q.setFromEuler(e.set(0, ry, 0)), sc.set(sx, sy, sz)));
+  };
+  return {
+    box: (mat, w, h, d, x, y, z, ry) => put('box', mat, x, y, z, w, h, d, ry),
+    cyl: (mat, r, h, x, y, z) => put('cyl', mat, x, y, z, r * 2, h, r * 2),
+    ball: (mat, r, x, y, z, sy = 1) => put('ball', mat, x, y, z, r * 2, r * 2 * sy, r * 2),
+    build(group) {
+      for (const { kind, mat, ms } of lists.values()) {
+        const im = new THREE.InstancedMesh(geos[kind], mat, ms.length);
+        ms.forEach((m, i) => im.setMatrixAt(i, m));
+        im.castShadow = !mat.transparent && mat !== IM.light; im.receiveShadow = true;
+        group.add(im);
+      }
+    }
+  };
+}
+const FACE = { s: 0, e: Math.PI / 2, n: Math.PI, w: -Math.PI / 2 };   // 가구 앞면이 향하는 쪽
+/* 부품 여러 개로 된 가구: parts = [종류, 재질, 크기들…, dx, y, dz]  (앞면 = +z) */
+function piece(F, x, z, face, parts, block = true) {
+  const ry = FACE[face] || 0, c = Math.cos(ry), s = Math.sin(ry), B = F.B;
+  let x1 = 1e9, z1 = 1e9, x2 = -1e9, z2 = -1e9;
+  const R = (dx, dz) => [x + dx * c + dz * s, z - dx * s + dz * c];
+  for (const p of parts) {
+    if (p[0] === 'box') {
+      const [, mat, w, h, d, dx, y, dz] = p, [px, pz] = R(dx, dz); B.box(mat, w, h, d, px, y, pz, ry);
+      const hw = Math.abs(c) > 0.5 ? w / 2 : d / 2, hd = Math.abs(c) > 0.5 ? d / 2 : w / 2;
+      x1 = Math.min(x1, px - hw); x2 = Math.max(x2, px + hw); z1 = Math.min(z1, pz - hd); z2 = Math.max(z2, pz + hd);
+    } else if (p[0] === 'cyl') {
+      const [, mat, r, h, dx, y, dz] = p, [px, pz] = R(dx, dz); B.cyl(mat, r, h, px, y, pz);
+      x1 = Math.min(x1, px - r); x2 = Math.max(x2, px + r); z1 = Math.min(z1, pz - r); z2 = Math.max(z2, pz + r);
+    } else {
+      const [, mat, r, dx, y, dz, sy] = p, [px, pz] = R(dx, dz); B.ball(mat, r, px, y, pz, sy || 1);
+    }
+  }
+  if (block && x1 < x2) F.blocks.push([x1, z1, x2, z2]);
+}
+const solid = (F, x1, z1, x2, z2) => F.blocks.push([Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2)]);
+/* 축에 평행한 벽 (glass면 유리 + 틀) */
+function wallSeg(F, x1, z1, x2, z2, glass = false, h = CH) {
+  const B = F.B, len = Math.hypot(x2 - x1, z2 - z1); if (len < 0.05) return;
+  const alongU = Math.abs(z2 - z1) < 1e-6, cx = (x1 + x2) / 2, cz = (z1 + z2) / 2, th = glass ? 0.04 : 0.16;
+  const w = alongU ? len : th, d = alongU ? th : len;
+  B.box(glass ? IM.glass : IM.wall, w, h, d, cx, 0, cz);
+  if (glass) {
+    B.box(IM.dark, alongU ? len : 0.07, 0.07, alongU ? 0.07 : len, cx, h - 0.07, cz);
+    B.box(IM.dark, alongU ? len : 0.07, 0.05, alongU ? 0.07 : len, cx, 0, cz);
+    const n = Math.max(1, Math.round(len / 1.4));
+    for (let i = 0; i <= n; i++) { const t = i / n; B.box(IM.dark, 0.05, h, 0.05, x1 + (x2 - x1) * t, 0, z1 + (z2 - z1) * t); }
+  }
+  solid(F, cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2);
+}
+/* 방: 네 벽 + 문 (door: {side:'n'|'s'|'e'|'w', at, w}) · glass: 유리로 할 면 */
+function room(F, u1, v1, u2, v2, { glass = '', door = null, skip = '' } = {}) {
+  const sides = { n: [u1, v1, u2, v1], s: [u1, v2, u2, v2], w: [u1, v1, u1, v2], e: [u2, v1, u2, v2] };
+  for (const k of 'nswe') {
+    if (skip.includes(k)) continue;
+    const [a, b, c, d] = sides[k], g = glass.includes(k);
+    if (door && door.side === k) {
+      const along = k === 'n' || k === 's', lo = door.at - door.w / 2, hi = door.at + door.w / 2;
+      if (along) { wallSeg(F, a, b, lo, d, g); wallSeg(F, hi, b, c, d, g); }
+      else { wallSeg(F, a, b, c, lo, g); wallSeg(F, a, hi, c, d, g); }
+    } else wallSeg(F, a, b, c, d, g);
+  }
+}
+/* 가구 */
+const chairParts = mat => [['box', mat, 0.5, 0.08, 0.5, 0, 0.42, 0], ['box', mat, 0.5, 0.5, 0.06, 0, 0.5, -0.24], ['cyl', IM.metal, 0.03, 0.42, 0, 0, 0], ['cyl', IM.dark, 0.26, 0.03, 0, 0, 0]];
+const chair = (F, x, z, face, mat = IM.blue, block = false) => piece(F, x, z, face, chairParts(mat), block);
+function desk(F, x, z, face, top = IM.white) {
+  piece(F, x, z, face, [['box', top, 1.6, 0.04, 0.8, 0, 0.72, 0], ['box', IM.metal, 0.04, 0.72, 0.7, -0.76, 0, 0], ['box', IM.metal, 0.04, 0.72, 0.7, 0.76, 0, 0],
+    ['box', IM.black, 0.62, 0.38, 0.03, 0, 0.86, -0.25], ['box', IM.dark, 0.06, 0.12, 0.06, 0, 0.76, -0.27], ['box', IM.dark, 0.42, 0.02, 0.14, 0, 0.76, 0.1]], false);
+}
+function deskCluster(F, cx, cz, n = 3) {
+  for (let i = 0; i < n; i++) {
+    const x = cx + (i - (n - 1) / 2) * 1.6;
+    desk(F, x, cz - 0.4, 'n'); desk(F, x, cz + 0.4, 's');
+    chair(F, x, cz - 1.3, 's'); chair(F, x, cz + 1.3, 'n');
+  }
+  F.B.box(IM.green, n * 1.6, 0.42, 0.04, cx, 0.76, cz);
+  solid(F, cx - n * 0.8 - 0.05, cz - 0.85, cx + n * 0.8 + 0.05, cz + 0.85);
+}
+function sofa(F, x, z, face, len = 2.2, mat = IM.gray) {
+  piece(F, x, z, face, [['box', mat, len, 0.42, 0.85, 0, 0, 0], ['box', mat, len, 0.82, 0.22, 0, 0, -0.36], ['box', mat, 0.2, 0.6, 0.85, -len / 2 + 0.1, 0, 0], ['box', mat, 0.2, 0.6, 0.85, len / 2 - 0.1, 0, 0]]);
+}
+function roundTable(F, x, z, seats = 3, mat = IM.wood, chairMat = IM.orange) {
+  piece(F, x, z, 's', [['cyl', mat, 0.45, 0.04, 0, 0.72, 0], ['cyl', IM.dark, 0.05, 0.72, 0, 0, 0], ['cyl', IM.dark, 0.25, 0.03, 0, 0, 0]]);
+  for (let i = 0; i < seats; i++) {
+    const a = i / seats * Math.PI * 2 + 0.4, cx = x + Math.cos(a) * 0.85, cz = z + Math.sin(a) * 0.85;
+    const ry = Math.atan2(x - cx, z - cz);
+    chairParts(chairMat).forEach(p => {
+      if (p[0] === 'box') { const [, m, w, h, d, , y, dz] = p; F.B.box(m, w, h, d, cx + Math.sin(ry) * dz, y, cz + Math.cos(ry) * dz, ry); }
+      else F.B.cyl(p[1], p[2], p[3], cx, p[5], cz);
+    });
+  }
+}
+function plant(F, x, z, big = false) {
+  const k = big ? 1.5 : 1;
+  piece(F, x, z, 's', [['cyl', IM.pot, 0.28 * k, 0.5 * k, 0, 0, 0], ['ball', IM.leaf, 0.5 * k, 0, 0.42 * k, 0, 1.5], ['ball', IM.leaf2, 0.32 * k, 0.15 * k, 0.9 * k, 0.1 * k]]);
+}
+function tree(F, x, z, h = 6) {
+  F.B.cyl(IM.trunk, 0.18, h * 0.65, x, 0, z);
+  F.B.ball(IM.leaf, 1.9, x, h * 0.45, z, 0.9); F.B.ball(IM.leaf2, 1.4, x + 0.8, h * 0.62, z - 0.4); F.B.ball(IM.leaf, 1.2, x - 0.7, h * 0.72, z + 0.5);
+}
+function bench(F, x, z, along = 'u', len = 2) {
+  const w = along === 'u' ? len : 0.5, d = along === 'u' ? 0.5 : len;
+  F.B.box(IM.wood, w, 0.08, d, x, 0.4, z); F.B.box(IM.dark, along === 'u' ? 0.08 : 0.4, 0.4, along === 'u' ? 0.4 : 0.08, x - (along === 'u' ? len / 2 - 0.2 : 0), 0, z - (along === 'u' ? 0 : len / 2 - 0.2));
+  F.B.box(IM.dark, along === 'u' ? 0.08 : 0.4, 0.4, along === 'u' ? 0.4 : 0.08, x + (along === 'u' ? len / 2 - 0.2 : 0), 0, z + (along === 'u' ? 0 : len / 2 - 0.2));
+  solid(F, x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+}
+/* 캔버스로 그린 화면 · 안내판 */
+const FONT = '"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; return tx;
+}
+function screen(F, w, h, x, y, z, face, draw, px = 1024) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: canvasTex(px, Math.round(px * h / w), draw), toneMapped: false }));
+  m.position.set(x, y, z); m.rotation.y = FACE[face]; F.group.add(m); return m;
+}
+function drawPanel(title, sub, c1, c2, mode = 'plain') {
+  return (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, c1); gr.addColorStop(1, c2); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    let rs = 9; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+    if (mode === 'dash') {                  // 대시보드: 선 그래프 · 막대 · 점
+      g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1;
+      for (let x = 0; x < w; x += w / 16) { g.beginPath(); g.moveTo(x, h * 0.3); g.lineTo(x, h); g.stroke(); }
+      ['#58d0ff', '#ffb36b', '#7dff9a'].forEach((col, k) => {
+        g.strokeStyle = col; g.lineWidth = h * 0.012; g.beginPath();
+        for (let i = 0; i <= 40; i++) { const x = w * 0.04 + i * w * 0.92 / 40, y = h * (0.62 + k * 0.08) - Math.sin(i * 0.4 + k) * h * 0.08 - rnd() * h * 0.06; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke();
+      });
+      for (let i = 0; i < 12; i++) { g.fillStyle = 'rgba(88,208,255,0.55)'; const bh = h * (0.08 + rnd() * 0.16); g.fillRect(w * 0.62 + i * w * 0.03, h * 0.95 - bh, w * 0.02, bh); }
+    } else if (mode === 'map') {            // 관제 지도: 격자 + 센서 점
+      g.strokeStyle = 'rgba(120,200,255,0.18)'; g.lineWidth = 1;
+      for (let x = 0; x < w; x += w / 28) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+      for (let y = 0; y < h; y += h / 8) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+      for (let i = 0; i < 90; i++) { const ok = rnd() > 0.06; g.fillStyle = ok ? '#5dff8a' : '#ff5d5d'; g.beginPath(); g.arc(rnd() * w, h * 0.25 + rnd() * h * 0.7, ok ? 4 : 7, 0, 7); g.fill(); }
+    }
+    g.fillStyle = '#fff'; g.textBaseline = 'top';
+    g.font = `800 ${Math.round(h * 0.2)}px ${FONT}`; g.fillText(title, w * 0.05, h * 0.08);
+    if (sub) { g.globalAlpha = 0.85; g.font = `500 ${Math.round(h * 0.09)}px ${FONT}`; g.fillText(sub, w * 0.05, h * 0.08 + h * 0.24); g.globalAlpha = 1; }
+  };
+}
+/* 엘리베이터 · 계단 코어 (두 층 공통) */
+function cores(F) {
+  const B = F.B;
+  for (const [cu, face] of [[-28, 'e'], [28, 'w']]) {
+    B.box(IM.core, 12, CH, 20, cu, 0, 0); solid(F, cu - 6, -10, cu + 6, 10);
+    const fu = face === 'e' ? cu + 6.02 : cu - 6.02;
+    for (const v of [-6.5, -2.2, 2.2, 6.5]) {
+      B.box(IM.dark, 0.06, 2.55, 1.6, fu, 0, v); B.box(IM.metal, 0.08, 2.35, 1.25, fu, 0, v);
+      B.box(IM.led, 0.1, 0.12, 0.5, fu, 2.62, v);
+    }
+    B.box(IM.dark, 0.1, 0.3, 0.18, fu, 1.1, -4.35); B.box(IM.dark, 0.1, 0.3, 0.18, fu, 1.1, 4.35);
+  }
+}
+/* 기둥 · 천장 조명 · 창가 화분: 가구를 놓은 뒤 빈 곳에만 */
+function nearBlock(F, x, z, r) { return F.blocks.some(([x1, z1, x2, z2]) => x > x1 - r && x < x2 + r && z > z1 - r && z < z2 + r); }
+function fillStructure(F) {
+  const B = F.B;
+  for (let u = -117; u <= 75; u += 9) for (let v = -30; v <= 40; v += 9) {
+    if (!inPoly(u, v, offset(FOOT, -2.5)) || inPoly(u, v, offset(HOLE_L, 2.5)) || nearBlock(F, u, v, 1.2)) continue;
+    B.cyl(IM.white, 0.38, CH, u, 0, v); solid(F, u - 0.4, v - 0.4, u + 0.4, v + 0.4);
+  }
+  for (let u = -126; u <= 80; u += 6) for (let v = -39; v <= 43; v += 6) {
+    if (!inPoly(u, v, offset(FOOT, -1.5)) || inPoly(u, v, offset(HOLE_L, 1)) || (Math.abs(Math.abs(u) - 28) < 6.5 && Math.abs(v) < 10.5)) continue;
+    B.box(IM.light, 1.2, 0.04, 0.6, u, CH - 0.06, v);
+  }
+  const edge = offset(FOOT, -1.6); let acc = 0;
+  for (let i = 0; i < edge.length; i++) {
+    const a = edge[i], b = edge[(i + 1) % edge.length], len = Math.hypot(b.x - a.x, b.z - a.z);
+    for (let s = (14 - acc) % 14; s < len; s += 14) { const x = a.x + (b.x - a.x) * s / len, z = a.z + (b.z - a.z) * s / len; if (!nearBlock(F, x, z, 1.2)) plant(F, x, z); }
+    acc = (acc + len) % 14;
+  }
+}
+
+/* ---------- 1층 로비 ---------- */
+function buildFloor1(F) {
+  const B = F.B, g = F.group;
+  g.add(mesh(new THREE.ShapeGeometry(shapeOf(FOOT, [HOLE_L])).rotateX(-Math.PI / 2), IM.stone, 0.02, false));
+  cores(F);
+  // 미디어 월 · 층별 안내
+  screen(F, 11.2, 2.5, -28, 1.55, 10.04, 's', drawPanel('IoT혁신센터', '사물인터넷 기술 실증 · 창업 지원 · 기업 협업 공간', '#0f2a4a', '#1f6aa8', 'dash'));
+  screen(F, 4.2, 2.3, 28, 1.45, 10.04, 's', (gg, w, h) => {
+    gg.fillStyle = '#20252e'; gg.fillRect(0, 0, w, h); gg.fillStyle = '#fff'; gg.textBaseline = 'top';
+    gg.font = `800 ${h * 0.11}px ${FONT}`; gg.fillText('층별 안내', w * 0.07, h * 0.06);
+    gg.font = `500 ${h * 0.07}px ${FONT}`;
+    ['8F  옥상 정원 · 기계실', '7F  입주기업 사무실 · 데이터 관제실 · 실증 랩', '4–6F  입주기업 사무실', '2–3F  교육장 · 공용 회의실', '1F  로비 · 카페 · IoT 전시관 · 세미나실'].forEach((t, i) => gg.fillText(t, w * 0.07, h * (0.27 + i * 0.14)));
+  }, 768);
+  // 정문 · 바람막이실 (남쪽, 중앙 연결동으로 이어짐)
+  wallSeg(F, 0, 37, 0, 42.5, true); wallSeg(F, 10, 37, 10, 42.5, true);
+  wallSeg(F, 0, 37, 3, 37, true); wallSeg(F, 7, 37, 10, 37, true);
+  B.box(IM.dark, 4, 0.02, 4.5, 5, 0.02, 40);
+  // 안내 데스크 + 로고 벽
+  B.box(IM.wood, 6, 1.08, 0.9, 5, 0, 30.2); B.box(IM.white, 6.3, 0.05, 1.05, 5, 1.08, 30.2);
+  piece(F, 1.2, 29.4, 's', [['box', IM.wood, 2.4, 1.08, 0.9, 0, 0, 0], ['box', IM.white, 2.5, 0.05, 1.05, 0, 1.08, 0]]);
+  piece(F, 8.8, 29.4, 's', [['box', IM.wood, 2.4, 1.08, 0.9, 0, 0, 0], ['box', IM.white, 2.5, 0.05, 1.05, 0, 1.08, 0]]);
+  solid(F, 2, 29.7, 8, 30.7);
+  [3.6, 6.4].forEach(x => { chair(F, x, 28.9, 's', IM.dark); B.box(IM.black, 0.55, 0.34, 0.03, x, 1.14, 29.9); });
+  screen(F, 4.6, 0.62, 5, 0.3, 30.68, 's', drawPanel('IoT혁신센터  안내', '', '#1d2a40', '#2c4a70'), 1024);
+  // 정문 위 현판
+  screen(F, 6, 0.8, 5, 2.25, 36.9, 'n', drawPanel('IoT혁신센터', 'IoT Innovation Center', '#1d2a40', '#2c4a70'), 1024);
+  // 출입 게이트 (스피드 게이트)
+  for (let i = 0; i <= 9; i++) {
+    const x = -10 + i * 2.2; B.box(IM.metal, 0.3, 1.0, 1.6, x, 0, 20); B.box(IM.led, 0.31, 0.04, 1.2, x, 1.0, 20);
+    if (i < 9) { B.box(IM.glass, 0.85, 0.75, 0.02, x + 0.6, 0.25, 20); B.box(IM.glass, 0.85, 0.75, 0.02, x + 1.6, 0.25, 20); }
+    solid(F, x - 0.16, 19.2, x + 0.16, 20.8);
+  }
+  // 엘리베이터 홀 벤치
+  bench(F, -16, -7, 'v', 2.2); bench(F, -16, 7, 'v', 2.2); bench(F, 16.5, -7, 'v', 2.2); bench(F, 16.5, 7, 'v', 2.2);
+  // 로비 라운지 (미디어 월 앞)
+  for (const cx of [-29, -18]) {
+    B.box(IM.rug, 7, 0.02, 6, cx, 0.02, 31);
+    sofa(F, cx, 33.2, 'n', 3, IM.gray); sofa(F, cx - 2.7, 30.6, 'e', 1, IM.blue); sofa(F, cx + 2.7, 30.6, 'w', 1, IM.blue);
+    piece(F, cx, 30.4, 's', [['box', IM.woodDk, 1.6, 0.38, 0.8, 0, 0, 0]]);
+  }
+  // 카페
+  piece(F, 30, 23, 's', [['box', IM.woodDk, 12, 1.05, 0.75, 0, 0, 0], ['box', IM.white, 12.2, 0.05, 0.85, 0, 1.05, 0]]);
+  B.box(IM.dark, 12, 2.2, 0.5, 30, 0, 21.2); solid(F, 24, 20.9, 36, 21.5);
+  for (let i = 0; i < 10; i++) B.box(i % 3 ? IM.white : IM.orange, 0.14, 0.18, 0.14, 25 + i * 1.1, 1.2, 21.15);
+  B.box(IM.metal, 0.8, 0.55, 0.5, 27, 1.1, 23); B.box(IM.metal, 0.8, 0.55, 0.5, 33, 1.1, 23);
+  screen(F, 5, 0.9, 30, 2.6, 21.47, 's', drawPanel('카페 라운지', '아메리카노 · 라테 · 샌드위치', '#3a2a20', '#6b4a33'), 768);
+  for (const x of [26, 30, 34, 38, 42]) for (const z of [28, 32, 36]) if (inPoly(x, z, offset(FOOT, -2))) roundTable(F, x, z, 3);
+  // IoT 전시관 (서측)
+  B.box(IM.white, 42, CH - 0.25, 0.4, -71, 0, -12); solid(F, -92, -12.2, -50, -11.8);
+  ['스마트 시티', '스마트 팩토리', '스마트 홈', '디지털 헬스케어'].forEach((tt, i) => {
+    screen(F, 7.5, 2.0, -86 + i * 10, 1.5, -11.78, 's', drawPanel(tt, 'IoT 서비스 사례', ['#123a5a', '#3a2a5a', '#1f4a3a', '#5a2a2a'][i], ['#2a7ab8', '#6b5ab8', '#3a9a6a', '#b85a4a'][i], 'dash'), 768);
+  });
+  screen(F, 6, 1.6, -44.8, 1.9, -5, 'e', drawPanel('IoT 전시관', '센서 · 드론 · 로봇 · 스마트홈 기기 체험', '#0f2a4a', '#2a6ab8'), 768);
+  piece(F, -44.9, -5, 'e', [['box', IM.white, 6.4, 2.9, 0.3, 0, 0, -0.2]]);
+  let k = 0;
+  for (const x of [-88, -78, -68, -58]) for (const z of [-3, 9, 21]) {
+    if (!inPoly(x, z, offset(FOOT, -3))) continue;
+    B.box(IM.white, 1.3, 1.0, 1.3, x, 0, z); B.box(IM.glass, 1.2, 0.8, 1.2, x, 1.0, z); solid(F, x - 0.7, z - 0.7, x + 0.7, z + 0.7);
+    const kind = k++ % 5, y = 1.02;
+    if (kind === 0) { B.box(IM.dark, 0.4, 0.15, 0.3, x, y, z); B.box(IM.ledG, 0.08, 0.04, 0.08, x + 0.1, y + 0.15, z); }
+    else if (kind === 1) { B.box(IM.dark, 0.6, 0.04, 0.06, x, y + 0.2, z, 0.785); B.box(IM.dark, 0.6, 0.04, 0.06, x, y + 0.2, z, -0.785); B.box(IM.white, 0.16, 0.1, 0.16, x, y + 0.16, z); [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => B.cyl(IM.metal, 0.1, 0.02, x + a * 0.21, y + 0.25, z + b * 0.21)); }
+    else if (kind === 2) { B.cyl(IM.orange, 0.12, 0.25, x, y, z); B.box(IM.orange, 0.08, 0.45, 0.08, x, y + 0.25, z); B.box(IM.orange, 0.35, 0.07, 0.07, x + 0.15, y + 0.66, z); }
+    else if (kind === 3) { B.cyl(IM.white, 0.13, 0.32, x, y, z); B.box(IM.led, 0.2, 0.02, 0.02, x, y + 0.32, z + 0.13); }
+    else { B.box(IM.blue, 0.55, 0.14, 0.28, x, y + 0.05, z); B.box(IM.glass, 0.3, 0.1, 0.24, x, y + 0.19, z); [[0.18, 0.13], [0.18, -0.13], [-0.18, 0.13], [-0.18, -0.13]].forEach(([a, b]) => B.cyl(IM.black, 0.05, 0.05, x + a, y, z + b)); }
+  }
+  // 세미나실 (동측)
+  room(F, 44, -24, 70, 20, { door: { side: 'w', at: 0, w: 4 } });
+  B.box(IM.wood, 4, 0.4, 42, 67.8, 0, -2); solid(F, 65.8, -23, 69.9, 19);
+  screen(F, 8.5, 2.1, 69.8, 1.75, -2, 'w', drawPanel('IoT 기술 세미나', '입주기업 기술 교류회 · 오후 2시', '#14213d', '#3a5aa8'), 1024);
+  for (let x = 47.5; x <= 62; x += 1.15) for (let z = -21.5; z <= 17.5; z += 0.75) { if (Math.abs(z + 2) < 1.6) continue; chair(F, x, z, 'e', IM.blue); }
+  for (let x = 47.5; x <= 62; x += 1.15) { solid(F, x - 0.3, -21.9, x + 0.3, -3.6); solid(F, x - 0.3, -0.4, x + 0.3, 17.9); }
+  screen(F, 3.2, 0.7, 43.9, 2.4, -4.5, 'w', drawPanel('세미나실', '', '#2a2f38', '#3a414d'), 512);
+  // 스타트업 상담 라운지 (서쪽 끝)
+  for (const [x, z] of [[-104, 2], [-104, 10], [-104, 18], [-112, 10], [-112, 17]]) if (inPoly(x, z, offset(FOOT, -2))) roundTable(F, x, z, 3, IM.white, IM.green);
+  screen(F, 4, 1.1, -97, 1.8, 10, 'e', drawPanel('스타트업 상담 라운지', '창업 · 투자 · 기술 사업화 상담', '#1f4a3a', '#3a9a6a'), 768);
+  piece(F, -97.1, 10, 'e', [['box', IM.white, 4.4, 2.8, 0.25, 0, 0, -0.15]]);
+  fillStructure(F);
+  F.pois = [
+    { name: '정문 · 바람막이실', desc: '광장 쪽 중앙 연결동에서 들어오는 정문이에요. 바람막이실을 지나면 로비가 시작됩니다.', at: [5, 2.4, 41], stand: [5, 33.5] },
+    { name: '안내 데스크', desc: '방문 등록과 출입증 발급을 하는 곳이에요. 뒤쪽 벽에 센터 로고가 있어요.', at: [5, 1.5, 30], stand: [5, 35] },
+    { name: '출입 게이트', desc: '출입증을 대면 열리는 스피드 게이트예요. 이 안쪽부터 엘리베이터 홀과 아트리움이에요.', at: [0, 1.2, 20], stand: [-1.1, 24] },
+    { name: '아트리움 정원', desc: '지붕까지 뚫린 아트리움 바닥의 실내 정원이에요. 나무와 연못이 있고 위로 7개 층이 보입니다.', at: [0, 2.5, 0], stand: [0, 18.1] },
+    { name: '엘리베이터 홀', desc: '서쪽 코어의 엘리베이터 4대예요. 동쪽 코어에도 4대가 더 있어요.', at: [-22, 1.5, 0], stand: [-13.6, 4.5] },
+    { name: '미디어 월', desc: '센터 소개와 입주기업 IoT 서비스 현황을 보여 주는 대형 화면이에요.', at: [-28, 1.8, 10], stand: [-28, 21.5] },
+    { name: '로비 라운지', desc: '방문객이 기다리거나 가볍게 미팅하는 소파 공간이에요.', at: [-23.5, 1, 31], stand: [-23.5, 38.5] },
+    { name: '카페', desc: '입주기업과 방문객이 함께 쓰는 카페 라운지예요.', at: [30, 1.4, 22], stand: [31, 37.6] },
+    { name: 'IoT 전시관', desc: '스마트 센서, 드론, 로봇 팔, 스마트홈 기기 같은 입주기업 제품을 직접 볼 수 있는 전시 공간이에요.', at: [-72, 1.2, 9], stand: [-50.5, 9] },
+    { name: '세미나실', desc: '기술 설명회와 교육을 여는 약 300석 규모의 강당이에요.', at: [63, 1.6, -2], stand: [45.8, -2] },
+    { name: '스타트업 상담 라운지', desc: '창업 · 투자 · 기술 사업화 상담을 받는 라운지예요.', at: [-106, 1.2, 10], stand: [-94.5, 10] },
+  ];
+  F.start = { u: 13, v: 35.5, look: [-2, 1.5, 6] };
+  F.title = 'IoT혁신센터 1층 · 로비';
+  F.intro = '아트리움 아래 1층 로비예요. 정원, 안내 데스크, 카페, IoT 전시관, 세미나실이 있어요. (시연용 가상 배치)';
+}
+
+/* ---------- 7층 업무층 ---------- */
+function buildFloor7(F) {
+  const B = F.B, g = F.group;
+  g.add(mesh(new THREE.ShapeGeometry(shapeOf(FOOT, [HOLE_L])).rotateX(-Math.PI / 2), IM.carpet, 0.02, false));
+  // 아트리움 난간
+  const rail = offset(HOLE_L, 0.15);
+  for (let i = 0; i < rail.length; i++) {
+    const a = rail[i], b = rail[(i + 1) % rail.length], len = Math.hypot(b.x - a.x, b.z - a.z), ry = Math.atan2(b.x - a.x, b.z - a.z);
+    B.box(IM.glass, 0.04, 1.05, len, (a.x + b.x) / 2, 0, (a.z + b.z) / 2, ry); B.box(IM.metal, 0.08, 0.06, len, (a.x + b.x) / 2, 1.05, (a.z + b.z) / 2, ry);
+  }
+  cores(F);
+  // 폰 부스
+  for (const x of [-32.5, -29.5, -26.5]) { piece(F, x, -13.2, 's', [['box', IM.white, 1.3, 2.3, 0.08, 0, 0, -0.6], ['box', IM.white, 0.08, 2.3, 1.2, -0.62, 0, 0], ['box', IM.white, 0.08, 2.3, 1.2, 0.62, 0, 0], ['box', IM.white, 1.3, 0.08, 1.3, 0, 2.3, 0], ['box', IM.glass, 1.2, 2.2, 0.03, 0, 0, 0.6], ['box', IM.orange, 0.5, 0.45, 0.5, 0, 0, -0.2]]); }
+  // 회의실 줄 (북쪽)
+  for (let i = 0; i < 8; i++) {
+    const u1 = -40 + i * 8, u2 = u1 + 8, cx = u1 + 4;
+    room(F, u1, -34, u2, -25, { glass: 's', door: { side: 's', at: u1 + 1.4, w: 1.4 } });
+    piece(F, cx, -29.8, 's', [['box', IM.wood, 4.2, 0.05, 1.4, 0, 0.72, 0], ['box', IM.dark, 0.1, 0.72, 0.8, -1.6, 0, 0], ['box', IM.dark, 0.1, 0.72, 0.8, 1.6, 0, 0]]);
+    for (const dx of [-1.4, 0, 1.4]) { chair(F, cx + dx, -31.1, 's', IM.gray); chair(F, cx + dx, -28.5, 'n', IM.gray); }
+    screen(F, 2.6, 1.4, cx, 1.55, -33.9, 's', drawPanel(`회의실 7${String(i + 1).padStart(2, '0')}`, i % 3 ? '예약 가능' : '회의 중 · 15:00까지', '#14213d', i % 3 ? '#2a6a4a' : '#8a4a2a'), 512);
+  }
+  // 서측 개방형 사무공간
+  for (const x of [-90, -81, -72, -63, -54]) for (const z of [-16, -8, 0, 8, 16, 24, 32]) {
+    if (!['n', 's'].every(() => true)) continue;
+    if ([[-2.6, -1.6], [2.6, -1.6], [-2.6, 1.6], [2.6, 1.6]].every(([a, b]) => inPoly(x + a, z + b, offset(FOOT, -1.6)))) deskCluster(F, x, z);
+  }
+  // 동측 개방형 사무공간
+  for (const x of [44, 52, 60, 68]) for (const z of [-22, -14, -6, 2]) {
+    if ([[-2.6, -1.6], [2.6, -1.6], [-2.6, 1.6], [2.6, 1.6]].every(([a, b]) => inPoly(x + a, z + b, offset(FOOT, -1.6)))) deskCluster(F, x, z);
+  }
+  // 아트리움 동쪽 라운지 의자
+  for (const z of [-6, -2, 2, 6]) sofa(F, 16.2, z, 'w', 0.9, IM.orange);
+  // 휴게 라운지 · 팬트리 (남쪽 가운데)
+  piece(F, -1, 22.2, 's', [['box', IM.white, 16, 0.92, 0.7, 0, 0, 0], ['box', IM.woodDk, 16.2, 0.04, 0.75, 0, 0.92, 0], ['box', IM.metal, 0.9, 2.0, 0.7, -8.6, 0, 0], ['box', IM.metal, 0.6, 0.45, 0.4, 2, 0.96, 0], ['box', IM.dark, 0.5, 0.35, 0.4, 4, 0.96, 0]]);
+  piece(F, -1, 27, 's', [['box', IM.wood, 8, 1.0, 1.2, 0, 0, 0], ['box', IM.white, 8.2, 0.05, 1.3, 0, 1.0, 0]]);
+  for (let x = -4.5; x <= 2.5; x += 1) piece(F, x, 28.3, 's', [['cyl', IM.dark, 0.04, 0.7, 0, 0, 0], ['cyl', IM.orange, 0.2, 0.06, 0, 0.7, 0]], false);
+  for (const x of [-11, -1, 9]) { B.box(IM.rug, 5, 0.02, 4.5, x, 0.02, 35); sofa(F, x, 33.5, 's', 2.6, IM.blue); piece(F, x, 35.4, 's', [['box', IM.woodDk, 1.4, 0.38, 0.7, 0, 0, 0]]); }
+  // 데이터 관제실 (서쪽 끝)
+  room(F, -112, -6, -96, 22, { glass: 'e', door: { side: 'e', at: 7.2, w: 2.4 } });
+  screen(F, 15, 2.4, -111.85, 1.6, 8, 'e', drawPanel('IoT 통합 관제', '센서 4,812개 · 정상 4,796 · 점검 필요 16', '#06121f', '#0f2a44', 'map'), 1536);
+  for (const x of [-108, -104, -100]) {
+    for (let z = -3; z <= 17.5; z += 3) {
+      piece(F, x, z + 1.5, 'e', [['box', IM.white, 3, 0.04, 0.8, 0, 0.72, 0], ['box', IM.dark, 3, 0.72, 0.1, 0, 0, -0.35], ['box', IM.black, 0.62, 0.38, 0.03, -0.7, 0.86, -0.25], ['box', IM.black, 0.62, 0.38, 0.03, 0.7, 0.86, -0.25]], false);
+      chair(F, x + 0.95, z + 0.8, 'w', IM.dark); chair(F, x + 0.95, z + 2.2, 'w', IM.dark);
+    }
+    solid(F, x - 0.45, -3, x + 0.45, 19.5);
+  }
+  // IoT 실증 랩 (남동쪽)
+  room(F, 44, 8, 70, 32, { glass: 'wn', door: { side: 'w', at: 19.2, w: 2.4 } });
+  for (const z of [12, 17, 22, 27]) for (const x of [50, 57]) {
+    piece(F, x, z, 's', [['box', IM.white, 4, 0.05, 1, 0, 0.9, 0], ['box', IM.metal, 0.06, 0.9, 0.9, -1.9, 0, 0], ['box', IM.metal, 0.06, 0.9, 0.9, 1.9, 0, 0], ['box', IM.dark, 0.5, 0.3, 0.4, -1, 0.95, -0.1], ['box', IM.led, 0.3, 0.04, 0.2, 0.6, 0.95, 0]]);
+  }
+  for (let z = 10; z <= 30; z += 1.4) { B.box(IM.black, 1, 2.2, 1.2, 68.8, 0, z); for (let y = 0.4; y < 2.1; y += 0.25) B.box(z % 2.8 < 1.4 ? IM.ledG : IM.led, 0.02, 0.03, 0.6, 68.28, y, z); }
+  solid(F, 68.2, 9.3, 69.9, 30.9);
+  piece(F, 63.5, 13, 's', [['box', IM.glass, 2.6, 2.4, 2.6, 0, 0, 0], ['box', IM.dark, 2.7, 0.08, 2.7, 0, 2.4, 0], ['box', IM.led, 0.4, 0.4, 0.4, 0, 0.8, 0]]);
+  piece(F, 63.5, 25, 's', [['box', IM.white, 1.6, 0.8, 1.6, 0, 0, 0], ['cyl', IM.orange, 0.2, 0.3, 0, 0.8, 0], ['box', IM.orange, 0.14, 0.7, 0.14, 0, 1.1, 0], ['box', IM.orange, 0.7, 0.12, 0.12, 0.3, 1.75, 0]]);
+  screen(F, 4, 1, 43.9, 2.3, 14, 'w', drawPanel('IoT 실증 랩', '센서 · 통신 · 보안 시험', '#1f2a3a', '#3a5a7a'), 768);
+  fillStructure(F);
+  F.pois = [
+    { name: '엘리베이터 홀', desc: '7층 서쪽 엘리베이터 홀이에요. 아트리움 건너편에 동쪽 코어가 보여요.', at: [-22, 1.5, 0], stand: [-13.4, 4.5] },
+    { name: '아트리움 전망', desc: '난간 너머로 1층 정원까지 내려다보이는 아트리움이에요. 위로는 하늘이 뚫려 있어요.', at: [6, -21, 0.5], stand: [-12.3, 0.5] },
+    { name: '회의실', desc: '북쪽 창가를 따라 늘어선 8인 회의실 8개예요. 문 옆 화면에 예약 상태가 떠요.', at: [-4, 1.4, -29.5], stand: [-4, -20.5] },
+    { name: '폰 부스', desc: '혼자 통화하거나 화상회의를 하는 1인 부스예요.', at: [-29.5, 1.2, -13], stand: [-29.5, -17.5] },
+    { name: '개방형 사무공간 (서측)', desc: '입주기업 직원들이 쓰는 개방형 책상 구역이에요. 6인 책상 묶음이 줄지어 있어요.', at: [-68, 1.2, 8], stand: [-44.5, 4] },
+    { name: '데이터 관제실', desc: '건물과 실증 단지의 IoT 센서 상태를 한눈에 보는 관제실이에요. 서쪽 벽 전체가 화면이에요.', at: [-111, 1.6, 8], stand: [-97.6, 7.2] },
+    { name: '휴게 라운지 · 팬트리', desc: '커피와 간식을 먹으며 쉬는 공간이에요. 남쪽 창으로 광장이 내려다보여요.', at: [-3, 0.9, 31], stand: [14, 29] },
+    { name: 'IoT 실증 랩', desc: '센서 · 통신 · 보안을 시험하는 실험실이에요. 장비 랙과 시험 챔버, 로봇 팔이 있어요.', at: [58, 1.3, 20], stand: [41, 19.2] },
+    { name: '개방형 사무공간 (동측)', desc: '동쪽 창가의 개방형 책상 구역이에요.', at: [56, 1.1, -10], stand: [38.5, -10] },
+  ];
+  F.start = { u: -18.3, v: 0, look: [10, 0.6, 0] };
+  F.title = 'IoT혁신센터 7층 · 업무층';
+  F.intro = '입주기업 사무실이 있는 7층이에요. 회의실, 데이터 관제실, IoT 실증 랩, 휴게 라운지가 있어요. (시연용 가상 배치)';
+}
+
+/* ---------- 아트리움 정원: 1층 바닥의 실내 정원. 지붕 구멍과 위층 난간에서도 보이도록 늘 켜 둔다 ---------- */
+const garden = (() => {
+  const F = { blocks: [], group: new THREE.Group(), B: makeBuilder() }, B = F.B, g = F.group;
+  g.position.set(IO.x, BASE + T, IO.z); g.rotation.y = -ITH; g.scale.setScalar(U);
+  g.add(mesh(new THREE.ShapeGeometry(shapeOf(HOLE_L)).rotateX(-Math.PI / 2), IM.grass, 0.03, false));
+  g.add(mesh(extrudeGeo(offset(HOLE_L, -0.05), 0.45, [offset(HOLE_L, -0.5)]), IM.white, 0));
+  B.cyl(IM.white, 2.6, 0.32, 0, 0, 0); B.cyl(IM.water, 2.35, 0.34, 0, 0, 0);
+  [[-6, -9, 7], [6.5, -9.5, 8], [-8, 7, 6.5], [4.5, 9.5, 7.5]].forEach(([x, z, h]) => tree(F, x, z, h));
+  [[-3, -3], [3, 3], [-3.5, 4], [4, -4]].forEach(([x, z]) => B.ball(IM.leaf2, 0.6, x, 0, z, 0.7));
+  for (let i = 0; i < 6; i++) B.box(IM.stone, 0.9, 0.04, 0.6, 0, 0.03, 3.2 + i * 1.8);
+  B.build(g); g.visible = false; scene.add(g);
+  return g;
+})();
+
+/* ---------- 층 만들기 · 걸을 수 있는 칸 ---------- */
+const FLOORS = {};
+function getFloor(n) {
+  if (FLOORS[n]) return FLOORS[n];
+  const F = { n, blocks: [], group: new THREE.Group(), B: makeBuilder() };
+  F.y = BASE + (n - 1) * FH + T;
+  F.group.position.set(IO.x, F.y, IO.z); F.group.rotation.y = -ITH; F.group.scale.setScalar(U);
+  (n === 1 ? buildFloor1 : buildFloor7)(F);
+  F.B.build(F.group);
+  F.group.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.castShadow === undefined) o.castShadow = true; });
+  F.floorMesh = F.group.children[0];
+  F.group.visible = false; scene.add(F.group);
+  // 0.5m 칸으로 나눠 걸을 수 있는 곳 표시
+  const cs = 0.5, u0 = -132, v0 = -43, nu = Math.ceil((84 - u0) / cs), nv = Math.ceil((46 - v0) / cs), free = new Uint8Array(nu * nv);
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const u = u0 + i * cs, v = v0 + j * cs; free[j * nu + i] = inPoly(u, v, FOOT_IN) && !inPoly(u, v, HOLE_OUT) ? 1 : 0; }
+  const r = 0.35;
+  for (const [x1, z1, x2, z2] of F.blocks) {
+    const i1 = Math.max(0, Math.floor((x1 - r - u0) / cs)), i2 = Math.min(nu - 1, Math.ceil((x2 + r - u0) / cs)), j1 = Math.max(0, Math.floor((z1 - r - v0) / cs)), j2 = Math.min(nv - 1, Math.ceil((z2 + r - v0) / cs));
+    for (let j = j1; j <= j2; j++) for (let i = i1; i <= i2; i++) { const u = u0 + i * cs, v = v0 + j * cs; if (u > x1 - r && u < x2 + r && v > z1 - r && v < z2 + r) free[j * nu + i] = 0; }
+  }
+  F.grid = { cs, u0, v0, nu, nv, free };
+  return (FLOORS[n] = F);
+}
+function walkable(F, u, v) { const G = F.grid, i = Math.round((u - G.u0) / G.cs), j = Math.round((v - G.v0) / G.cs); return i >= 0 && j >= 0 && i < G.nu && j < G.nv && G.free[j * G.nu + i] === 1; }
+function clearLine(F, au, av, bu, bv) { const n = Math.ceil(Math.hypot(bu - au, bv - av) / 0.25); for (let i = 1; i <= n; i++) if (!walkable(F, au + (bu - au) * i / n, av + (bv - av) * i / n)) return false; return true; }
+function findPath(F, au, av, bu, bv) {
+  if (clearLine(F, au, av, bu, bv)) return [[bu, bv]];
+  const G = F.grid, { cs, u0, v0, nu, nv, free } = G, idx = (i, j) => j * nu + i;
+  const near = (u, v) => {
+    const i0 = Math.round((u - u0) / cs), j0 = Math.round((v - v0) / cs);
+    for (let rr = 0; rr < 40; rr++) for (let dj = -rr; dj <= rr; dj++) for (let di = -rr; di <= rr; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== rr) continue; const i = i0 + di, j = j0 + dj;
+      if (i >= 0 && j >= 0 && i < nu && j < nv && free[idx(i, j)]) return [i, j];
+    }
+    return null;
+  };
+  const S = near(au, av), E = near(bu, bv); if (!S || !E) return null;
+  const dist = new Float32Array(nu * nv).fill(1e9), prev = new Int32Array(nu * nv).fill(-1), heap = [];
+  const h = n => Math.hypot((n % nu) - E[0], ((n / nu) | 0) - E[1]);
+  const push = (f, n) => { heap.push([f, n]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, rr = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (rr < heap.length && heap[rr][0] < heap[m][0]) m = rr; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const s0 = idx(S[0], S[1]), e0 = idx(E[0], E[1]); dist[s0] = 0; push(h(s0), s0);
+  while (heap.length) {
+    const [, n] = pop(); if (n === e0) break;
+    const i = n % nu, j = (n / nu) | 0, d0 = dist[n];
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nu || jj >= nv) continue;
+      const m = idx(ii, jj); if (!free[m] || (di && dj && !(free[idx(i + di, j)] && free[idx(i, j + dj)]))) continue;
+      const nd = d0 + (di && dj ? 1.414 : 1); if (nd < dist[m]) { dist[m] = nd; prev[m] = n; push(nd + h(m), m); }
+    }
+  }
+  if (prev[e0] < 0 && s0 !== e0) return null;
+  const cells = []; for (let n = e0; n !== -1; n = prev[n]) cells.push([u0 + (n % nu) * cs, v0 + ((n / nu) | 0) * cs]); cells.reverse();
+  const out = []; let cur = [au, av], k = 0;
+  while (k < cells.length - 1) { let far = k + 1; for (let m = cells.length - 1; m > k; m--) if (clearLine(F, cur[0], cur[1], cells[m][0], cells[m][1])) { far = m; break; } cur = cells[far]; out.push(cur); k = far; }
+  if (walkable(F, bu, bv) && (!out.length || clearLine(F, out[out.length - 1][0], out[out.length - 1][1], bu, bv))) out.push([bu, bv]);
+  return out.length ? out : [[bu, bv]];
+}
+
+/* ---------- 걷기 · 시선 ---------- */
+const IN = { on: false, ph: null, F: null, u: 0, v: 0, yaw: 0, pitch: 0, keys: new Set(), pad: new Set(), path: [], poi: null, bob: 0 };
+const EYE = 1.6;
+const inAmb = new THREE.AmbientLight(0xfff1df, 0); scene.add(inAmb);
+const inHemi = new THREE.HemisphereLight(0xfff6ea, 0x8a8478, 0); scene.add(inHemi);   // 실내 조명 (점광원 대신: 모든 재질이 가벼워진다)
+const wPos = (F, u, h, v) => new THREE.Vector3(IO.x + (u * IUx + v * IVx) * U, F.y + h * U, IO.z + (u * IUz + v * IVz) * U);
+const lDir = (dx, dz) => [dx * IUx + dz * IUz, dx * IVx + dz * IVz];          // 세계 방향 → 실내 방향
+const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+const yawTo = (F, u, v, tu, th, tv) => { const a = wPos(F, u, EYE, v), b = wPos(F, tu, th, tv), d = b.sub(a); return [Math.atan2(-d.x, -d.z), Math.atan2(d.y, Math.hypot(d.x, d.z))]; };
+function applyCam() { camera.position.copy(wPos(IN.F, IN.u, EYE + Math.sin(IN.bob) * 0.035, IN.v)); camera.rotation.set(IN.pitch, IN.yaw, 0, 'YXZ'); }
+
+const $ = id => document.getElementById(id);
+const poisEl = $('inPois'), cardEl = $('inCard');
+function showCard(code, name, desc) { $('inCode').textContent = code; $('inName').textContent = name; $('inDesc').textContent = desc; cardEl.hidden = false; }
+function buildPoiLabels(F) {
+  poisEl.innerHTML = '';
+  F.pois.forEach((p, i) => {
+    const el = document.createElement('button'); el.className = 'poi';
+    el.innerHTML = `<small>${String(i + 1).padStart(2, '0')}</small>${p.name}`;
+    el.addEventListener('click', () => gotoPoi(p));
+    poisEl.appendChild(el); p.el = el; p.w = wPos(F, p.at[0], p.at[1], p.at[2]);
+  });
+}
+const pv = new THREE.Vector3();
+function updatePois() {
+  const W = innerWidth, H = innerHeight;
+  for (const p of IN.F.pois) {
+    pv.copy(p.w).project(camera);
+    const off = pv.z > 1 || Math.abs(pv.x) > 1.05 || Math.abs(pv.y) > 1.05;
+    if (off || IN.ph === 'fly') { p.el.style.opacity = 0; p.el.style.pointerEvents = 'none'; continue; }
+    const d = camera.position.distanceTo(p.w) / U;
+    p.el.style.opacity = p === IN.poi ? 1 : Math.max(0.5, Math.min(1, 1.4 - d / 70));
+    p.el.style.pointerEvents = 'auto'; p.el.classList.toggle('sel', p === IN.poi);
+    p.el.style.transform = `translate(-50%,-100%) translate(${((pv.x * 0.5 + 0.5) * W).toFixed(1)}px,${((-pv.y * 0.5 + 0.5) * H).toFixed(1)}px)`;
+    p.el.style.zIndex = String(p === IN.poi ? 9999 : 5000 - Math.round(d));
+  }
+}
+function walkTo(u, v, face) {
+  const path = findPath(IN.F, IN.u, IN.v, u, v); if (!path) return;
+  IN.path = path; IN.face = face || null; IN.ph = 'walk';
+}
+function gotoPoi(p) {
+  if (!IN.on || IN.ph === 'fly') return;
+  IN.poi = p; const i = IN.F.pois.indexOf(p);
+  showCard(`${IN.F.n}층 · ${String(i + 1).padStart(2, '0')}`, p.name, p.desc);
+  walkTo(p.stand[0], p.stand[1], p.at);
+}
+
+/* 바깥 → 안: 아트리움 위로 날아가 수직으로 내려간 다음 출발 지점으로 */
+let saved = null;
+function glassMode(inside) { M.glass.transparent = inside; M.glass.opacity = inside ? 0.16 : 1; M.glass.depthWrite = !inside; M.glass.needsUpdate = true; }
+function setLights() { inAmb.intensity = 0.7; inHemi.intensity = 1.1; }
+function flyPath(keys, done) { IN.fly = { keys, i: 0, k: 0, done }; IN.ph = 'fly'; }
+function enterFloor(n) {
+  if (t < END) t = END;
+  const F = getFloor(n);
+  if (IN.on && IN.F === F) return;
+  if (IN.on) { switchFloor(F); return; }
+  saved = { pos: camera.position.clone(), tgt: controls.target.clone() };
+  IN.on = true; IN.F = F; F.group.visible = true; IN.poi = null; IN.path = [];
+  controls.enabled = false; glassMode(true); setLights();
+  camera.near = 0.02; camera.fov = 66; camera.updateProjectionMatrix();
+  document.body.classList.add('inside'); updateInsideUI();
+  buildPoiLabels(F); cardEl.hidden = true;
+  const top = wPos(F, 0, (BASE + 8 * FH + 22 - F.y) / U, 0), mid = wPos(F, 0, EYE, 0);
+  const [sy] = yawTo(F, 0, 0, F.start.u, EYE, F.start.v);
+  const st = wPos(F, F.start.u, EYE, F.start.v), look1 = wPos(F, F.start.look[0], F.start.look[1], F.start.look[2]);
+  const ahead = wPos(F, F.start.u, EYE - 1, F.start.v);
+  flyPath([
+    { p: camera.position.clone(), l: controls.target.clone(), d: 0 },
+    { p: top, l: wPos(F, 0.01, 0, 0.6), d: 1.8 },
+    { p: mid, l: ahead, d: 1.9 },
+    { p: st, l: look1, d: 1.4 },
+  ], () => {
+    IN.u = F.start.u; IN.v = F.start.v; [IN.yaw, IN.pitch] = yawTo(F, IN.u, IN.v, ...F.start.look);
+    IN.ph = 'free'; applyCam(); showCard(`${F.n}층`, F.title, F.intro);
+  });
+}
+function switchFloor(F) {
+  const fade = $('fade'); fade.textContent = `엘리베이터로 ${F.n}층 이동 중…`; fade.classList.add('on');
+  IN.ph = 'fly'; IN.fly = null;
+  setTimeout(() => {
+    IN.F.group.visible = false; IN.F = F; F.group.visible = true; setLights(); buildPoiLabels(F);
+    IN.u = F.start.u; IN.v = F.start.v; [IN.yaw, IN.pitch] = yawTo(F, IN.u, IN.v, ...F.start.look); IN.poi = null; IN.path = [];
+    applyCam(); IN.ph = 'free'; updateInsideUI(); showCard(`${F.n}층`, F.title, F.intro);
+    setTimeout(() => fade.classList.remove('on'), 250);
+  }, 650);
+}
+function exitInside() {
+  if (!IN.on || IN.ph === 'fly') return;
+  const F = IN.F; cardEl.hidden = true; poisEl.innerHTML = ''; IN.poi = null;
+  const look0 = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()));
+  flyPath([
+    { p: camera.position.clone(), l: look0, d: 0 },
+    { p: wPos(F, 0, EYE, 0), l: wPos(F, 0, EYE + 40, 0.5), d: 1.2 },
+    { p: wPos(F, 0, (BASE + 8 * FH + 22 - F.y) / U, 0), l: wPos(F, 0, 0, 1), d: 1.6 },
+    { p: saved.pos, l: saved.tgt, d: 1.8 },
+  ], () => {
+    IN.on = false; IN.ph = null; F.group.visible = false; glassMode(false);
+    inAmb.intensity = 0; inHemi.intensity = 0;
+    camera.near = 1; camera.fov = 42; camera.updateProjectionMatrix();
+    controls.target.copy(saved.tgt); controls.enabled = true; camera.rotation.order = 'XYZ'; camera.lookAt(saved.tgt);
+    document.body.classList.remove('inside'); updateInsideUI();
+  });
+}
+function updateInsideUI() {
+  document.querySelectorAll('[data-floor]').forEach(b => b.classList.toggle('on', IN.on && IN.F && IN.F.n === +b.dataset.floor));
+  $('inExit').hidden = !IN.on; $('inHelp').hidden = !IN.on; $('inPad').hidden = !IN.on || !matchMedia('(pointer: coarse)').matches;
+  $('inHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 둘러보고, 버튼이나 바닥을 눌러 걸어요. 이름표를 누르면 그 앞으로 가요.' : '끌어서 둘러보기 · W A S D/방향키로 걷기 · Shift 빨리 · 바닥이나 이름표를 누르면 그곳으로 · Esc 나가기';
+}
+const ease3 = k => k * k * (3 - 2 * k);
+const lookTmp = new THREE.Vector3();
+function inStep(dt) {
+  if (IN.ph === 'fly' && IN.fly) {
+    const f = IN.fly, a = f.keys[f.i], b = f.keys[f.i + 1];
+    f.k = Math.min(1, f.k + dt / b.d); const e = ease3(f.k);
+    camera.position.lerpVectors(a.p, b.p, e); lookTmp.lerpVectors(a.l, b.l, e); camera.lookAt(lookTmp);
+    if (f.k >= 1) { f.i++; f.k = 0; if (f.i >= f.keys.length - 1) { IN.fly = null; f.done(); } }
+    if (IN.on) updatePois();
+    return;
+  }
+  if (!IN.on || IN.ph === 'fly') return;
+  const F = IN.F;
+  if (IN.ph === 'walk') {
+    const tgt = IN.path[0];
+    if (tgt) {
+      const du = tgt[0] - IN.u, dv = tgt[1] - IN.v, d = Math.hypot(du, dv), step = 4.2 * dt;
+      // 걷는 방향으로 고개를 돌린다
+      const wx = (du * IUx + dv * IVx), wz = (du * IUz + dv * IVz);
+      if (d > 0.05) { IN.yaw += angDiff(IN.yaw, Math.atan2(-wx, -wz)) * Math.min(1, dt * 5); IN.pitch += (0 - IN.pitch) * Math.min(1, dt * 4); }
+      if (d <= step) { IN.u = tgt[0]; IN.v = tgt[1]; IN.path.shift(); } else { IN.u += du / d * step; IN.v += dv / d * step; }
+      IN.bob += dt * 9;
+    } else if (IN.face) {
+      const [ty, tp] = yawTo(F, IN.u, IN.v, ...IN.face);
+      IN.yaw += angDiff(IN.yaw, ty) * Math.min(1, dt * 4); IN.pitch += (tp - IN.pitch) * Math.min(1, dt * 4);
+      if (Math.abs(angDiff(IN.yaw, ty)) < 0.01 && Math.abs(tp - IN.pitch) < 0.01) IN.ph = 'free';
+    } else IN.ph = 'free';
+  } else if (IN.ph === 'free') {
+    const K = c => IN.keys.has(c) ? 1 : 0, Pd = c => IN.pad.has(c) ? 1 : 0;
+    const fwd = Math.min(1, K('KeyW') + K('ArrowUp') + Pd('f')) - Math.min(1, K('KeyS') + K('ArrowDown') + Pd('b'));
+    const str = K('KeyD') - K('KeyA'), turn = Math.min(1, K('ArrowLeft') + K('KeyQ') + Pd('l')) - Math.min(1, K('ArrowRight') + K('KeyE') + Pd('r'));
+    IN.yaw += turn * 1.8 * dt;
+    if (fwd || str) {
+      const sp = (IN.keys.has('ShiftLeft') || IN.keys.has('ShiftRight') ? 9 : 4.2) * dt;
+      const fx = -Math.sin(IN.yaw), fz = -Math.cos(IN.yaw), rx = Math.cos(IN.yaw), rz = -Math.sin(IN.yaw);
+      let dx = fx * fwd + rx * str, dz = fz * fwd + rz * str; const n = Math.hypot(dx, dz); dx /= n; dz /= n;
+      const [du, dv] = lDir(dx * sp, dz * sp);
+      if (walkable(F, IN.u + du, IN.v)) IN.u += du;
+      if (walkable(F, IN.u, IN.v + dv)) IN.v += dv;
+      IN.bob += dt * 9;
+    }
+  }
+  applyCam(); updatePois();
+}
+/* 끌어서 둘러보기 · 바닥 누르기 */
+const cvs = renderer.domElement; let drag = null;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+cvs.addEventListener('pointerdown', e => { if (!IN.on) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY }; try { cvs.setPointerCapture(e.pointerId); } catch (x) {} });
+cvs.addEventListener('pointermove', e => {
+  if (!IN.on || !drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+  if (!['free', 'walk'].includes(IN.ph)) return;
+  if (IN.ph === 'walk' && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 6) { IN.ph = 'free'; IN.path = []; }
+  const s = e.pointerType === 'mouse' ? 0.0042 : 0.006;
+  IN.yaw += dx * s; IN.pitch = Math.max(-1.2, Math.min(1.2, IN.pitch + dy * s));
+});
+const dragEnd = e => {
+  if (!IN.on || !drag || e.pointerId !== drag.id) return;
+  const tap = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6; drag = null;
+  if (!tap || e.type !== 'pointerup' || !['free', 'walk'].includes(IN.ph)) return;
+  const r = cvs.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(IN.F.floorMesh, false)[0]; if (!hit) return;
+  const [u, v] = toL(hit.point.x, hit.point.z); if (!walkable(IN.F, u, v)) return;
+  IN.poi = null; walkTo(u, v, null);
+};
+['pointerup', 'pointercancel'].forEach(n => cvs.addEventListener(n, dragEnd));
+cvs.addEventListener('wheel', e => { if (IN.on) e.preventDefault(); }, { passive: false });
+{
+  const KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'];
+  addEventListener('keydown', e => {
+    if (!IN.on) return;
+    if (e.key === 'Escape') { exitInside(); return; }
+    if (KEYS.includes(e.code)) { e.preventDefault(); IN.keys.add(e.code); if (IN.ph === 'walk' && !e.code.startsWith('Shift')) { IN.ph = 'free'; IN.path = []; } }
+  });
+  addEventListener('keyup', e => IN.keys.delete(e.code));
+  addEventListener('blur', () => { IN.keys.clear(); IN.pad.clear(); });
+}
+$('inPad').querySelectorAll('button').forEach(btn => {
+  const d = btn.dataset.m, off = () => { IN.pad.delete(d); btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); if (!IN.on) return; if (IN.ph === 'walk') { IN.ph = 'free'; IN.path = []; } IN.pad.add(d); btn.classList.add('on'); try { btn.setPointerCapture(e.pointerId); } catch (x) {} });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => btn.addEventListener(n, off));
+});
+document.querySelectorAll('[data-floor]').forEach(b => b.addEventListener('click', () => enterFloor(+b.dataset.floor)));
+$('inExit').addEventListener('click', exitInside);
+$('inCardX').addEventListener('click', () => { cardEl.hidden = true; });
+// 바깥 화면에서 ?floor=1 / ?floor=7 로 바로 들어가기, 부모 창에서 postMessage({type:'pangyo-floor', floor:7})
+window.addEventListener('message', e => { const m = e.data || {}; if (m.type === 'pangyo-floor') { if (m.floor) enterFloor(+m.floor); else exitInside(); } });
+
+/* =========================================================
    8. HUD · 애니메이션 루프
    ========================================================= */
 const stagesEl = document.getElementById('stages');
@@ -762,7 +1484,7 @@ const barFill = document.getElementById('barFill');
 
 let t = 0, speed = 1;
 const speeds = [1, 2, 4];
-document.getElementById('replay').onclick = () => { t = 0; };
+document.getElementById('replay').onclick = () => { if (IN.on) return; t = 0; };
 document.getElementById('skip').onclick = () => { t = END; };
 document.getElementById('speed').onclick = e => {
   speed = speeds[(speeds.indexOf(speed) + 1) % speeds.length];
@@ -797,7 +1519,8 @@ function applyTimeline() {
   });
   descEl.textContent = done ? '완성! 마우스로 돌려 보세요' : stages[cur].desc;
   barFill.style.width = `${Math.min(100, (t / END) * 100)}%`;
-  labels.forEach(l => l.classList.toggle('show', done));
+  labels.forEach(l => l.classList.toggle('show', done && !IN.on && !IN.fly));
+  garden.visible = t >= END - 0.6;
 }
 
 const clock = new THREE.Clock();
@@ -805,7 +1528,7 @@ function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (t < END) t = Math.min(END, t + dt * speed);
   applyTimeline();
-  controls.update();
+  if (IN.on || IN.fly) inStep(dt); else controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
   requestAnimationFrame(loop);
