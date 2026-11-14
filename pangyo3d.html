@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>판교 IoT혁신센터 일대 3D 조립 모형</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1d2440; font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  #app { position: fixed; inset: 0; }
+  #hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(20, 22, 36, 0.72); color: #fff; padding: 14px 16px 12px;
+    border-radius: 12px; backdrop-filter: blur(6px); max-width: 340px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  }
+  #hud h1 { font-size: 16px; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.2px; }
+  #stages { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    font-size: 12px; padding: 4px 8px; border-radius: 999px;
+    background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.55);
+    transition: all .25s;
+  }
+  .chip.done { background: rgba(255,190,120,0.25); color: #ffd9b0; }
+  .chip.now { background: #ff9f5a; color: #1d1d1d; font-weight: 700; }
+  #stageDesc { font-size: 12px; color: rgba(255,255,255,0.75); margin-bottom: 10px; min-height: 16px; }
+  .btns { display: flex; gap: 6px; }
+  button {
+    font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 0;
+    background: #ff9f5a; color: #1a1a1a; font-weight: 700; cursor: pointer;
+  }
+  button.ghost { background: rgba(255,255,255,0.14); color: #fff; font-weight: 500; }
+  button:hover { filter: brightness(1.08); }
+  #bar { height: 3px; background: rgba(255,255,255,0.12); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  #barFill { height: 100%; width: 0; background: #ff9f5a; }
+  #help {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+    color: rgba(255,255,255,0.85); font-size: 12px; background: rgba(20,22,36,0.55);
+    padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+  }
+  .label {
+    color: #fff; font-size: 13px; font-weight: 700; text-align: center; line-height: 1.25;
+    text-shadow: 0 0 3px #000, 0 0 6px rgba(0,0,0,0.8);
+    opacity: 0; transition: opacity .8s; pointer-events: none;
+  }
+  .label .pin {
+    display: block; width: 12px; height: 12px; margin: 0 auto 3px; border-radius: 50%;
+    background: #6b74c9; border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,0.6);
+  }
+  .label.show { opacity: 1; }
+  @media (max-width: 600px) {
+    #hud { top: 8px; left: 8px; right: 8px; max-width: none; padding: 8px 10px; }
+    #hud h1 { display: none; }
+    .chip { font-size: 11px; padding: 3px 6px; }
+    #stages { margin-bottom: 6px; }
+    #stageDesc { display: none; }
+    button { font-size: 12px; padding: 6px 9px; }
+    #bar { margin-top: 6px; }
+    #help { display: none; }
+    .label { font-size: 11px; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <h1>판교 IoT혁신센터 일대 · 조립 모형</h1>
+  <div id="stages"></div>
+  <div id="stageDesc">준비 중…</div>
+  <div class="btns">
+    <button id="replay">다시 조립</button>
+    <button id="speed" class="ghost">속도 1×</button>
+    <button id="skip" class="ghost">완성 보기</button>
+  </div>
+  <div id="bar"><div id="barFill"></div></div>
+</div>
+<div id="help">왼쪽 드래그: 회전 · 휠: 확대/축소 · 오른쪽 드래그: 이동</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* =========================================================
+   0. 기본 설정
+   ========================================================= */
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'fixed';
+labelRenderer.domElement.style.inset = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+document.body.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xd29a7c, 180, 520);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 3000);
+camera.position.set(-62, 78, 92);
+{ // 세로로 긴 화면(휴대폰)에서는 조금 멀리서 보기
+  const a = window.innerWidth / window.innerHeight;
+  if (a < 1.2) camera.position.sub(new THREE.Vector3(6, 4, -24)).multiplyScalar(Math.min(2.2, 1.25 / a)).add(new THREE.Vector3(6, 4, -24));
+}
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(6, 4, -24);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minDistance = 15;
+controls.maxDistance = 380;
+controls.update();
+
+/* =========================================================
+   1. 해질녘 하늘 · 조명
+   ========================================================= */
+const sunDir = new THREE.Vector3(-0.86, 0.30, 0.42).normalize();
+
+function makeSky(radius) {
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { sunDir: { value: sunDir } },
+    vertexShader: `
+      varying vec3 vWorld;
+      void main(){
+        vec4 wp = modelMatrix * vec4(position,1.0);
+        vWorld = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      uniform vec3 sunDir;
+      varying vec3 vWorld;
+      void main(){
+        vec3 dir = normalize(vWorld - cameraPosition);
+        float h = dir.y;
+        float s = max(dot(dir, sunDir), 0.0);
+        vec3 horizonCool = vec3(0.86, 0.62, 0.58);
+        vec3 horizonWarm = vec3(1.00, 0.60, 0.30);
+        vec3 horizon = mix(horizonCool, horizonWarm, pow(s, 2.5));
+        vec3 zenith = vec3(0.17, 0.22, 0.45);
+        vec3 col = mix(horizon, zenith, smoothstep(0.0, 0.6, h));
+        col = mix(col, vec3(0.42, 0.32, 0.30), smoothstep(0.0, -0.25, h));
+        col += vec3(1.0, 0.80, 0.55) * pow(s, 900.0) * 3.0;
+        col += vec3(1.0, 0.55, 0.25) * pow(s, 10.0) * 0.45;
+        gl_FragColor = vec4(col, 1.0);
+      }`
+  });
+  return new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 24), mat);
+}
+scene.add(makeSky(1500));
+
+// 하늘을 환경맵으로 써서 유리·태양광 패널에 노을이 비치게
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.add(makeSky(50));
+scene.environment = pmrem.fromScene(envScene, 0.03, 0.1, 100).texture;
+scene.environmentIntensity = 0.55;
+
+const hemi = new THREE.HemisphereLight(0xffd4b0, 0x3b3226, 0.9);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffb27a, 3.2);
+sun.position.copy(controls.target).addScaledVector(sunDir, 220);
+sun.target.position.copy(controls.target);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+const sc = sun.shadow.camera;
+sc.left = -130; sc.right = 130; sc.top = 130; sc.bottom = -130; sc.near = 20; sc.far = 480;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.12;
+scene.add(sun, sun.target);
+
+/* =========================================================
+   2. 좌표 변환 · 도형 유틸
+   (항공사진 픽셀 좌표 → 3D 좌표, 1px = 0.1 단위)
+   ========================================================= */
+const S = 0.1, CX = 630, CY = 820;           // 원점 = 중앙 광장
+const P = (px, py) => ({ x: (px - CX) * S, z: (py - CY) * S });
+const area = pts => {                           // 셰이프 좌표(x, -z) 기준 부호 면적
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * (-q.z) - q.x * (-p.z);
+  }
+  return a / 2;
+};
+const ccw = pts => (area(pts) > 0 ? pts : pts.slice().reverse());
+const W = arr => ccw(arr.map(([a, b]) => P(a, b)));
+
+function offset(pts, d) {                       // 다각형을 바깥(+)/안쪽(-)으로 d만큼 오프셋
+  const n = pts.length, out = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+    const ax = a.x, ay = -a.z, bx = b.x, by = -b.z, cx = c.x, cy = -c.z;
+    let e1x = bx - ax, e1y = by - ay, l1 = Math.hypot(e1x, e1y) || 1; e1x /= l1; e1y /= l1;
+    let e2x = cx - bx, e2y = cy - by, l2 = Math.hypot(e2x, e2y) || 1; e2x /= l2; e2y /= l2;
+    const n1x = e1y, n1y = -e1x, n2x = e2y, n2y = -e2x;
+    let mx = n1x + n2x, my = n1y + n2y; const ml = Math.hypot(mx, my);
+    if (ml < 1e-6) { mx = n1x; my = n1y; } else { mx /= ml; my /= ml; }
+    const k = 1 / Math.max(mx * n1x + my * n1y, 0.4);
+    out.push({ x: bx + mx * d * k, z: -(by + my * d * k) });
+  }
+  return out;
+}
+
+function shapeOf(pts, holes = []) {
+  const s = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x, -p.z)));
+  holes.forEach(h => s.holes.push(new THREE.Path(h.map(p => new THREE.Vector2(p.x, -p.z)))));
+  return s;
+}
+function extrudeGeo(pts, h, holes = []) {
+  const g = new THREE.ExtrudeGeometry(shapeOf(pts, holes), { depth: h, bevelEnabled: false, curveSegments: 6 });
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+function mesh(geo, mat, y = 0, cast = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.y = y; m.castShadow = cast; m.receiveShadow = true;
+  return m;
+}
+function inPoly(x, z, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, zi = poly[i].z, xj = poly[j].x, zj = poly[j].z;
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function segDist(px, pz, a, b) {
+  const vx = b.x - a.x, vz = b.z - a.z, wx = px - a.x, wz = pz - a.z;
+  const t = Math.max(0, Math.min(1, (wx * vx + wz * vz) / (vx * vx + vz * vz || 1)));
+  return Math.hypot(px - (a.x + vx * t), pz - (a.z + vz * t));
+}
+function polyDist(x, z, poly) {
+  if (inPoly(x, z, poly)) return 0;
+  let d = Infinity;
+  for (let i = 0; i < poly.length; i++) d = Math.min(d, segDist(x, z, poly[i], poly[(i + 1) % poly.length]));
+  return d;
+}
+function sectorPx(cx, cy, r0, r1, a0, a1, n = 16) {   // 부채꼴(아치형 건물) 픽셀 좌표
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180; pts.push([cx + r1 * Math.cos(a), cy + r1 * Math.sin(a)]); }
+  for (let i = n; i >= 0; i--) { const a = (a0 + (a1 - a0) * i / n) * Math.PI / 180; pts.push([cx + r0 * Math.cos(a), cy + r0 * Math.sin(a)]); }
+  return pts;
+}
+function perimeterPoints(poly, spacing) {
+  const pts = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    const n = Math.max(1, Math.round(len / spacing));
+    for (let k = 0; k < n; k++) pts.push({ x: a.x + (b.x - a.x) * k / n, z: a.z + (b.z - a.z) * k / n });
+  }
+  return pts;
+}
+const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+
+/* =========================================================
+   3. 재질
+   ========================================================= */
+const M = {
+  concrete: new THREE.MeshStandardMaterial({ color: 0xe8e3d8, roughness: 0.85 }),
+  column:   new THREE.MeshStandardMaterial({ color: 0xd2ccc0, roughness: 0.7 }),
+  podium:   new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.9 }),
+  glass:    new THREE.MeshStandardMaterial({ color: 0x3e5a70, metalness: 0.85, roughness: 0.12, envMapIntensity: 1.4 }),
+  glassLt:  new THREE.MeshStandardMaterial({ color: 0x86a8bf, metalness: 0.7, roughness: 0.1, envMapIntensity: 1.3 }),
+  louver:   new THREE.MeshStandardMaterial({ color: 0xbab3a6, roughness: 0.6, metalness: 0.2 }),
+  roof:     new THREE.MeshStandardMaterial({ color: 0xb8b0a1, roughness: 0.95 }),
+  parapet:  new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.8 }),
+  green:    new THREE.MeshStandardMaterial({ color: 0x6d7c45, roughness: 1 }),
+  panel:    new THREE.MeshStandardMaterial({ color: 0x1b2742, metalness: 0.6, roughness: 0.28, envMapIntensity: 1.2 }),
+  equip:    new THREE.MeshStandardMaterial({ color: 0xc8c8c2, roughness: 0.6, metalness: 0.3 }),
+  heli:     new THREE.MeshStandardMaterial({ color: 0x4f8d6b, roughness: 0.8 }),
+  white:    new THREE.MeshStandardMaterial({ color: 0xf5f4ef, roughness: 0.6 }),
+  steel:    new THREE.MeshStandardMaterial({ color: 0x8d8f93, roughness: 0.5, metalness: 0.6 }),
+  teal:     new THREE.MeshStandardMaterial({ color: 0x4f9e8c, roughness: 0.8 }),
+  gray:     new THREE.MeshStandardMaterial({ color: 0xa9adb0, roughness: 0.8 }),
+  road:     new THREE.MeshStandardMaterial({ color: 0x3b3c41, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  walk:     new THREE.MeshStandardMaterial({ color: 0xa9a297, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+  pave:     new THREE.MeshStandardMaterial({ color: 0xb0a896, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+  paveLt:   new THREE.MeshStandardMaterial({ color: 0xcdbf97, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+  line:     new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+  yellow:   new THREE.MeshStandardMaterial({ color: 0xe8c14a, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+};
+
+/* =========================================================
+   4. 건물 평면 (항공사진에서 따낸 윤곽, 픽셀 좌표)
+   ========================================================= */
+const FH = 1.5;      // 층고
+const T = 0.32;      // 슬래브 두께
+const BASE = 0.6;    // 기단 높이
+
+const NORTH = W([[108,374],[200,300],[320,228],[440,175],[550,135],[680,110],[775,100],[792,122],[830,126],[846,166],[882,172],[891,282],[894,340],[850,356],[760,396],[640,440],[520,470],[390,495],[262,506],[200,470],[140,430]]);
+const NORTH_HOLE = W([[540,228],[622,214],[632,340],[552,350]]);
+const SE = W([[690,440],[740,470],[800,522],[835,565],[930,650],[1050,745],[1150,820],[1215,870],[1226,985],[1150,990],[1060,965],[960,920],[870,860],[800,790],[750,720],[725,660],[710,590],[695,520],[675,470]]);
+const JUNC = W([[560,478],[688,448],[705,560],[645,612],[566,600]]);
+const AI = W([[398,532],[552,506],[556,592],[404,612]]);
+const WEST = W(sectorPx(600, 860, 205, 285, 185, 235, 14));
+const CTX_B = W([[-200,735],[70,715],[140,770],[240,885],[245,1065],[-200,1065]]);
+
+const buildings = [
+  { key: 'north', name: 'IoT혁신센터', pts: NORTH, holes: [NORTH_HOLE], floors: 8 },
+  { key: 'se',    name: '지능형ICT융합연구센터', pts: SE, floors: 6 },
+  { key: 'junc',  name: '중앙 연결동', pts: JUNC, floors: 6 },
+  { key: 'ai',    name: 'AI데이터안심활용센터', pts: AI, floors: 4, roofGlass: true },
+  { key: 'west',  name: '서측 저층동', pts: WEST, floors: 2, roofGreen: true },
+];
+const roofTop = b => BASE + b.floors * FH + 0.45;
+
+// 도로(중심선)
+const ROAD_LINE = [[-260,306],[0,545],[80,620],[150,700],[230,810],[300,910],[360,1000],[420,1080],[540,1320]].map(([a, b]) => P(a, b));
+function ribbon(line, half, side = 0) {          // 폴리라인을 띠 다각형으로
+  const L = [], R = [];
+  for (let i = 0; i < line.length; i++) {
+    const a = line[Math.max(0, i - 1)], b = line[Math.min(line.length - 1, i + 1)];
+    let dx = b.x - a.x, dz = b.z - a.z; const l = Math.hypot(dx, dz); dx /= l; dz /= l;
+    const nx = dz, nz = -dx;  // 진행방향 기준 동쪽(오른쪽 위)
+    L.push({ x: line[i].x + nx * (side + half), z: line[i].z + nz * (side + half) });
+    R.push({ x: line[i].x + nx * (side - half), z: line[i].z + nz * (side - half) });
+  }
+  return ccw(L.concat(R.reverse()));
+}
+const ROAD = ribbon(ROAD_LINE, 2.6);
+const WALK = ribbon(ROAD_LINE, 4.4);
+
+// 평탄해야 하는 영역 (산이 올라오면 안 되는 곳)
+const C2 = P(600, 860);                          // 아치 광장 중심
+const flatZones = [...buildings.map(b => offset(b.pts, 1.2)), WALK, CTX_B,
+  W(sectorPx(600, 860, 0, 205, 0, 360, 36))];
+
+/* =========================================================
+   5. 지형 (산 + 숲)
+   ========================================================= */
+function forestMask(x, z) {
+  const ang = Math.atan2(z, x) * 180 / Math.PI;    // 광장 기준 방위각
+  return smooth(-165, -148, ang) * (1 - smooth(6, 20, ang));
+}
+function flatDist(x, z) {
+  let d = Infinity;
+  for (const p of flatZones) { d = Math.min(d, polyDist(x, z, p)); if (d === 0) break; }
+  return d;
+}
+function heightAt(x, z, d = flatDist(x, z)) {
+  const m = forestMask(x, z);
+  if (m <= 0) return 0;
+  const noise = Math.sin(x * 0.13) * Math.cos(z * 0.11) * 1.1 + Math.sin(x * 0.05 + z * 0.07) * 1.6;
+  return Math.max(0, m * (11 * smooth(3, 30, d) + noise * smooth(3, 14, d)));
+}
+
+const TS = 300, TN = 170, TCX = 5, TCZ = -20;
+const terrainGeo = new THREE.PlaneGeometry(TS, TS, TN, TN);
+terrainGeo.rotateX(-Math.PI / 2);
+terrainGeo.translate(TCX, 0, TCZ);
+{
+  const pos = terrainGeo.attributes.position, cols = [];
+  const lawn = new THREE.Color(0x667f4c), forest = new THREE.Color(0x2e4626), soil = new THREE.Color(0x6b5e45), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const d = flatDist(x, z);
+    const h = heightAt(x, z, d);
+    pos.setY(i, h);
+    const f = forestMask(x, z) * smooth(1.5, 7, d);
+    c.copy(lawn).lerp(forest, f);
+    if (f > 0.05 && f < 0.6) c.lerp(soil, 0.25 * (1 - Math.abs(f - 0.3) / 0.3));
+    const hsh = Math.sin(i * 12.9898 + 78.233) * 43758.5453; const jitter = (hsh - Math.floor(hsh) - 0.5) * 0.05;
+    c.offsetHSL(0, 0, jitter);
+    cols.push(c.r, c.g, c.b);
+  }
+  terrainGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  terrainGeo.computeVertexNormals();
+}
+const terrain = mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }), 0, false);
+
+// 나무 (인스턴싱)
+const trees = new THREE.Group();
+{
+  const geo = new THREE.IcosahedronGeometry(1, 0);
+  const mat = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
+  const list = [];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let tries = 0; tries < 9000 && list.length < 1900; tries++) {
+    const x = TCX + (rnd() - 0.5) * TS * 0.96, z = TCZ + (rnd() - 0.5) * TS * 0.96;
+    const m = forestMask(x, z); if (m < 0.35 || rnd() > m) continue;
+    const d = flatDist(x, z); if (d < 3.2) continue;
+    list.push({ x, z, y: heightAt(x, z, d), r: 1.3 + rnd() * 1.3, kind: 0 });
+  }
+  // 도로변 벚나무
+  for (let i = 1; i < 7; i++) {
+    const a = ROAD_LINE[i], b = ROAD_LINE[i + 1];
+    const len = Math.hypot(b.x - a.x, b.z - a.z), dx = (b.x - a.x) / len, dz = (b.z - a.z) / len;
+    for (let s = 1; s < len; s += 3.4) for (const side of [-5.3, 5.3]) {
+      const x = a.x + dx * s + dz * side, z = a.z + dz * s - dx * side;
+      if (flatZones.slice(0, 5).some(p => polyDist(x, z, p) < 1.5)) continue;
+      if (polyDist(x, z, CTX_B) < 1.2) continue;
+      list.push({ x, z, y: 0, r: 1.0 + rnd() * 0.5, kind: rnd() < 0.7 ? 1 : 2 });
+    }
+  }
+  const inst = new THREE.InstancedMesh(geo, mat, list.length);
+  const dummy = new THREE.Object3D(), col = new THREE.Color();
+  const greens = [0x2f4d2a, 0x3a5a2e, 0x284223, 0x45632f, 0x35552b];
+  list.forEach((t, i) => {
+    dummy.position.set(t.x, t.y + t.r * (t.kind ? 1.5 : 0.9), t.z);
+    dummy.rotation.set(rnd(), rnd() * 6, rnd());
+    dummy.scale.set(t.r, t.r * (t.kind ? 0.9 : 1.25), t.r);
+    dummy.updateMatrix();
+    inst.setMatrixAt(i, dummy.matrix);
+    col.setHex(t.kind === 1 ? 0xf1c6d2 : t.kind === 2 ? 0x8fae63 : greens[i % greens.length]);
+    inst.setColorAt(i, col);
+  });
+  inst.castShadow = true; inst.receiveShadow = true;
+  trees.add(inst);
+  // 벚나무 줄기
+  const trunks = list.filter(t => t.kind);
+  const tInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.2, 1.6, 6), new THREE.MeshStandardMaterial({ color: 0x5b4636 }), trunks.length);
+  trunks.forEach((t, i) => { dummy.position.set(t.x, 0.8, t.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); tInst.setMatrixAt(i, dummy.matrix); });
+  tInst.castShadow = true;
+  trees.add(tInst);
+}
+
+/* =========================================================
+   6. 조립 타임라인
+   ========================================================= */
+const root = new THREE.Group();
+scene.add(root);
+const parts = [];
+const stages = [];
+let cursor = 0;
+const DROP = 22;
+function stage(name, desc) { stages.push({ name, desc, start: cursor }); }
+function add(obj, { dur = 0.75, gap = 0.15, type = 'drop', h = DROP } = {}) {
+  obj.userData.baseY = obj.position.y;
+  parts.push({ obj, start: cursor, dur, type, h });
+  obj.visible = false;
+  root.add(obj);
+  cursor += gap;
+  return obj;
+}
+const wait = s => { cursor += s; };
+
+/* ---------- ① 땅 ---------- */
+stage('땅', '지형과 숲, 도로, 광장 바닥이 깔립니다');
+add(terrain, { type: 'grow', dur: 1.6, gap: 0 });
+add(trees, { type: 'grow', dur: 1.9, gap: 0.9 });
+add(mesh(new THREE.ShapeGeometry(shapeOf(WALK)).rotateX(-Math.PI / 2), M.walk, 0.03, false), { h: 4, gap: 0.15 });
+add(mesh(new THREE.ShapeGeometry(shapeOf(ROAD)).rotateX(-Math.PI / 2), M.road, 0.05, false), { h: 4, gap: 0.15 });
+{
+  // 중앙 차선
+  const lane = new THREE.Group();
+  const lane1 = ribbon(ROAD_LINE, 0.08, 0.12), lane2 = ribbon(ROAD_LINE, 0.08, -0.12);
+  [lane1, lane2].forEach(l => lane.add(mesh(new THREE.ShapeGeometry(shapeOf(l)).rotateX(-Math.PI / 2), M.yellow, 0.07, false)));
+  add(lane, { h: 4, gap: 0.2 });
+  // 주차된 차들
+  const cars = new THREE.Group();
+  const carCols = [0xf1f1f1, 0x222428, 0xe9e9e9, 0x6b7280, 0xf3f3f3, 0x1f2937];
+  [[0.18, 2], [0.32, 2], [0.45, 2], [0.55, 2], [0.62, 3], [0.7, 3]].forEach(([tt, seg], i) => {
+    const a = ROAD_LINE[seg], b = ROAD_LINE[seg + 1];
+    const t = (tt * 3) % 1;
+    const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+    const ang = Math.atan2(b.z - a.z, b.x - a.x);
+    const dx = Math.cos(ang), dz = Math.sin(ang);
+    const car = new THREE.Group();
+    const body = mesh(new THREE.BoxGeometry(1.9, 0.55, 0.85), new THREE.MeshStandardMaterial({ color: carCols[i], metalness: 0.5, roughness: 0.35 }), 0.35);
+    const top = mesh(new THREE.BoxGeometry(1.0, 0.4, 0.75), M.glass, 0.8);
+    car.add(body, top);
+    car.position.set(x + dz * 1.6, 0, z - dx * 1.6);
+    car.rotation.y = -ang;
+    cars.add(car);
+  });
+  add(cars, { h: 6, gap: 0.2 });
+}
+// 광장 바닥
+add(mesh(new THREE.CircleGeometry(18.6, 72).rotateX(-Math.PI / 2).translate(C2.x, 0, C2.z), M.pave, 0.06, false), { h: 4, gap: 0.12 });
+add(mesh(new THREE.ShapeGeometry(shapeOf(W([[598,900],[662,900],[700,1120],[612,1120]]))).rotateX(-Math.PI / 2), M.pave, 0.06, false), { h: 4, gap: 0.12 });
+{
+  const pattern = new THREE.Group();
+  pattern.add(mesh(new THREE.CircleGeometry(7, 64).rotateX(-Math.PI / 2), M.paveLt, 0.08, false));
+  pattern.add(mesh(new THREE.RingGeometry(6.8, 7.15, 64).rotateX(-Math.PI / 2), M.line, 0.09, false));
+  pattern.add(mesh(new THREE.RingGeometry(2.2, 2.45, 48).rotateX(-Math.PI / 2), M.line, 0.09, false));
+  [-90, 30, 150].forEach(a => {
+    const r = a * Math.PI / 180;
+    const bar = mesh(new THREE.PlaneGeometry(7, 0.22).rotateX(-Math.PI / 2), M.line, 0.1, false);
+    bar.geometry.translate(3.5, 0, 0);
+    bar.rotation.y = -r;
+    pattern.add(bar);
+  });
+  add(pattern, { h: 5, gap: 0.3 });
+}
+// 주변 건물 (맥락)
+{
+  const g = new THREE.Group();
+  const hB = 5 * FH;
+  g.add(mesh(extrudeGeo(CTX_B, hB), M.gray));
+  g.add(mesh(extrudeGeo(offset(CTX_B, -0.6), 0.3), M.teal, hB));
+  g.add(mesh(extrudeGeo(W([[90,880],[180,880],[180,960],[90,960]]), 1.6), M.equip, hB + 0.3));
+  add(g, { type: 'grow', dur: 1.2, gap: 1.0 });
+}
+
+/* ---------- ② 기단 ---------- */
+stage('기단', '건물이 앉을 돌 기단(포디움)을 놓습니다');
+buildings.forEach(b => {
+  add(mesh(extrudeGeo(offset(b.pts, 1.2), BASE, (b.holes || []).map(h => offset(h, -0.6))), M.podium, 0), { gap: 0.4, dur: 0.8 });
+});
+// 아치 회랑 기초
+const GATE_R = 19, GA0 = 200, GA1 = 308;
+const gatePt = (deg, r = GATE_R) => { const a = deg * Math.PI / 180; return { x: C2.x + r * Math.cos(a), z: C2.z + r * Math.sin(a) }; };
+{
+  const ring = W(sectorPx(600, 860, 180, 200, GA0, GA1, 30));
+  add(mesh(extrudeGeo(ring, 0.25), M.podium, 0), { gap: 0.5 });
+}
+wait(0.4);
+
+/* ---------- ③ 기둥 (층별 바닥판 → 기둥 → 유리 외벽) ---------- */
+stage('기둥', '층마다 바닥판, 기둥, 유리 외벽이 차례로 올라갑니다');
+const colGeo = new THREE.BoxGeometry(0.34, FH - T, 0.34).translate(0, (FH - T) / 2, 0);
+buildings.forEach(b => {
+  const holesSlab = (b.holes || []).map(h => offset(h, -0.35));
+  b.slabGeo = extrudeGeo(offset(b.pts, 0.35), T, holesSlab);
+  b.glassGeo = extrudeGeo(b.pts, FH - T, b.holes || []);
+  b.colPts = perimeterPoints(offset(b.pts, 0.17), 3.0);
+  b.louverGeo = extrudeGeo(offset(b.pts, 0.85), 0.09, [offset(b.pts, 0.4)]);
+});
+const maxFloors = Math.max(...buildings.map(b => b.floors));
+const dummy = new THREE.Object3D();
+for (let f = 0; f < maxFloors; f++) {
+  buildings.forEach(b => {
+    if (f >= b.floors) return;
+    const y0 = BASE + f * FH;
+    add(mesh(b.slabGeo, M.concrete, y0), { gap: 0.09 });
+    const cols = new THREE.InstancedMesh(colGeo, M.column, b.colPts.length);
+    b.colPts.forEach((p, i) => { dummy.position.set(p.x, 0, p.z); dummy.updateMatrix(); cols.setMatrixAt(i, dummy.matrix); });
+    cols.position.y = y0 + T; cols.castShadow = true; cols.receiveShadow = true;
+    add(cols, { gap: 0.09 });
+    add(mesh(b.glassGeo, M.glass, y0 + T), { gap: 0.12 });
+  });
+  if (f === 1) {   // 아치 회랑 기둥
+    for (let a = GA0; a <= GA1; a += 6) {
+      const p = gatePt(a);
+      const c = mesh(new THREE.CylinderGeometry(0.3, 0.3, 5.4, 12).translate(0, 2.7 + 0.25, 0), M.column, 0);
+      c.position.x = p.x; c.position.z = p.z;
+      add(c, { gap: 0.035, dur: 0.6 });
+    }
+  }
+}
+wait(0.4);
+
+/* ---------- ④ 공포 (차양 루버·보) ---------- */
+stage('공포', '처마 역할의 차양 루버와 아치 보를 걸어 하중을 받칩니다');
+for (let f = 0; f < maxFloors; f++) {
+  buildings.forEach(b => {
+    if (f >= b.floors) return;
+    add(mesh(b.louverGeo, M.louver, BASE + f * FH + FH * 0.62), { gap: 0.05, dur: 0.6 });
+  });
+}
+{
+  const beam = W(sectorPx(600, 860, 184, 196, GA0 - 2, GA1 + 2, 40));
+  add(mesh(extrudeGeo(beam, 0.6), M.parapet, 5.65), { gap: 0.4, dur: 0.9 });
+}
+wait(0.4);
+
+/* ---------- ⑤ 지붕 ---------- */
+stage('지붕', '옥상 슬래브, 태양광 패널, 헬리패드, 설비가 올라갑니다');
+
+function panelField(region, angleDeg, excl, y, { w = 1.9, d = 1.0, pu = 2.05, pv = 1.55, tilt = 0.18 } = {}) {
+  const th = angleDeg * Math.PI / 180, dx = Math.cos(th), dz = Math.sin(th), qx = -dz, qz = dx;
+  let cx = 0, cz = 0; region.forEach(p => { cx += p.x; cz += p.z; }); cx /= region.length; cz /= region.length;
+  let R = 0; region.forEach(p => { R = Math.max(R, Math.hypot(p.x - cx, p.z - cz)); });
+  const out = [];
+  for (let v = -R; v <= R; v += pv) for (let u = -R; u <= R; u += pu) {
+    const x = cx + u * dx + v * qx, z = cz + u * dz + v * qz;
+    const corners = [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => ({ x: x + a * w / 2 * dx + b * d / 2 * qx, z: z + a * w / 2 * dz + b * d / 2 * qz }));
+    if (!corners.every(c => inPoly(c.x, c.z, region))) continue;
+    if (excl.some(e => inPoly(x, z, e) || corners.some(c => inPoly(c.x, c.z, e)))) continue;
+    out.push({ x, z, v, u });
+  }
+  out.sort((a, b) => a.v - b.v || a.u - b.u);
+  const geo = new THREE.BoxGeometry(w, 0.08, d);
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, -th, 0, 'YXZ'));
+  const chunks = [];
+  for (let i = 0; i < out.length; i += 26) {
+    const slice = out.slice(i, i + 26);
+    const im = new THREE.InstancedMesh(geo, M.panel, slice.length);
+    const mtx = new THREE.Matrix4();
+    slice.forEach((p, k) => { mtx.compose(new THREE.Vector3(p.x, y, p.z), q, new THREE.Vector3(1, 1, 1)); im.setMatrixAt(k, mtx); });
+    im.castShadow = true; im.receiveShadow = true;
+    chunks.push(im);
+  }
+  return chunks;
+}
+function boxOn(polyPx, h, mat, y) { return mesh(extrudeGeo(W(polyPx), h), mat, y); }
+
+buildings.forEach(b => {
+  const yR = BASE + b.floors * FH;
+  const holes = (b.holes || []).map(h => offset(h, -0.45));
+  add(mesh(extrudeGeo(offset(b.pts, 0.45), 0.45, holes), b.roofGlass ? M.glassLt : b.roofGreen ? M.green : M.roof, yR), { gap: 0.22 });
+  if (!b.roofGlass) add(mesh(extrudeGeo(offset(b.pts, 0.45), 0.75, [offset(b.pts, 0.18)]), M.parapet, yR + 0.45), { gap: 0.22 });
+});
+wait(0.2);
+
+// IoT혁신센터 옥상
+{
+  const b = buildings[0], yT = roofTop(b);
+  const SKY = W([[258,372],[415,293],[440,392],[270,420]]);
+  add(mesh(extrudeGeo(SKY, 0.8), M.glassLt, yT), { gap: 0.2 });
+  add(mesh(extrudeGeo(offset(SKY, 0.25), 0.25, [SKY]), M.steel, yT), { gap: 0.15 });
+  // 아트리움 둘레 난간
+  add(mesh(extrudeGeo(offset(NORTH_HOLE, -0.45), 0.9, [offset(NORTH_HOLE, -0.2)]), M.parapet, yT), { gap: 0.15 });
+  const EQ = [
+    [[[458,168],[515,158],[522,215],[465,225]], 2.2],
+    [[[432,268],[498,258],[505,322],[440,332]], 1.6],
+    [[[448,334],[510,326],[512,382],[452,388]], 2.8],
+    [[[620,118],[700,108],[706,160],[626,170]], 1.4],
+    [[[640,205],[692,198],[696,250],[644,256]], 2.4],
+    [[[648,283],[700,278],[702,328],[650,334]], 1.8],
+  ];
+  EQ.forEach(([p, h]) => add(boxOn(p, h, M.equip, yT), { gap: 0.1, dur: 0.6 }));
+  // 냉각탑 팬 표시
+  {
+    const fans = new THREE.Group();
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
+      const p = P(632 + i * 19, 122 + j * 24 - i * 2.5);
+      const fan = mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.25, 16), M.steel, yT + 1.5);
+      fan.position.x = p.x; fan.position.z = p.z; fans.add(fan);
+    }
+    add(fans, { gap: 0.12 });
+  }
+  [[596, 398], [614, 396]].forEach(([px, py]) => {
+    const p = P(px, py);
+    const tank = mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.4, 20).translate(0, 0.7, 0), M.white, yT);
+    tank.position.x = p.x; tank.position.z = p.z;
+    add(tank, { gap: 0.1 });
+  });
+  const G1 = [[655,350],[830,302],[846,348],[708,410],[662,398]], G2 = [[798,180],[874,174],[884,264],[804,272]], G3 = [[345,442],[560,404],[566,420],[350,460]];
+  [G1, G2, G3].forEach(g => add(boxOn(g, 0.3, M.green, yT), { gap: 0.12 }));
+  const excl = [offset(SKY, 0.7), ...EQ.map(([p]) => offset(W(p), 0.5)), W(G3), offset(NORTH_HOLE, 0.6)];
+  const P1 = W([[124,384],[215,308],[335,238],[448,190],[458,250],[445,400],[340,470],[255,492],[175,440]]);
+  const P2 = W([[712,118],[778,106],[790,290],[720,296]]);
+  [...panelField(P1, -28, excl, yT + 0.5), ...panelField(P2, -8, excl, yT + 0.5)].forEach(c => add(c, { gap: 0.09, dur: 0.6 }));
+}
+
+// 중앙 연결동 옥상
+{
+  const yT = roofTop(buildings[2]);
+  add(boxOn([[580,522],[640,512],[630,585]], 0.35, M.green, yT), { gap: 0.15 });
+  add(boxOn([[650,478],[686,470],[692,508],[656,514]], 1.0, M.glassLt, yT), { gap: 0.15 });
+}
+
+// 지능형ICT융합연구센터 옥상: 헬리패드 + 태양광
+{
+  const yT = roofTop(buildings[1]);
+  const HELI = W([[765,640],[835,568],[925,655],[855,728]]);
+  const lift = 1.4;
+  offset(HELI, -1.6).forEach(p => {
+    const c = mesh(new THREE.BoxGeometry(0.45, lift, 0.45).translate(0, lift / 2, 0), M.steel, yT);
+    c.position.x = p.x; c.position.z = p.z;
+    add(c, { gap: 0.06, dur: 0.6 });
+  });
+  add(mesh(extrudeGeo(HELI, 0.35), M.heli, yT + lift), { gap: 0.25, dur: 0.9 });
+  const yH = yT + lift + 0.35;
+  add(mesh(extrudeGeo(offset(HELI, -0.5), 0.03, [offset(HELI, -0.85)]), M.white, yH), { gap: 0.12 });
+  const hc = P(845, 648);
+  const ringM = mesh(new THREE.RingGeometry(3.6, 4.0, 48).rotateX(-Math.PI / 2), M.white, yH + 0.02, false);
+  ringM.position.x = hc.x; ringM.position.z = hc.z;
+  add(ringM, { gap: 0.12 });
+  {
+    const H = new THREE.Group();
+    const bar = (w, d, x, z) => { const m = mesh(new THREE.BoxGeometry(w, 0.04, d), M.white, 0, false); m.position.set(x, 0, z); H.add(m); };
+    bar(0.5, 3.2, -0.9, 0); bar(0.5, 3.2, 0.9, 0); bar(1.4, 0.45, 0, 0);
+    H.position.set(hc.x, yH + 0.03, hc.z);
+    H.rotation.y = 45.8 * Math.PI / 180;
+    add(H, { gap: 0.2 });
+  }
+  add(boxOn([[705,482],[742,478],[800,528],[815,560],[722,580],[712,530]], 0.3, M.green, yT), { gap: 0.12 });
+  const excl = [offset(HELI, 1.0), W([[600,380],[842,380],[842,600],[600,600]])];
+  panelField(offset(SE, -1.0), 36, excl, yT + 0.5).forEach(c => add(c, { gap: 0.09, dur: 0.6 }));
+}
+
+// AI데이터안심활용센터 유리지붕 멀리언
+{
+  const yT = roofTop(buildings[3]);
+  const g = new THREE.Group();
+  const a = P(398, 532), b = P(552, 506), c = P(556, 592), d = P(404, 612);
+  for (let i = 1; i < 8; i++) {
+    const t = i / 8;
+    const p = { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }, q = { x: d.x + (c.x - d.x) * t, z: d.z + (c.z - d.z) * t };
+    const len = Math.hypot(q.x - p.x, q.z - p.z);
+    const m = mesh(new THREE.BoxGeometry(0.15, 0.12, len), M.steel, yT);
+    m.position.set((p.x + q.x) / 2, yT, (p.z + q.z) / 2);
+    m.rotation.y = Math.atan2(q.x - p.x, q.z - p.z);
+    m.position.y = yT + 0.05;
+    g.add(m);
+  }
+  add(g, { gap: 0.2, h: 12 });
+}
+
+// 아치 회랑 지붕 (방사형 루버)
+{
+  const canopy = W(sectorPx(600, 860, 168, 214, GA0 - 2, GA1 + 2, 40));
+  add(mesh(extrudeGeo(canopy, 0.12), M.glassLt, 6.25), { gap: 0.3, dur: 0.9 });
+  const fins = [];
+  for (let a = GA0; a <= GA1; a += 2.2) fins.push(a);
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(4.8, 0.4, 0.14), M.parapet, fins.length);
+  fins.forEach((a, i) => {
+    const p = gatePt(a);
+    dummy.position.set(p.x, 6.57, p.z);
+    dummy.rotation.set(0, -a * Math.PI / 180, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    im.setMatrixAt(i, dummy.matrix);
+  });
+  im.castShadow = true; im.receiveShadow = true;
+  add(im, { gap: 0.6, dur: 1.0 });
+}
+const END = cursor + 0.9;
+
+/* =========================================================
+   7. 이름표
+   ========================================================= */
+const labels = [];
+function label(text, px, py, y) {
+  const div = document.createElement('div');
+  div.className = 'label';
+  div.innerHTML = `<span class="pin"></span>${text}`;
+  const obj = new CSS2DObject(div);
+  const p = P(px, py);
+  obj.position.set(p.x, y, p.z);
+  scene.add(obj);
+  labels.push(div);
+}
+label('IoT혁신센터', 520, 300, roofTop(buildings[0]) + 4);
+label('AI데이터<br>안심활용센터', 480, 560, roofTop(buildings[3]) + 4);
+label('지능형ICT<br>융합연구센터', 1000, 820, roofTop(buildings[1]) + 4);
+
+/* =========================================================
+   8. HUD · 애니메이션 루프
+   ========================================================= */
+const stagesEl = document.getElementById('stages');
+stages.forEach((s, i) => {
+  const el = document.createElement('span');
+  el.className = 'chip';
+  el.textContent = `${i + 1}. ${s.name}`;
+  stagesEl.appendChild(el);
+  s.el = el;
+});
+const descEl = document.getElementById('stageDesc');
+const barFill = document.getElementById('barFill');
+
+let t = 0, speed = 1;
+const speeds = [1, 2, 4];
+document.getElementById('replay').onclick = () => { t = 0; };
+document.getElementById('skip').onclick = () => { t = END; };
+document.getElementById('speed').onclick = e => {
+  speed = speeds[(speeds.indexOf(speed) + 1) % speeds.length];
+  e.target.textContent = `속도 ${speed}×`;
+};
+
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeBounce = p => {          // 살짝 '쿵' 하고 내려앉는 느낌
+  if (p < 0.8) return easeOut(p / 0.8) * 1.0;
+  const q = (p - 0.8) / 0.2;
+  return 1 + Math.sin(q * Math.PI) * 0.012;
+};
+
+function applyTimeline() {
+  for (const pt of parts) {
+    const { obj, start, dur, type, h } = pt;
+    if (t < start) { obj.visible = false; continue; }
+    obj.visible = true;
+    const p = Math.min(1, (t - start) / dur);
+    if (type === 'grow') {
+      obj.scale.y = Math.max(0.001, easeOut(p));
+    } else {
+      const k = easeBounce(p);
+      obj.position.y = obj.userData.baseY + h * (1 - k);
+    }
+  }
+  let cur = -1;
+  stages.forEach((s, i) => { if (t >= s.start) cur = i; });
+  const done = t >= END;
+  stages.forEach((s, i) => {
+    s.el.className = 'chip' + (done || i < cur ? ' done' : i === cur ? ' now' : '');
+  });
+  descEl.textContent = done ? '완성! 마우스로 돌려 보세요' : stages[cur].desc;
+  barFill.style.width = `${Math.min(100, (t / END) * 100)}%`;
+  labels.forEach(l => l.classList.toggle('show', done));
+}
+
+const clock = new THREE.Clock();
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (t < END) t = Math.min(END, t + dt * speed);
+  applyTimeline();
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
