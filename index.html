@@ -2948,7 +2948,7 @@ function resetAll(silent){
   if (!silent) $("#transcript").value = "";
   setPhase("idle");
 }
-$("#resetBtn").addEventListener("click", () => { const was = !!S.result; resetAll(false); if (was) log("새 상황 대기","info"); });
+$("#resetBtn").addEventListener("click", () => { const was = !!S.result; resetAll(false); if (typeof ccClearInc === "function") ccClearInc(); if (was) log("새 상황 대기","info"); });
 
 /* ---------- CCTV 감지 → 상황 접수 ---------- */
 function cctvAdapt(result, at){
@@ -3557,6 +3557,12 @@ setInterval(() => {
   updateFocusBox();
 }, 250);
 function clearCam(cam){ cam.el.classList.remove("warn","hit"); cam.badge.textContent = "AI 정상"; cam.box.hidden = true; }
+/* CCTV 감지 해제: '새 상황'이나 상황 종료 때 카메라 표시 · 경보 띠 · 3D 부대 카메라 핀까지 평시로 되돌린다 (감지 기록은 남긴다) */
+function ccClearInc(){
+  const inc = CC.inc; if (!inc) return;
+  if (inc.kind === "live") LV.mute = Date.now() + 6000;
+  clearCam(inc.cam); CC.inc = null; $("#ccAlert").innerHTML = ""; hideBar();
+}
 
 /* ---------- 경보 ---------- */
 let audioCtx = null;
@@ -4608,7 +4614,7 @@ function openEnd(){
       log(`상황 종료 선언 · 결과: ${result}`, "info");
       if (S.end.notify) log(`상황 종료 보고 발송 · ${n}명 (${endSent().map(x => x.role).join(", ")})`, "send");
       log("상황 종료 보고서 · 당직일지 자동 작성", "ack");
-      setPhase("closed"); renderRecips(); renderComposer();
+      setPhase("closed"); if (CC.inc && CC.inc.accepted) ccClearInc(); renderRecips(); renderComposer();
       openEnd(); toast("상황을 종료했습니다. 종료 보고서가 작성되었습니다.");
     });
   }
