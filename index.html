@@ -666,7 +666,7 @@ body{padding-block:0 84px}
 #nowMore{align-self:flex-start}
 #nowMore[hidden]{display:none}
 @media (min-width:1000px){#stage2 #nowList{gap:5px}#stage2 #nowList label{padding-block:8px}}
-.rep-h .rep-chain{font-size:12.5px;color:var(--muted);flex:1;min-width:0}
+.rep-h .rep-chain{font-size:12.5px;color:var(--muted);flex:1 1 240px;min-width:0;word-break:keep-all;line-height:1.45}   /* 자리가 240px보다 좁으면 다음 줄로 내려간다 (휴대폰에서 세로로 찌그러지지 않게) */
 .rep-h #sendSlot{margin-left:auto}
 @media (max-width:560px){.st-x{display:none}}
 .recip .tag.chain{background:rgba(98,169,212,.15);color:var(--sev4)}
