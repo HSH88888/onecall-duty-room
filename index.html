@@ -526,6 +526,8 @@ textarea.bubble[readonly]{color:var(--muted)}
 /* ===== 판교 IoT혁신센터 3D 모형 ===== */
 .pg-wrap{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#1d2440;height:var(--pgh,640px);min-height:420px;display:flex}
 #pg3d{display:block;flex:1;width:100%;height:100%;border:0}
+.hm-wrap{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#f3f4f2;height:var(--hmh,640px);min-height:420px;display:flex}
+#hm3d{display:block;flex:1;width:100%;height:100%;border:0}
 .seg .vbtn .vshort{display:none}
 @media (max-width:560px){.seg .vbtn .vlong{display:none}.seg .vbtn .vshort{display:inline}}
 /* ===== 3D 부대 ===== */
@@ -825,6 +827,7 @@ button.recip{background:var(--panel)}
 #endBtn:not(.end){--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6'/%3E%3C/svg%3E");border-color:var(--ok);color:var(--ok);background:rgba(75,196,143,.1)}
 .act-dock{display:none}
 @media (max-width:560px){.seg .vbtn{white-space:nowrap;font-size:12.5px}}
+@media (max-width:560px){.appbar .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:420px){.appbar .status{gap:8px}.appbar .phase:has(.ph-el:not([hidden])) #phaseTxt{display:none}.appbar .phase:has(.ph-el:not([hidden])) .ph-el{margin-left:6px;padding-left:0;border-left:0}}
 @media (min-width:1000px){
   #stage2:not([hidden]){position:relative}
@@ -980,6 +983,7 @@ button.recip{background:var(--panel)}
       <button class="vbtn" data-v="bus" aria-pressed="false">부대 버스 <span class="vcount">3</span><i class="vdot" id="busDot" hidden></i></button>
       <button class="vbtn" data-v="map3d" aria-pressed="false">3D 부대<i class="vdot" id="m3Dot" hidden></i></button>
       <button class="vbtn" data-v="pangyo" aria-pressed="false"><span class="vlong">판교 IoT혁신센터</span><span class="vshort">판교 IoT</span></button>
+      <button class="vbtn" data-v="haemi" aria-pressed="false">해미읍성</button>
     </nav>
     <div class="status">
       <span class="who">○○대대 · 당직사관 중위 김○○</span>
@@ -1146,6 +1150,14 @@ button.recip{background:var(--panel)}
     </section>
     <div class="pg-wrap">
       <iframe id="pg3d" title="판교 IoT혁신센터 3D 모형" data-src="pangyo3d.html?v=1115in"></iframe>
+    </div>
+  </div>
+  <div id="view-haemi" hidden>
+    <section class="cc-head">
+      <div class="cc-title"><span class="live-dot"></span><div><h2>해미읍성 일대 · 스케치 3D 지도</h2><p class="hint">위성사진을 바탕으로 해미읍성(진남문 · 동헌 · 객사 · 청허정)과 주변 시가지 · 학교 · 해미천 · 해미 IC를 코드로 그린 근사 모형입니다. 끌면 돌아가고 휠이나 두 손가락으로 확대 · 이동합니다. 아래 버튼으로 <b>성 안 가까이</b>, <b>전체 보기</b>, <b>위에서 보기</b>를 고를 수 있어요.</p></div></div>
+    </section>
+    <div class="hm-wrap">
+      <iframe id="hm3d" title="해미읍성 일대 스케치 3D 지도" data-src="haemi3d.html?embed&v=1117"></iframe>
     </div>
   </div>
   <div id="view-bus" hidden>
@@ -3624,6 +3636,7 @@ function showView(v){
   document.querySelectorAll(".vbtn").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"));
   $("#view-ops").hidden = v !== "ops"; $("#view-cctv").hidden = v !== "cctv"; $("#view-bus").hidden = v !== "bus"; $("#view-3d").hidden = v !== "map3d"; if (v === "map3d" && typeof m3Start === "function") m3Start();
   $("#view-pangyo").hidden = v !== "pangyo"; if (v === "pangyo"){ const f = $("#pg3d"); if (!f.src) f.src = f.dataset.src; }
+  $("#view-haemi").hidden = v !== "haemi"; if (v === "haemi"){ const f = $("#hm3d"); if (!f.src) f.src = f.dataset.src; }
   if (v === "bus" && typeof buildBus === "function") buildBus();
   if (v === "cctv"){ buildCCTV(); $("#ccBar").hidden = true; }
   else if (CC.inc && CC.inc.kind === "fire" && CC.inc.stage >= 2 && !CC.inc.accepted) showBar(`CCTV 화재 감지 · ${CC.inc.cam.id} ${CC.inc.cam.loc} · AI ${CC.inc.conf}%`);
@@ -3632,7 +3645,7 @@ function showView(v){
 }
 document.querySelectorAll(".vbtn").forEach(b => b.addEventListener("click", () => showView(b.dataset.v)));
 $("#ccBarGo").addEventListener("click", () => showView("cctv"));
-const viewOf = h => ({ "#cctv":"cctv", "#bus":"bus", "#map3d":"map3d", "#pangyo":"pangyo" })[h] || "ops";
+const viewOf = h => ({ "#cctv":"cctv", "#bus":"bus", "#map3d":"map3d", "#pangyo":"pangyo", "#haemi":"haemi" })[h] || "ops";
 window.addEventListener("hashchange", () => showView(viewOf(location.hash)));
 
 /* ---------- 상황 접수 → 기존 보고 흐름 ---------- */
@@ -4762,6 +4775,14 @@ $("#rptCopy").addEventListener("click", async () => { try { await navigator.clip
   new MutationObserver(() => { fit(); setTimeout(fit, 120); }).observe($("#view-pangyo"), { attributes:true, attributeFilter:["hidden"] });
 }
 if (location.hash === "#pangyo") showView("pangyo");
+/* 해미읍성 지도 화면 높이 맞춤 (판교 모형과 같은 방식) */
+{ const wrap = document.querySelector("#view-haemi .hm-wrap");
+  const fit = () => { if (!wrap || $("#view-haemi").hidden) return; const top = wrap.getBoundingClientRect().top + scrollY, bar = Math.max($("#dutyBar") ? $("#dutyBar").offsetHeight + 14 : 0, parseFloat(getComputedStyle(document.body).paddingBottom) || 0);
+    wrap.style.setProperty("--hmh", Math.max(420, Math.round(innerHeight - top - bar)) + "px"); };
+  addEventListener("resize", fit);
+  new MutationObserver(() => { fit(); setTimeout(fit, 120); }).observe($("#view-haemi"), { attributes:true, attributeFilter:["hidden"] });
+}
+if (location.hash === "#haemi") showView("haemi");
 /* 3D 부대 화면 높이 맞춤: 남은 화면 높이 = 창 높이 - 지도 시작 위치 - 아래 당직일지 바 */
 { const wrap = document.querySelector("#view-3d .m3-wrap");
   const fit = () => { if (!wrap || $("#view-3d").hidden) return; const top = wrap.getBoundingClientRect().top + scrollY, bar = Math.max($("#dutyBar") ? $("#dutyBar").offsetHeight + 14 : 0, parseFloat(getComputedStyle(document.body).paddingBottom) || 0);
