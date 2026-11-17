@@ -16,6 +16,11 @@
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;text-align:center;font-size:14px}
   .embed #head{display:none}
   #walk{position:fixed;inset:0;pointer-events:none;display:none}
+  #clock{position:fixed;right:12px;top:12px;z-index:2;background:rgba(255,255,255,.88);color:#2a3140;border:1px solid #cfd4da;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;pointer-events:none;font-variant-numeric:tabular-nums}
+  .night #clock{background:rgba(27,36,51,.85);color:#ffe7a3;border-color:#3a4a63}
+  .walking #clock{right:auto;left:12px;top:12px}
+  .strolling #joy,.strolling #wRun,.strolling #wNext{display:none} #wSpeed,#wSelf{display:none} .strolling #wSpeed,.strolling #wSelf{display:inline-block}
+  @media (max-width:520px){.walking #clock{top:auto;left:auto;right:10px;bottom:calc(252px + env(safe-area-inset-bottom,0px));font-size:11.5px;padding:4px 9px}}
   .walking #walk{display:block} .walking #bar,.walking #head{display:none}
   #wHint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(42,49,64,.78);color:#fff;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
   #wPlace{position:absolute;left:50%;top:46px;transform:translateX(-50%);font-size:12px;color:#2a3140;background:rgba(255,255,255,.85);padding:4px 10px;border-radius:999px;font-weight:700}
@@ -34,13 +39,16 @@
 <canvas id="c"></canvas>
 <div id="head"><h1>해미읍성 일대 · 스케치 3D</h1><p>한 손가락 회전 · 두 손가락 확대/이동 · 위성사진을 보고 그린 근사 모형</p></div>
 <div id="bar">
-  <button id="bWalk" class="on">걸어보기</button>
+  <button id="bStroll" class="on">산책하기</button>
+  <button id="bWalk">걸어보기</button>
+  <button id="bTime">시간: 하루 4분</button>
   <button id="bFort">성 안 가까이</button>
   <button id="bAll">전체 보기</button>
   <button id="bView">위에서 보기</button>
   <button id="bSpin">자동 회전</button>
   <button id="bLab" class="on">지명</button>
 </div>
+<div id="clock">오후 3:00</div>
 <div id="walk">
   <div id="wHint">왼쪽 원으로 걷기 · 화면을 끌어서 둘러보기</div>
   <div id="wPlace">진남문 앞</div>
@@ -48,7 +56,9 @@
   <canvas id="wMap" width="264" height="264"></canvas>
   <div id="joy"><div id="knob"></div></div>
   <div id="wBtns">
+    <button id="wSpeed">속도 1×</button>
     <button id="wRun">달리기</button>
+    <button id="wSelf">직접 걷기</button>
     <button id="wNext">다른 곳으로</button>
     <button id="wExit">걷기 끝내기</button>
   </div>
@@ -255,12 +265,13 @@ hanok(39,118,3,1.6,0.55,0.9); hanok(43.5,121,3,1.6,0.55,0.9); hanok(45,125.5,3,1
 LOT.ribbon(D([[731,1400],[733,1300],[735,1100],[737,930],[737,815]]),1.3,0.05,true);
 LOT.flat(D([[690,1292],[905,1300],[905,1372],[690,1368]]),0.045,true);
 LOT.flat(D([[640,1410],[900,1430],[905,1480],[640,1462]]),0.045,true);
-[[[170,725],[300,770],[420,830],[520,900],[640,930],[737,930],[880,915],[1000,890],[1100,832],[1200,808],[1255,818]],
+const FOOT=[[[731,1400],[733,1300],[735,1100],[737,930],[737,815]],
+[[170,725],[300,770],[420,830],[520,900],[640,930],[737,930],[880,915],[1000,890],[1100,832],[1200,808],[1255,818]],
  [[737,815],[800,800],[835,770],[850,650],[880,520],[905,432]],
  [[700,1368],[480,1300],[330,1180],[240,1000],[225,760]],[[330,1180],[500,1160],[640,1110],[735,1092]],
  [[735,1130],[960,1125],[972,1330]],[[960,1125],[1050,1040],[1130,1000],[1215,812]],[[1050,1150],[980,1305],[905,1330]],
- [[225,760],[250,620],[330,470],[450,330],[560,250],[640,228]],[[840,1000],[880,960],[888,905]],[[905,432],[940,330],[1050,170],[1180,330],[1290,560],[1255,818]]]
- .forEach(p=>LOT.ribbon(D(p),0.6,0.05,true));
+ [[225,760],[250,620],[330,470],[450,330],[560,250],[640,228]],[[840,1000],[880,960],[888,905]],[[905,432],[940,330],[1050,170],[1180,330],[1290,560],[1255,818]]];
+FOOT.slice(1).forEach(p=>LOT.ribbon(D(p),0.6,0.05,true));
 
 /* 주요 건물 */
 function big(x,z,w,d,h,a){W.box(x,z,w,d,h,a); taken.push([x,z,Math.max(w,d)/2+0.6]);}
@@ -346,6 +357,12 @@ D([[470,600],[320,680],[370,685],[430,790],[310,950],[430,1000],[660,1100],[700,
 grove(135,204,16,7,60,false); grove(160,190,10,14,40,false); grove(20,10,10,12,30,false,0.6,0.9); grove(168,100,5,12,20,false);
 for(let i=0;i<stream.length-1;i++){const a=stream[i],b=stream[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),nx=-(b[1]-a[1])/l,nz=(b[0]-a[0])/l;
   for(let t=1;t<l;t+=2.6)[-2.6,2.6].forEach(o=>{ if(R()<0.6) tp.push([a[0]+(b[0]-a[0])*t/l+nx*o,a[1]+(b[1]-a[1])*t/l+nz*o,rr(0.7,1.2)]);});}
+/* 산책로 (나무가 길을 막지 않게 정리) */
+const STROLL=[[52,144.2],[62,146.2],[69,147.4],[72.1,144.8],[73,138.6],[73.4,128],[73.5,116],[73.6,104],[73.7,93.5],[73.8,86.5],[76,88.6],[82,88.6],[90,88],[100,86.6],[108,84],[114.5,81.4],[119.5,81.2],[118.5,86],[114,96],[108,104.5],[100,110.5],[92,113.4],[84,113.6],[76,113.6],[73.5,118],[73.4,128],[73,138.6],[71.8,145.4],[66,147.4],[58,145.6],[48,142.6],[40,140.8],[34,140.2],[30,141.4],[34,142.2],[44,142.4]];
+const strollCurve=new T.CatmullRomCurve3(STROLL.map(p=>new T.Vector3(p[0],0,p[1])),true,'centripetal');
+const strollLen=strollCurve.getLength(), strollPts=strollCurve.getSpacedPoints(Math.ceil(strollLen*2));
+let STROLL_START=0; { let bd=1e9; strollPts.forEach((q,i)=>{const d=Math.hypot(q.x-62,q.z-146.2); if(d<bd){bd=d; STROLL_START=i/strollPts.length*strollLen;}}); }
+for(let i=tp.length-1;i>=0;i--){ const t=tp[i]; if(strollPts.some(q=>Math.hypot(q.x-t[0],q.z-t[1])<t[2]+0.5)) tp.splice(i,1); }
 const trees=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshLambertMaterial({color:0xffffff,flatShading:true}),tp.length);
 const mtx=new T.Matrix4(), col=new T.Color(), greens=[0xa6d45c,0x9bcb52,0xb5dd72,0x8fc24a];
 tp.forEach((t,i)=>{ mtx.makeScale(t[2],t[2]*rr(0.9,1.3),t[2]); mtx.setPosition(t[0]-OX,t[2]*0.75,t[1]-OZ); trees.setMatrixAt(i,mtx); trees.setColorAt(i,col.setHex(greens[Math.floor(R()*4)])); });
@@ -407,7 +424,8 @@ $('bSpin').onclick=()=>{ spin=!spin; $('bSpin').classList.toggle('on',spin); };
 $('bLab').onclick=()=>{ L.visible=!L.visible; $('bLab').classList.toggle('on',L.visible); };
 /* ---------- 걸어보기 (사람 눈높이) ---------- */
 const EYE=0.3, RAD=0.16, WALK=0.85, CELL=4;
-const WK={on:false,x:0,z:0,yaw:0,pitch:0,run:false,keys:{},jx:0,jy:0,bob:0,i:0,grid:null,last:0};
+const WK={stroll:false,s:0,spd:1,lookOff:0,syaw:0,place:null,on:false,x:0,z:0,yaw:0,pitch:0,run:false,keys:{},jx:0,jy:0,bob:0,i:0,grid:null,last:0};
+let SPOT_NAME='';
 const SPOTS=[
  ['진남문 앞',72.05,144.6,75.2,124.8],['서문삼거리',31,140.2,70,147.6],['성 안 중앙길',73.4,114,73.7,80],
  ['동헌 앞',73.4,86.5,73.5,70],['청허정 오르는 길',86,53,90.5,42],['잠양루 안쪽',118,85,90,95],['해미시장',39,152,60,160]];
@@ -426,12 +444,13 @@ function collide(){ const seen=new Set(); for(let it=0;it<2;it++){ const i0=Math
     function cx2(ex,ez){ const nx2=ex+px*RAD, nz2=ez+pz*RAD; WK.x=b[0]+nx2*b[4]-nz2*b[5]; WK.z=b[1]+nx2*b[5]+nz2*b[4]; }
   }); } } }
 function goSpot(i){ const sp=SPOTS[i%SPOTS.length]; WK.i=i%SPOTS.length; WK.x=sp[1]; WK.z=sp[2]; WK.yaw=Math.atan2(sp[3]-sp[1],-(sp[4]-sp[2])); WK.pitch=0.04; collide(); $('wPlace').textContent=sp[0]; }
-function walkOn(on){
-  WK.on=on; document.body.classList.toggle('walking',on); ptr.clear(); goal=null;
-  if(on){ if(!WK.grid) WK.grid=buildGrid(); camera.near=0.1; camera.far=900; scene.fog.near=25; scene.fog.far=190; goSpot(WK.i);
+function walkOn(on,stroll){
+  WK.on=on; WK.stroll=!!(on&&stroll); document.body.classList.toggle('walking',on); document.body.classList.toggle('strolling',WK.stroll); WK.lookOff=0; SPOT_NAME=''; ptr.clear(); goal=null;
+  if(on){ if(!WK.grid) WK.grid=buildGrid(); camera.near=0.1; camera.far=900; scene.fog.near=25; scene.fog.far=190; if(WK.stroll){ WK.s=STROLL_START; strollStep(0,true); } else goSpot(WK.i);
     scene.background.set(0xe6eef5); scene.fog.color.set(0xe6eef5);
     L.children.forEach(sp=>{const m=sp.material,b=sp.userData.base; m.depthTest=true; m.sizeAttenuation=false; m.needsUpdate=true; if(b) sp.scale.set(0.05*b[0]/b[1],0.05,1);});
-    $('wHint').textContent=matchMedia('(pointer:fine)').matches?'W·A·S·D / 방향키로 걷기 · 끌어서 둘러보기 · Shift 달리기':'왼쪽 원으로 걷기 · 화면을 끌어서 둘러보기'; }
+    $('wHint').textContent=WK.stroll?'산책로를 따라 자동으로 걸어요 · 끌어서 잠깐 둘러보기':matchMedia('(pointer:fine)').matches?'W·A·S·D / 방향키로 걷기 · 끌어서 둘러보기 · Shift 달리기':'왼쪽 원으로 걷기 · 화면을 끌어서 둘러보기';
+    $('wExit').textContent=WK.stroll?'산책 끝내기':'걷기 끝내기'; }
   else { camera.near=2; camera.far=6000; scene.fog.near=1500; scene.fog.far=3800; scene.background.set(0xf3f4f2); scene.fog.color.set(0xf3f4f2); lastLs=0;
     L.children.forEach(sp=>{const m=sp.material; m.depthTest=false; m.sizeAttenuation=true; m.needsUpdate=true; sp.visible=true;}); }
   camera.updateProjectionMatrix(); WK.last=performance.now(); }
@@ -439,7 +458,7 @@ function walkOn(on){
 const look=new Map();
 canvas.addEventListener('pointerdown',e=>{ if(!WK.on) return; canvas.setPointerCapture(e.pointerId); look.set(e.pointerId,{x:e.clientX,y:e.clientY}); });
 canvas.addEventListener('pointermove',e=>{ if(!WK.on) return; const p=look.get(e.pointerId); if(!p) return; const dx=e.clientX-p.x,dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
-  WK.yaw-=dx*0.0045; WK.pitch=Math.max(-1.1,Math.min(1.1,WK.pitch+dy*0.0045)); });
+  if(WK.stroll) WK.lookOff-=dx*0.0045; else WK.yaw-=dx*0.0045; WK.pitch=Math.max(-1.1,Math.min(1.1,WK.pitch+dy*0.0045)); });
 ['pointerup','pointercancel'].forEach(n=>canvas.addEventListener(n,e=>look.delete(e.pointerId)));
 // 조이스틱
 { const joy=$('joy'),knob=$('knob'); let id=null;
@@ -452,6 +471,9 @@ addEventListener('keydown',e=>{ if(!WK.on) return; WK.keys[e.code]=true; if(e.co
 addEventListener('keyup',e=>{ WK.keys[e.code]=false; });
 addEventListener('blur',()=>{ WK.keys={}; });
 $('bWalk').onclick=()=>walkOn(true);
+$('bStroll').onclick=()=>walkOn(true,true);
+$('wSpeed').onclick=()=>{ WK.spd=WK.spd===1?2:WK.spd===2?4:1; $('wSpeed').textContent='속도 '+WK.spd+'×'; };
+$('wSelf').onclick=()=>{ const x=WK.x,z=WK.z,y=WK.yaw; walkOn(true); WK.x=x; WK.z=z; WK.yaw=y; collide(); $('wPlace').textContent='직접 걷는 중'; };
 $('wExit').onclick=()=>walkOn(false);
 $('wNext').onclick=()=>goSpot(WK.i+1);
 $('wRun').onclick=()=>{ WK.run=!WK.run; $('wRun').classList.toggle('on',WK.run); };
@@ -465,20 +487,95 @@ function miniMap(){ mc.clearRect(0,0,264,264); mc.save(); mc.translate(132,132);
   mc.fillStyle='#9aa1aa'; COLL.forEach(b=>{ if(Math.abs(b[0]-WK.x)>50||Math.abs(b[1]-WK.z)>50) return; mc.save(); mc.translate(b[0],b[1]); mc.transform(b[4],b[5],-b[5],b[4],0,0); mc.fillRect(-b[2],-b[3],b[2]*2,b[3]*2); mc.restore(); });
   mc.restore();
   mc.fillStyle='#d9534f'; mc.beginPath(); mc.moveTo(132,118); mc.lineTo(141,142); mc.lineTo(132,136); mc.lineTo(123,142); mc.closePath(); mc.fill(); }
+const PLACES=[['진남문',73,140],['서문삼거리',33,141],['성 안 중앙길',73.5,112],['동헌 앞',73.8,86],['동헌·객사 사이',82,88.6],['잠양루',119,82],['동쪽 가옥',108,100],['옥사 옆',84,113],['해미시장 앞길',45,143]];
+function strollStep(dt,snap){
+  WK.s=(WK.s+0.5*WK.spd*dt)%strollLen; const u=WK.s/strollLen, p=strollCurve.getPointAt(u), a=strollCurve.getPointAt((u+2/strollLen)%1);
+  WK.x=p.x; WK.z=p.z; const ty=Math.atan2(a.x-p.x,-(a.z-p.z));
+  if(snap) WK.syaw=ty; else { let d=ty-WK.syaw; d=Math.atan2(Math.sin(d),Math.cos(d)); WK.syaw+=d*Math.min(1,dt*2.5); }
+  if(!look.size){ WK.lookOff*=Math.max(0,1-dt*0.8); WK.pitch+=(0.04-WK.pitch)*Math.min(1,dt*0.8); }
+  WK.yaw=WK.syaw+WK.lookOff+Math.sin(WK.s*0.35)*0.06; WK.bob+=0.5*WK.spd*dt*9;
+  let best='해미읍성 산책 중',bd=9; PLACES.forEach(q=>{const d=Math.hypot(q[1]-WK.x,q[2]-WK.z); if(d<bd){bd=d;best=q[0];}}); WK.place=best; }
 function walkStep(now){
   const dt=Math.min(0.05,(now-WK.last)/1000); WK.last=now; const k=WK.keys;
+  if(WK.stroll){ strollStep(dt); camPose(); return; }
   let f=WK.jy+((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0), r=WK.jx+((k.KeyD)?1:0)-((k.KeyA)?1:0);
   if(k.ArrowLeft) WK.yaw-=1.6*dt; if(k.ArrowRight) WK.yaw+=1.6*dt;
   const m=Math.hypot(f,r); if(m>1){f/=m;r/=m;}
   const sp=WALK*((WK.run||k.ShiftLeft||k.ShiftRight)?3:1)*dt, sy=Math.sin(WK.yaw), cy=Math.cos(WK.yaw);
   if(m>0.02){ WK.x+=(sy*f+cy*r)*sp; WK.z+=(-cy*f+sy*r)*sp; collide(); WK.bob+=sp*9; }
   WK.x=Math.max(-380,Math.min(430,WK.x)); WK.z=Math.max(-150,Math.min(300,WK.z));
+  WK.place=null; camPose(); }
+function camPose(){ const sy=Math.sin(WK.yaw), cy=Math.cos(WK.yaw);
   const ex=WK.x-OX, ez=WK.z-OZ, ey=EYE+Math.sin(WK.bob)*0.012, cp=Math.cos(WK.pitch);
   camera.position.set(ex,ey,ez); camera.lookAt(ex+sy*cp,ey-Math.sin(WK.pitch),ez-cy*cp);
   L.children.forEach(sp=>{ sp.visible=Math.hypot(sp.position.x-ex,sp.position.z-ez)<120; });
   miniMap(); }
+/* ---------- 사람 100명 ---------- */
+const NPP=100, FOOTP=FOOT.map(D), PP=[];
+const nearArea=(pts)=>pts.some(p=>p[0]>-25&&p[0]<185&&p[1]>-25&&p[1]<215);
+const PATHS=FOOTP.map(p=>[p,0.25]).concat(roads.filter(r=>r[0]>=0.6&&r[0]<1.4&&nearArea(r[1])).map(r=>[r[1],r[0]/2-0.15]));
+PATHS.forEach(q=>{ let L0=0; q.seg=[]; for(let i=0;i<q[0].length-1;i++){const a=q[0][i],b=q[0][i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]); q.seg.push([a,b,l,L0]); L0+=l;} q.len=L0; });
+const pathW=PATHS.map((q,i)=>q.len*(i<FOOTP.length?2.2:1)); const pathSum=pathW.reduce((a,b)=>a+b,0);
+const COLS=[0x3e5c8a,0xc0504d,0x4c7a2e,0xe0a030,0x6b5b95,0x2a3140,0xd77a9a,0x3c8d93,0x8a6d3b,0xf2f2f2];
+for(let i=0;i<NPP;i++){ let r=R()*pathSum,k=0; while(r>pathW[k]&&k<PATHS.length-1){r-=pathW[k];k++;}
+  PP.push({k,s:R()*PATHS[k].len,v:(R()<0.5?-1:1)*rr(0.16,0.3),off:rr(-1,1)*PATHS[k][1],h:rr(0.92,1.08),c:COLS[Math.floor(R()*COLS.length)],ph:R()*6.28,pause:0,night:R()<0.3}); }
+const pBody=new T.InstancedMesh(new T.CylinderGeometry(0.035,0.05,0.17,7),new T.MeshLambertMaterial({color:0xffffff}),NPP);
+const pHead=new T.InstancedMesh(new T.SphereGeometry(0.037,8,6),new T.MeshLambertMaterial({color:0xf1d4b8}),NPP);
+const pLeg=new T.InstancedMesh(new T.BoxGeometry(0.06,0.09,0.035),new T.MeshLambertMaterial({color:0x3a4252}),NPP);
+PP.forEach((p,i)=>pBody.setColorAt(i,col.setHex(p.c))); [pBody,pHead,pLeg].forEach(m=>{m.castShadow=true; m.frustumCulled=false; scene.add(m);});
+const pm=new T.Matrix4(), pq=new T.Quaternion(), pe=new T.Euler(), pv=new T.Vector3(), ps=new T.Vector3();
+function peopleStep(dt,night){
+  let n=0; PP.forEach(p=>{ const q=PATHS[p.k];
+    if(night>0.6&&!p.night) return;
+    if(p.pause>0) p.pause-=dt; else { p.s+=p.v*dt; if(p.s<0||p.s>q.len){ p.v=-p.v; p.s=Math.max(0,Math.min(q.len,p.s)); } if(Math.random()<dt*0.04) p.pause=1.5+Math.random()*3.5; }
+    let sg=q.seg[0]; for(const g of q.seg){ if(p.s>=g[3]) sg=g; }
+    const t=Math.min(1,(p.s-sg[3])/sg[2]), dx=(sg[1][0]-sg[0][0])/sg[2], dz=(sg[1][1]-sg[0][1])/sg[2];
+    const x=sg[0][0]+dx*sg[2]*t-dz*p.off, z=sg[0][1]+dz*sg[2]*t+dx*p.off, moving=p.pause<=0;
+    p.ph+=moving?dt*9*Math.abs(p.v)/0.22:0; const bob=moving?Math.abs(Math.sin(p.ph))*0.012:0, yaw=Math.atan2(dx*Math.sign(p.v),dz*Math.sign(p.v));
+    pq.setFromEuler(pe.set(0,yaw,0)); ps.set(1,p.h,1);
+    pm.compose(pv.set(x-OX,(0.09+0.085)*p.h+bob,z-OZ),pq,ps); pBody.setMatrixAt(n,pm);
+    pm.compose(pv.set(x-OX,(0.09+0.17+0.035)*p.h+bob,z-OZ),pq,ps); pHead.setMatrixAt(n,pm);
+    pm.compose(pv.set(x-OX,0.045*p.h,z-OZ),pq,ps); pLeg.setMatrixAt(n,pm);
+    n++; });
+  [pBody,pHead,pLeg].forEach(m=>{m.count=n; m.instanceMatrix.needsUpdate=true;}); }
+
+/* ---------- 낮과 밤 ---------- */
+const hemi=scene.children.find(o=>o.isHemisphereLight);
+const glowPts=[]; let gseed=0;
+COLL.forEach(b=>{ if(b[2]<0.8||b[3]<0.6||(gseed++%3)) return; const side=R()<0.5?1:-1, lz=rr(-b[3]*0.6,b[3]*0.6), lx=side*(b[2]+0.03);
+  glowPts.push(b[0]+lx*b[4]-lz*b[5]-OX, rr(0.25,0.55), b[1]+lx*b[5]+lz*b[4]-OZ); });
+gatePos.slice(0,3).forEach(g=>{ [-1.1,1.1].forEach(o=>glowPts.push(g[0]+o*Math.cos(g[2])-OX,0.8,g[1]+o*Math.sin(g[2])-OZ)); });
+const glowG=new T.BufferGeometry(); glowG.setAttribute('position',new T.Float32BufferAttribute(glowPts,3));
+const gc=document.createElement('canvas'); gc.width=gc.height=64; { const c=gc.getContext('2d'),g=c.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,236,170,1)'); g.addColorStop(0.35,'rgba(255,200,110,.55)'); g.addColorStop(1,'rgba(255,190,90,0)'); c.fillStyle=g; c.fillRect(0,0,64,64); }
+const glow=new T.Points(glowG,new T.PointsMaterial({size:11*renderer.getPixelRatio(),sizeAttenuation:false,map:new T.CanvasTexture(gc),transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:0}));
+scene.add(glow);
+const TM={mode:0,h:15,txt:''};   // 0=하루 4분, 1=실제 시각, 2=멈춤
+const cDay=new T.Color(), cDusk=new T.Color(0xf0c49a), cNight=new T.Color(0x18202e), cTmp=new T.Color();
+function seoulHour(){ const d=new Date(), m=(d.getUTCHours()*60+d.getUTCMinutes()+540)%1440; return m/60+d.getUTCSeconds()/3600; }
+function timeStep(dt){
+  if(TM.mode===0) TM.h=(TM.h+dt*24/240)%24; else if(TM.mode===1) TM.h=seoulHour();
+  const h=TM.h, el=Math.sin((h-6)/12*Math.PI);
+  const day=Math.max(0,Math.min(1,(el+0.12)/0.32)), dusk=Math.max(0,1-Math.abs(el)/0.22)*(el>-0.25?1:0), night=1-day;
+  const az=(h-6)/12*Math.PI; sun.position.set(-Math.cos(az)*160,Math.max(8,el*180),60-Math.cos(az)*20);
+  sun.intensity=0.55*Math.max(0,Math.min(1,el*4)); sun.color.setHex(0xffffff).lerp(cDusk,dusk*0.7);
+  hemi.intensity=0.32+0.54*day; hemi.color.setHex(0xffffff).lerp(cTmp.setHex(0x8ea3c7),night*0.8);
+  cDay.setHex(WK.on?0xe6eef5:0xf3f4f2).lerp(cDusk,dusk*0.55).lerp(cNight,night*0.92);
+  scene.background.copy(cDay); scene.fog.color.copy(cDay);
+  ground.material.color.setHex(0xfafaf8).lerp(cTmp.setHex(0x5d6a80),night*0.55);
+  glow.material.opacity=Math.min(1,night*1.3); glow.visible=night>0.05;
+  document.body.classList.toggle('night',night>0.5);
+  const hh=Math.floor(h), mm=Math.floor((h-hh)*60), ap=hh<12?'오전':'오후', h12=hh%12===0?12:hh%12;
+  const txt=(night>0.5?'🌙 ':'☀️ ')+ap+' '+h12+':'+String(mm).padStart(2,'0');
+  if(txt!==TM.txt){ TM.txt=txt; $('clock').textContent=txt; }
+  return night; }
+$('bTime').onclick=()=>{ TM.mode=(TM.mode+1)%3; $('bTime').textContent='시간: '+['하루 4분','실제 시각','멈춤'][TM.mode]; };
+let lastT=performance.now();
+function world(now){ const dt=Math.min(0.1,(now-lastT)/1000); lastT=now; const night=timeStep(dt); peopleStep(dt,night);
+  if(WK.on){ const nm=WK.place; if(nm&&nm!==SPOT_NAME){ SPOT_NAME=nm; $('wPlace').textContent=nm; } } }
+
 let lastLs=0;
-(function loop(){ if(WK.on){ walkStep(performance.now()); renderer.render(scene,camera); requestAnimationFrame(loop); return; }
+(function loop(){ world(performance.now());
+  if(WK.on){ walkStep(performance.now()); renderer.render(scene,camera); requestAnimationFrame(loop); return; }
   if(goal){ if(goal.tx!==undefined){tgt.x+=(goal.tx-tgt.x)*0.1; tgt.z+=(goal.tz-tgt.z)*0.1;} th+=(goal.th-th)*0.1; ph+=(goal.ph-ph)*0.1; rad+=(goal.rad-rad)*0.1; if(Math.abs(goal.th-th)+Math.abs(goal.ph-ph)+Math.abs(goal.rad-rad)*0.01<0.003) goal=null; }
   else if(spin&&ptr.size===0) th+=0.0025;
   const ls=Math.max(1,Math.min(3.2,rad/190)); if(ls!==lastLs){ lastLs=ls; L.children.forEach(sp=>{const b=sp.userData.base; if(b) sp.scale.set(b[0]*ls,b[1]*ls,1);}); }
