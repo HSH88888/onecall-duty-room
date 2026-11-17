@@ -53,6 +53,7 @@
 <div id="tools">
   <button id="bLab" class="on" title="건물·지명 이름 보이기/숨기기">건물 이름</button>
   <button id="bRatio" title="4:3 비율로 보기">4:3 화면</button>
+  <button id="bCloud" class="on" title="구름 보이기/숨기기">구름</button>
   <button id="bFull" title="전체화면">전체화면</button>
 </div>
 <div id="clock">오후 3:00</div>
@@ -595,9 +596,47 @@ function timeStep(dt){
   const txt=(night>0.5?'🌙 ':'☀️ ')+ap+' '+h12+':'+String(mm).padStart(2,'0');
   if(txt!==TM.txt){ TM.txt=txt; $('clock').textContent=txt; }
   return night; }
+$('bCloud').onclick=()=>{ cloudsOn=!cloudsOn; $('bCloud').classList.toggle('on',cloudsOn); $('bCloud').textContent=cloudsOn?'구름':'구름 꺼짐'; };
 $('bTime').onclick=()=>{ TM.mode=(TM.mode+1)%3; $('bTime').textContent='시간: '+['하루 4분','실제 시각','멈춤'][TM.mode]; };
+/* ---------- 구름 · 달 · 별 ---------- */
+const CLOUDS=[], PUFFS=[];
+for(let c=0;c<16;c++){ const cl={x:rr(-260,260),z:rr(-170,200),y:rr(32,46),sp:rr(1.2,2.2),s:rr(0.8,1.4)}; CLOUDS.push(cl);
+  const n=4+Math.floor(R()*4); for(let k=0;k<n;k++) PUFFS.push({c,dx:(k-(n-1)/2)*rr(3.2,4.4)*cl.s,dz:rr(-2.5,2.5)*cl.s,dy:rr(-0.6,1.6),r:rr(3.2,5.2)*cl.s*(k===0||k===n-1?0.75:1)}); }
+const cloudMat=new T.MeshLambertMaterial({color:0xffffff,flatShading:true,transparent:true,opacity:0.9,fog:false});
+const clouds=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),cloudMat,PUFFS.length);
+clouds.castShadow=true; clouds.frustumCulled=false; scene.add(clouds);
+const cm=new T.Matrix4(), cv=new T.Vector3(), cs=new T.Vector3(), cq=new T.Quaternion();
+// 달 (그림 스프라이트)
+const mc2=document.createElement('canvas'); mc2.width=mc2.height=256; { const c=mc2.getContext('2d');
+  let g=c.createRadialGradient(128,128,40,128,128,128); g.addColorStop(0,'rgba(255,244,205,.45)'); g.addColorStop(1,'rgba(255,244,205,0)'); c.fillStyle=g; c.fillRect(0,0,256,256);
+  g=c.createRadialGradient(112,112,8,128,128,48); g.addColorStop(0,'#fffdf2'); g.addColorStop(1,'#f1e6c2'); c.fillStyle=g; c.beginPath(); c.arc(128,128,46,0,6.283); c.fill();
+  c.fillStyle='rgba(190,178,140,.35)'; [[112,112,10],[146,124,7],[130,150,12],[104,140,5],[150,100,5]].forEach(a=>{c.beginPath(); c.arc(a[0],a[1],a[2],0,6.283); c.fill();}); }
+const moon=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(mc2),transparent:true,depthWrite:false,fog:false,opacity:0}));
+moon.renderOrder=-1; scene.add(moon);
+// 별
+const starP=[]; for(let i=0;i<500;i++){ const a=R()*6.283, e=Math.asin(rr(0.05,1)); starP.push(Math.cos(a)*Math.cos(e),Math.sin(e),Math.sin(a)*Math.cos(e)); }
+const starG=new T.BufferGeometry(); starG.setAttribute('position',new T.Float32BufferAttribute(starP,3));
+const stars=new T.Points(starG,new T.PointsMaterial({color:0xffffff,size:2*renderer.getPixelRatio(),sizeAttenuation:false,transparent:true,depthWrite:false,fog:false,opacity:0}));
+stars.renderOrder=-2; stars.frustumCulled=false; scene.add(stars);
+let cloudsOn=true; const cNightCloud=new T.Color(0x46526a), cDuskCloud=new T.Color(0xf6d2b0);
+function skyStep(dt,night,h){
+  // 구름: 바람 따라 흘러가고, 지도 밖으로 나가면 반대편에서 다시
+  clouds.visible=cloudsOn;
+  if(cloudsOn){ CLOUDS.forEach(c=>{ c.x+=c.sp*dt; if(c.x>300) { c.x=-300; c.z=rr(-170,200); } });
+    PUFFS.forEach((p,i)=>{ const c=CLOUDS[p.c]; cm.compose(cv.set(c.x+p.dx,c.y+p.dy,c.z+p.dz),cq,cs.set(p.r,p.r*0.62,p.r*0.85)); clouds.setMatrixAt(i,cm); });
+    clouds.instanceMatrix.needsUpdate=true;
+    const dusk=Math.max(0,1-Math.abs(Math.sin((h-6)/12*Math.PI))/0.22);
+    cloudMat.color.setHex(0xffffff).lerp(cDuskCloud,dusk*0.6).lerp(cNightCloud,night*0.85); cloudMat.opacity=0.9-night*0.25; }
+  // 달: 저녁 6시 동쪽에서 떠서 새벽 6시 서쪽으로 짐 (밤 동안만 보임)
+  const nt=((h-18+24)%24)/12;                       // 0~1 (밤 진행)
+  const show=nt<=1?Math.sin(Math.min(1,nt)*Math.PI):0, az=-Math.PI/2+nt*Math.PI, el=(0.04+0.2*show);
+  const R2=WK.on?380:900, md=cv.set(Math.sin(az)*Math.cos(el),Math.sin(el),-Math.cos(az)*Math.cos(el)*0.6-0.4).normalize();
+  moon.position.copy(camera.position).addScaledVector(md,R2); const ms=R2*(WK.on?0.11:0.07); moon.scale.set(ms,ms,1);
+  moon.material.opacity=Math.min(1,night*1.4)*(nt<=1?1:0); moon.visible=moon.material.opacity>0.01;
+  stars.position.copy(camera.position); stars.scale.setScalar(R2*0.95); stars.material.opacity=Math.max(0,night*1.2-0.2); stars.visible=stars.material.opacity>0.01;
+}
 let lastT=performance.now();
-function world(now){ const dt=Math.min(0.1,(now-lastT)/1000); lastT=now; const night=timeStep(dt); peopleStep(dt,night);
+function world(now){ const dt=Math.min(0.1,(now-lastT)/1000); lastT=now; const night=timeStep(dt); peopleStep(dt,night); skyStep(dt,night,TM.h);
   if(WK.on){ const nm=WK.place; if(nm&&nm!==SPOT_NAME){ SPOT_NAME=nm; $('wPlace').textContent=nm; } } }
 
 let lastLs=0;
