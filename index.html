@@ -474,7 +474,13 @@ textarea.bubble[readonly]{color:var(--muted)}
 .bot{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:44;width:min(380px,calc(100vw - 24px));height:min(560px,calc(100vh - 150px));display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line-2);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
 .bot[hidden]{display:none}
 .bot-h{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel-2)}
-.bot-h > div{flex:1;min-width:0;display:flex;flex-direction:column}
+.bot-h > div{flex:1 1 110px;min-width:0;display:flex;flex-direction:column}
+.bot-h{flex-wrap:wrap;row-gap:8px}
+/* 내무반 가기: 당직이가 화면 밖으로 나가 사라지고, 구석에 작은 '당직이 부르기' 버튼만 남는다 */
+.bot-fab.away{display:none!important}
+.dj-call{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:43;padding:7px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--panel);color:var(--muted);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;opacity:.6;transition:opacity .15s}
+.dj-call:hover,.dj-call:focus-visible{opacity:1;color:var(--text)}
+.dj-call[hidden]{display:none}
 .bot-h b{font-size:15.5px}.bot-h small{color:var(--muted);font-size:12px}
 .bot-av{width:44px;height:44px;border-radius:50%;overflow:hidden;background:#20262b;border:2px solid var(--accent);flex:none}
 .bot-log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
@@ -5079,7 +5085,7 @@ function djSay(text, ms){
 function djBusy(){ return !!S.result || ["intake","analyzing","send"].includes(S.phase); }
 function djTick(){
   setTimeout(djTick, 4500 + Math.random() * 5500);
-  if (BOT.open || DJ.drag || document.hidden || Date.now() < DJ.pauseUntil) return;
+  if (DJ.away || BOT.open || DJ.drag || document.hidden || Date.now() < DJ.pauseUntil) return;
   if (!DJ.roam || djBusy()) return;
   const r = Math.random(), b = djBounds();
   if (r < .28) return djSay(djPick(DJ_IDLE));
@@ -5118,7 +5124,37 @@ const djRoamUI = () => { $("#djRoam").textContent = DJ.roam ? "돌아다니기 �
 $("#djRoam").addEventListener("click", () => { DJ.roam = !DJ.roam; try { localStorage.setItem("onecall_dj_roam", DJ.roam ? "1" : "0"); } catch(e) {} djRoamUI(); botSay(DJ.roam ? "야호, 순찰 다녀올게요! 🚶" : "넵, 제자리에서 근무할게요 🫡"); if (!DJ.roam){ djStopWalk(); const h = djHome(); djPlace(h.x, h.y, 0); } });
 djRoamUI();
 { const h = djHome(); djPlace(h.x, h.y, 0); }
-setTimeout(() => { if (!BOT.open) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
+/* 내무반 가기 · 당직이 부르기 (상태는 이 브라우저에 기억: onecall_dj_away) */
+$("#djRoam").insertAdjacentHTML("beforebegin", '<button class="btn sm" id="djAway" type="button">내무반 가기</button>');
+document.body.insertAdjacentHTML("beforeend", '<button class="dj-call" id="djCall" type="button" hidden>당직이 부르기</button>');
+const djOffX = () => innerWidth + 24;
+function djAwaySet(on, quick){
+  DJ.away = on; try { localStorage.setItem("onecall_dj_away", on ? "1" : "0"); } catch(e) {}
+  clearTimeout(DJ.awayT); clearTimeout(DJ.walkT);
+  if (on){
+    botToggle(false);
+    if (quick){ DJ.el.classList.add("away"); $("#djCall").hidden = false; return; }
+    djStopWalk(); djSay("내무반에서 쉬고 올게요. 충성! 🫡", 1500);
+    DJ.awayT = setTimeout(() => {
+      DJ.el.classList.remove("flip"); DJ.el.classList.add("walk");
+      DJ.el.style.transition = "left 1.3s ease-in"; DJ.el.style.left = djOffX() + "px";
+      DJ.awayT = setTimeout(() => { DJ.el.classList.remove("walk"); DJ.el.classList.add("away"); $("#djCall").hidden = false; }, 1350);
+    }, 900);
+  } else {
+    $("#djCall").hidden = true;
+    const h = djHome();
+    DJ.el.style.transition = "none"; DJ.el.style.left = djOffX() + "px"; DJ.el.style.top = h.y + "px";
+    DJ.el.classList.remove("away"); DJ.el.classList.add("flip", "walk");
+    void DJ.el.offsetWidth;
+    djPlace(h.x, h.y, 1.1);
+    DJ.awayT = setTimeout(() => { DJ.el.classList.remove("walk", "flip"); djSay("충성! 당직이 복귀했습니다 🫡", 2600); }, 1150);
+    DJ.pauseUntil = Date.now() + 6000;
+  }
+}
+$("#djAway").addEventListener("click", () => djAwaySet(true));
+$("#djCall").addEventListener("click", () => djAwaySet(false));
+try { if (localStorage.getItem("onecall_dj_away") === "1") djAwaySet(true, true); } catch(e) {}
+setTimeout(() => { if (!BOT.open && !DJ.away) djSay("안녕! 저는 당직이예요 👋", 3800); }, 1800);
 setTimeout(djTick, 6000);
 /* ===== 이스터에그: 당직이 사진첩 ===== */
 { const POSTS = [
