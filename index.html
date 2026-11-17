@@ -529,6 +529,9 @@ textarea.bubble[readonly]{color:var(--muted)}
 .hm-wrap{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#f3f4f2;height:var(--hmh,640px);min-height:420px;display:flex}
 #hm3d{display:block;flex:1;width:100%;height:100%;border:0}
 @media (max-width:560px){#view-haemi .cc-head .hint{display:none}.hm-wrap{min-height:340px}}
+@media (min-width:561px){.hm-wrap.r43{height:auto;min-height:0;aspect-ratio:4/3}}
+.hm-wrap.hm-full{position:fixed;inset:0;z-index:9999;margin:0;border:0;border-radius:0;height:auto;min-height:0;aspect-ratio:auto;background:#1c222c}
+body.hm-lock{overflow:hidden}
 .seg .vbtn .vshort{display:none}
 @media (max-width:560px){.seg .vbtn .vlong{display:none}.seg .vbtn .vshort{display:inline}}
 /* ===== 3D 부대 ===== */
@@ -1158,7 +1161,7 @@ button.recip{background:var(--panel)}
       <div class="cc-title"><span class="live-dot"></span><div><h2>해미읍성 일대 · 스케치 3D 지도</h2><p class="hint"><b>산책하기</b>를 누르면 산책로를 따라 자동으로 걷고, <b>걸어보기</b>를 누르면 사람 눈높이로 진남문부터 걸어 들어갈 수 있어요. 위성사진을 바탕으로 해미읍성(진남문 · 동헌 · 객사 · 청허정)과 주변 시가지 · 학교 · 해미천 · 해미 IC를 코드로 그린 근사 모형입니다. 끌면 돌아가고 휠이나 두 손가락으로 확대 · 이동합니다. 아래 버튼으로 <b>성 안 가까이</b>, <b>전체 보기</b>, <b>위에서 보기</b>를 고를 수 있어요.</p></div></div>
     </section>
     <div class="hm-wrap">
-      <iframe id="hm3d" title="해미읍성 일대 스케치 3D 지도" data-src="haemi3d.html?embed&v=1117stroll"></iframe>
+      <iframe id="hm3d" title="해미읍성 일대 스케치 3D 지도" allow="fullscreen" allowfullscreen data-src="haemi3d.html?embed&v=1117full"></iframe>
     </div>
   </div>
   <div id="view-bus" hidden>
@@ -4782,6 +4785,11 @@ if (location.hash === "#pangyo") showView("pangyo");
     wrap.style.setProperty("--hmh", Math.max(innerWidth <= 560 ? 340 : 420, Math.round(innerHeight - top - bar)) + "px"); };
   addEventListener("resize", fit);
   new MutationObserver(() => { fit(); setTimeout(fit, 120); }).observe($("#view-haemi"), { attributes:true, attributeFilter:["hidden"] });
+  /* 지도에서 보내는 4:3 화면 · 전체화면 요청 */
+  addEventListener("message", e => { const f = $("#hm3d"), d = e.data; if (!wrap || !f || e.source !== f.contentWindow || !d || d.hm !== 1) return;
+    if (d.ratio) wrap.classList.toggle("r43", d.ratio === "4:3");
+    if ("full" in d) { wrap.classList.toggle("hm-full", !!d.full); document.body.classList.toggle("hm-lock", !!d.full); }
+    fit(); });
 }
 if (location.hash === "#haemi") showView("haemi");
 /* 3D 부대 화면 높이 맞춤: 남은 화면 높이 = 창 높이 - 지도 시작 위치 - 아래 당직일지 바 */
