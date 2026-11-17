@@ -473,7 +473,7 @@ function collide(){ const seen=new Set(); for(let it=0;it<2;it++){ const i0=Math
 function goSpot(i){ const sp=SPOTS[i%SPOTS.length]; WK.i=i%SPOTS.length; WK.x=sp[1]; WK.z=sp[2]; WK.yaw=Math.atan2(sp[3]-sp[1],-(sp[4]-sp[2])); WK.pitch=0.04; collide(); $('wPlace').textContent=sp[0]; }
 function walkOn(on,stroll){
   WK.on=on; WK.stroll=!!(on&&stroll); document.body.classList.toggle('walking',on); document.body.classList.toggle('strolling',WK.stroll); WK.lookOff=0; SPOT_NAME=''; ptr.clear(); goal=null;
-  if(on){ if(!WK.grid) WK.grid=buildGrid(); camera.near=0.1; camera.far=900; scene.fog.near=25; scene.fog.far=190; if(WK.stroll){ WK.s=STROLL_START; strollStep(0,true); } else goSpot(WK.i);
+  if(on){ if(!WK.grid) WK.grid=buildGrid(); camera.near=0.1; camera.far=900; scene.fog.near=25; scene.fog.far=190; if(WK.stroll){ WK.s=Math.random()*strollLen; strollStep(0,true); } else goSpot(WK.i);
     scene.background.set(0xe6eef5); scene.fog.color.set(0xe6eef5);
     L.children.forEach(sp=>{const m=sp.material,b=sp.userData.base; m.depthTest=true; m.sizeAttenuation=false; m.needsUpdate=true; if(b) sp.scale.set(0.05*b[0]/b[1],0.05,1);});
     $('wHint').textContent=WK.stroll?'산책로를 따라 자동으로 걸어요 · 끌어서 잠깐 둘러보기':matchMedia('(pointer:fine)').matches?'W·A·S·D / 방향키로 걷기 · 끌어서 둘러보기 · Shift 달리기':'왼쪽 원으로 걷기 · 화면을 끌어서 둘러보기';
